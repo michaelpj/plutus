@@ -31,6 +31,7 @@ module Language.PlutusCore
     , Value
     , BuiltinName (..)
     , TypeBuiltin (..)
+    , defaultVersion
     -- * Lexer
     , AlexPosn (..)
     -- * Views
@@ -153,3 +154,7 @@ formatDoc = fmap (prettyCfg defaultCfg) . parse
 
 format :: Configuration -> BSL.ByteString -> Either (ParseError AlexPosn) T.Text
 format cfg = fmap (render . prettyCfg cfg) . parseScoped
+
+-- | The default version of Plutus Core supported by this library.
+defaultVersion :: a -> Version a
+defaultVersion a = Version a 1 0 0
