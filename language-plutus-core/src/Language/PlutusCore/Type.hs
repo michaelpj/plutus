@@ -14,13 +14,14 @@ module Language.PlutusCore.Type ( Term (..)
                                 -- * Base functors
                                 , TermF (..)
                                 , TypeF (..)
+                                , KindF (..)
                                 -- * Helper functions
                                 , tyLoc
                                 , termLoc
                                 ) where
 
 import qualified Data.ByteString.Lazy           as BSL
-import           Data.Functor.Foldable
+import           Control.Recursion
 import           Language.PlutusCore.Lexer.Type
 import           PlutusPrelude
 

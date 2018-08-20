@@ -13,6 +13,8 @@ module PlutusPrelude ( -- * Reëxports from base
                      , fold
                      , throw
                      , join
+                     , (<=<)
+                     , fromRight
                      , Generic
                      , NFData
                      , Natural
@@ -49,10 +51,12 @@ import           Control.Arrow                           ((&&&))
 import           Control.Composition                     ((.*))
 import           Control.DeepSeq                         (NFData)
 import           Control.Exception                       (Exception, throw)
+import           Control.Monad                           ((<=<))
 import           Control.Monad                           (guard, join)
 import           Control.Monad.Trans.Reader
 import           Data.Bifunctor                          (first, second)
 import           Data.Bool                               (bool)
+import           Data.Either                             (fromRight)
 import           Data.Foldable                           (fold, toList)
 import           Data.Function                           (on)
 import           Data.List                               (foldl')

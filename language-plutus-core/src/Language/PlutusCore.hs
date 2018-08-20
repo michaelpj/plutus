@@ -50,6 +50,11 @@ module Language.PlutusCore
     , TypeError (..)
     , TypeCheckM
     , BuiltinTable (..)
+    -- * Serialization
+    , encodeProgram
+    , decodeProgram
+    , readProgram
+    , writeProgram
     -- * Errors
     , Error (..)
     , IsError (..)
@@ -64,6 +69,7 @@ import qualified Data.ByteString.Lazy              as BSL
 import qualified Data.IntMap                       as IM
 import qualified Data.Text                         as T
 import           Data.Text.Prettyprint.Doc         hiding (annotate)
+import           Language.PlutusCore.CBOR
 import           Language.PlutusCore.Error
 import           Language.PlutusCore.Lexer
 import           Language.PlutusCore.Lexer.Type
@@ -75,6 +81,7 @@ import           Language.PlutusCore.Type
 import           Language.PlutusCore.TypeSynthesis
 import           PlutusPrelude
 
+-- TODO: optionally print annotations
 newtype Configuration = Configuration Bool
 
 -- | Given a file at @fibonacci.plc@, @fileType "fibonacci.plc"@ will display
@@ -84,10 +91,10 @@ fileType = fmap (either prettyText id . printType) . BSL.readFile
 
 -- | Print the type of a program contained in a 'ByteString'
 printType :: BSL.ByteString -> Either Error T.Text
-printType = collectErrors . fmap (fmap typeText . annotateST) . parseScoped
+printType = collectErrors . fmap (convertError . typeErr <=< convertError . annotateST) . parseScoped
 
-typeText :: Pretty a => (TypeState a, Program TyNameWithKind NameWithType a) -> T.Text
-typeText = uncurry (either prettyText prettyText .* programType 10000)
+typeErr :: (TypeState a, Program TyNameWithKind NameWithType a) -> Either (TypeError a) T.Text
+typeErr = fmap prettyText . uncurry (programType 10000)
 
 -- | This is the default 'Configuration' most users will want
 defaultCfg :: Configuration
