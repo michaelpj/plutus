@@ -22,6 +22,7 @@ import           Control.Monad.State
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.IntMap          as IM
 import qualified Data.Map             as M
+import qualified Data.Text.Prettyprint.Doc as PP
 import           Data.Text.Encoding   (decodeUtf8)
 import           PlutusPrelude
 
@@ -36,11 +37,14 @@ data Name a = Name { nameAttribute :: a
                    }
             deriving (Functor, Show, Generic, NFData, Lift)
 
+instance PrettyA (Name a) where
+    prettyA (Name _ s (Unique u)) = (pretty (decodeUtf8 (BSL.toStrict s))) <> (PP.annotate Debug $ "_" <> pretty u)
+
 -- | We use a @newtype@ to enforce separation between names used for types and
 -- those used for terms.
 newtype TyName a = TyName { unTyName :: Name a }
     deriving (Show, Lift)
-    deriving newtype (Eq, Ord, Functor, NFData, Pretty, Debug)
+    deriving newtype (Eq, Ord, Functor, NFData, PrettyA)
 
 instance Eq (Name a) where
     (==) = (==) `on` nameUnique
@@ -79,8 +83,3 @@ newIdentifier str = do
             put (IM.insert key str is, M.insert str nextU ss, nextU')
             pure nextU
 
-instance Pretty (Name a) where
-    pretty (Name _ s _) = pretty (decodeUtf8 (BSL.toStrict s))
-
-instance Debug (Name a) where
-    debug (Name _ s (Unique u)) = pretty (decodeUtf8 (BSL.toStrict s)) <> "_" <> pretty u

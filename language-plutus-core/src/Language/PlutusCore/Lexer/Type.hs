@@ -107,71 +107,71 @@ asBytes = Text 2 . T.pack . ($ mempty) . showHex
 prettyBytes :: BSL.ByteString -> Doc a
 prettyBytes b = "#" <> fold (asBytes <$> BSL.unpack b)
 
-instance Pretty Special where
-    pretty OpenParen    = "("
-    pretty CloseParen   = ")"
-    pretty OpenBracket  = "["
-    pretty CloseBracket = "]"
-    pretty Dot          = "."
-    pretty Exclamation  = "!"
-    pretty OpenBrace    = "{"
-    pretty CloseBrace   = "}"
+instance PrettyA Special where
+    prettyA OpenParen    = "("
+    prettyA CloseParen   = ")"
+    prettyA OpenBracket  = "["
+    prettyA CloseBracket = "]"
+    prettyA Dot          = "."
+    prettyA Exclamation  = "!"
+    prettyA OpenBrace    = "{"
+    prettyA CloseBrace   = "}"
 
-instance Pretty Keyword where
-    pretty KwAbs        = "abs"
-    pretty KwLam        = "lam"
-    pretty KwFix        = "fix"
-    pretty KwFun        = "fun"
-    pretty KwAll        = "forall"
-    pretty KwByteString = "bytestring"
-    pretty KwInteger    = "integer"
-    pretty KwSize       = "size"
-    pretty KwType       = "type"
-    pretty KwProgram    = "program"
-    pretty KwCon        = "con"
-    pretty KwWrap       = "wrap"
-    pretty KwUnwrap     = "unwrap"
-    pretty KwError      = "error"
+instance PrettyA Keyword where
+    prettyA KwAbs        = "abs"
+    prettyA KwLam        = "lam"
+    prettyA KwFix        = "fix"
+    prettyA KwFun        = "fun"
+    prettyA KwAll        = "forall"
+    prettyA KwByteString = "bytestring"
+    prettyA KwInteger    = "integer"
+    prettyA KwSize       = "size"
+    prettyA KwType       = "type"
+    prettyA KwProgram    = "program"
+    prettyA KwCon        = "con"
+    prettyA KwWrap       = "wrap"
+    prettyA KwUnwrap     = "unwrap"
+    prettyA KwError      = "error"
 
-instance Pretty (Token a) where
-    pretty (LexName _ n _)   = pretty (decodeUtf8 (BSL.toStrict n))
-    pretty (LexInt _ i)      = pretty i
-    pretty (LexNat _ n)      = pretty n
-    pretty (LexBS _ bs)      = prettyBytes bs
-    pretty (LexBuiltin _ bn) = pretty bn
-    pretty (LexKeyword _ kw) = pretty kw
-    pretty (LexSpecial _ s)  = pretty s
-    pretty EOF{}             = mempty
+instance PrettyA (Token a) where
+    prettyA (LexName _ n _)   = pretty (decodeUtf8 (BSL.toStrict n))
+    prettyA (LexInt _ i)      = pretty i
+    prettyA (LexNat _ n)      = pretty n
+    prettyA (LexBS _ bs)      = prettyBytes bs
+    prettyA (LexBuiltin _ bn) = prettyA bn
+    prettyA (LexKeyword _ kw) = prettyA kw
+    prettyA (LexSpecial _ s)  = prettyA s
+    prettyA EOF{}             = mempty
 
-instance Pretty BuiltinName where
-    pretty AddInteger           = "addInteger"
-    pretty SubtractInteger      = "subtractInteger"
-    pretty MultiplyInteger      = "multiplyInteger"
-    pretty DivideInteger        = "divideInteger"
-    pretty RemainderInteger     = "remainderInteger"
-    pretty LessThanInteger      = "lessThanInteger"
-    pretty LessThanEqInteger    = "lessThanEqualsInteger"
-    pretty GreaterThanInteger   = "greaterThanInteger"
-    pretty GreaterThanEqInteger = "greaterThanEqualsInteger"
-    pretty EqInteger            = "equalsInteger"
-    pretty ResizeInteger        = "resizeInteger"
-    pretty IntToByteString      = "intToByteString"
-    pretty Concatenate          = "concatenate"
-    pretty TakeByteString       = "takeByteString"
-    pretty DropByteString       = "dropByteString"
-    pretty ResizeByteString     = "resizeByteString"
-    pretty EqByteString         = "equalsByteString"
-    pretty SHA2                 = "sha2_256"
-    pretty SHA3                 = "sha3_256"
-    pretty VerifySignature      = "verifySignature"
-    pretty TxHash               = "txhash"
-    pretty BlockNum             = "blocknum"
-    pretty BlockTime            = "blocktime"
+instance PrettyA BuiltinName where
+    prettyA AddInteger           = "addInteger"
+    prettyA SubtractInteger      = "subtractInteger"
+    prettyA MultiplyInteger      = "multiplyInteger"
+    prettyA DivideInteger        = "divideInteger"
+    prettyA RemainderInteger     = "remainderInteger"
+    prettyA LessThanInteger      = "lessThanInteger"
+    prettyA LessThanEqInteger    = "lessThanEqualsInteger"
+    prettyA GreaterThanInteger   = "greaterThanInteger"
+    prettyA GreaterThanEqInteger = "greaterThanEqualsInteger"
+    prettyA EqInteger            = "equalsInteger"
+    prettyA ResizeInteger        = "resizeInteger"
+    prettyA IntToByteString      = "intToByteString"
+    prettyA Concatenate          = "concatenate"
+    prettyA TakeByteString       = "takeByteString"
+    prettyA DropByteString       = "dropByteString"
+    prettyA ResizeByteString     = "resizeByteString"
+    prettyA EqByteString         = "equalsByteString"
+    prettyA SHA2                 = "sha2_256"
+    prettyA SHA3                 = "sha3_256"
+    prettyA VerifySignature      = "verifySignature"
+    prettyA TxHash               = "txhash"
+    prettyA BlockNum             = "blocknum"
+    prettyA BlockTime            = "blocktime"
 
-instance Pretty TypeBuiltin where
-    pretty TyInteger    = "integer"
-    pretty TyByteString = "bytestring"
-    pretty TySize       = "size"
+instance PrettyA TypeBuiltin where
+    prettyA TyInteger    = "integer"
+    prettyA TyByteString = "bytestring"
+    prettyA TySize       = "size"
 
-instance Pretty (Version a) where
-    pretty (Version _ i j k) = pretty i <> "." <> pretty j <> "." <> pretty k
+instance PrettyA (Version a) where
+    prettyA (Version _ i j k) = pretty i <> "." <> pretty j <> "." <> pretty k

@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module PlutusPrelude ( -- * Reëxports from base
                        (&&&)
@@ -29,19 +31,21 @@ module PlutusPrelude ( -- * Reëxports from base
                      -- * Custom functions
                      , prettyString
                      , prettyText
-                     , debugText
                      , render
                      , repeatM
                      , (?)
-                     , Debug (..)
                      , hoist
                      -- Reëxports from "Data.Text.Prettyprint.Doc"
                      , (<+>)
                      , parens
                      , squotes
                      , Doc
+                     , annotate
                      , strToBs
                      , bsToStr
+                     , PrettyA
+                     , prettyA
+                     , DocAnn (..)
                      ) where
 
 import           Control.Applicative                     (Alternative (..))
@@ -72,17 +76,14 @@ import           GHC.Natural                             (Natural)
 
 infixr 2 ?
 
--- | This is like 'Pretty', but it dumps 'Unique's for each 'Name' / 'TyName' as
--- well.
-class Debug a where
-    debug :: a -> Doc ann
+data DocAnn = None | Debug
+
+class PrettyA a where
+    prettyA :: a -> Doc DocAnn
 
 -- | Render a 'Program' as strict 'Text'.
 prettyText :: Pretty a => a -> T.Text
 prettyText = render . pretty
-
-debugText :: Debug a => a -> T.Text
-debugText = render . debug
 
 render :: Doc a -> T.Text
 render = renderStrict . layoutSmart defaultLayoutOptions

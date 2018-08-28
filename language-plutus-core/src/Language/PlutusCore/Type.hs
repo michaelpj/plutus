@@ -187,76 +187,47 @@ instance Recursive (Kind a) where
     project (KindArrow l k k') = KindArrowF l k k'
     project (Size l)           = SizeF l
 
-instance Debug (Kind a) where
-    debug = pretty
-
 -- | A 'Program' is simply a 'Term' coupled with a 'Version' of the core
 -- language.
 data Program tyname name a = Program a (Version a) (Term tyname name a)
                  deriving (Show, Eq, Functor, Generic, NFData, Lift)
 
-instance Pretty (Kind a) where
-    pretty = cata a where
+instance PrettyA (Kind a) where
+    prettyA = cata a where
         a TypeF{}             = "(type)"
         a SizeF{}             = "(size)"
         a (KindArrowF _ k k') = parens ("fun" <+> k <+> k')
 
-instance (Pretty (f a), Pretty (g a)) => Pretty (Program f g a) where
-    pretty (Program _ v t) = parens ("program" <+> pretty v <+> pretty t)
+instance (PrettyA (f a), PrettyA (g a)) => PrettyA (Program f g a) where
+    prettyA (Program _ v t) = parens ("program" <+> prettyA v <+> prettyA t)
 
-instance (Debug (f a), Debug (g a)) => Debug (Program f g a) where
-    debug (Program _ v t) = parens ("program" <+> pretty v <+> debug t)
+instance PrettyA (Constant a) where
+    prettyA (BuiltinInt _ s i) = pretty s <+> "!" <+> pretty i
+    prettyA (BuiltinSize _ s)  = pretty s
+    prettyA (BuiltinBS _ s b)  = pretty s <+> "!" <+> prettyBytes b
+    prettyA (BuiltinName _ n)  = prettyA n
 
-instance Pretty (Constant a) where
-    pretty (BuiltinInt _ s i) = pretty s <+> "!" <+> pretty i
-    pretty (BuiltinSize _ s)  = pretty s
-    pretty (BuiltinBS _ s b)  = pretty s <+> "!" <+> prettyBytes b
-    pretty (BuiltinName _ n)  = pretty n
-
-instance (Pretty (f a), Pretty (g a)) => Pretty (Term f g a) where
-    pretty = cata a where
-        a (ConstantF _ b)    = parens ("con" <+> pretty b)
+instance (PrettyA (f a), PrettyA (g a)) => PrettyA (Term f g a) where
+    prettyA = cata a where
+        a (ConstantF _ b)    = parens ("con" <+> prettyA b)
         a (ApplyF _ t t')    = "[" <+> t <+> t' <+> "]"
-        a (VarF _ n)         = pretty n
-        a (TyAbsF _ n k t)   = parens ("abs" <+> pretty n <+> pretty k <+> t)
-        a (TyInstF _ t ty)   = "{" <+> t <+> pretty ty <+> "}"
-        a (LamAbsF _ n ty t) = parens ("lam" <+> pretty n <+> pretty ty <+> t)
+        a (VarF _ n)         = prettyA n
+        a (TyAbsF _ n k t)   = parens ("abs" <+> prettyA n <+> prettyA k <+> t)
+        a (TyInstF _ t ty)   = "{" <+> t <+> prettyA ty <+> "}"
+        a (LamAbsF _ n ty t) = parens ("lam" <+> prettyA n <+> prettyA ty <+> t)
         a (UnwrapF _ t)      = parens ("unwrap" <+> t)
-        a (WrapF _ n ty t)   = parens ("wrap" <+> pretty n <+> pretty ty <+> t)
-        a (ErrorF _ ty)      = parens ("error" <+> pretty ty)
+        a (WrapF _ n ty t)   = parens ("wrap" <+> prettyA n <+> prettyA ty <+> t)
+        a (ErrorF _ ty)      = parens ("error" <+> prettyA ty)
 
-instance (Debug (f a), Debug (g a)) => Debug (Term f g a) where
-    debug = cata a where
-        a (ConstantF _ b)    = parens ("con" <+> pretty b)
-        a (ApplyF _ t t')    = "[" <+> t <+> t' <+> "]"
-        a (VarF _ n)         = debug n
-        a (TyAbsF _ n k t)   = parens ("abs" <+> debug n <+> pretty k <+> t)
-        a (TyInstF _ t ty)   = "{" <+> t <+> debug ty <+> "}"
-        a (LamAbsF _ n ty t) = parens ("lam" <+> debug n <+> debug ty <+> t)
-        a (UnwrapF _ t)      = parens ("unwrap" <+> t)
-        a (WrapF _ n ty t)   = parens ("wrap" <+> debug n <+> debug ty <+> t)
-        a (ErrorF _ ty)      = parens ("error" <+> debug ty)
-
-instance Pretty (f a) => Pretty (Type f a) where
-    pretty = cata a where
+instance PrettyA (f a) => PrettyA (Type f a) where
+    prettyA = cata a where
         a (TyAppF _ t t')     = "[" <+> t <+> t' <+> "]"
-        a (TyVarF _ n)        = pretty n
+        a (TyVarF _ n)        = prettyA n
         a (TyFunF _ t t')     = parens ("fun" <+> t <+> t')
-        a (TyFixF _ n t)      = parens ("fix" <+> pretty n <+> t)
-        a (TyForallF _ n k t) = parens ("all" <+> pretty n <+> pretty k <+> t)
-        a (TyBuiltinF _ n)    = parens ("con" <+> pretty n)
+        a (TyFixF _ n t)      = parens ("fix" <+> prettyA n <+> t)
+        a (TyForallF _ n k t) = parens ("all" <+> prettyA n <+> prettyA k <+> t)
+        a (TyBuiltinF _ n)    = parens ("con" <+> prettyA n)
         a (TyIntF _ n)        = parens ("con" <+> pretty n)
-        a (TyLamF _ n k t)    = parens ("lam" <+> pretty n <+> pretty k <+> t)
-
-instance Debug (f a) => Debug (Type f a) where
-    debug = cata a where
-        a (TyAppF _ t t')     = "[" <+> t <+> t' <+> "]"
-        a (TyVarF _ n)        = debug n
-        a (TyFunF _ t t')     = parens ("fun" <+> t <+> t')
-        a (TyFixF _ n t)      = parens ("fix" <+> debug n <+> t)
-        a (TyForallF _ n k t) = parens ("all" <+> debug n <+> pretty k <+> t)
-        a (TyBuiltinF _ n)    = parens ("con" <+> pretty n)
-        a (TyIntF _ n)        = parens ("con" <+> pretty n)
-        a (TyLamF _ n k t)    = parens ("lam" <+> debug n <+> pretty k <+> t)
+        a (TyLamF _ n k t)    = parens ("lam" <+> prettyA n <+> prettyA k <+> t)
 
 -- TODO: add binary serialize/deserialize instances here.
