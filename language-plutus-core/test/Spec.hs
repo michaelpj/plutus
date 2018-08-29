@@ -8,11 +8,13 @@ import qualified Data.ByteString.Lazy    as BSL
 import qualified Data.Text               as T
 import           Data.Text.Encoding      (encodeUtf8)
 import           Evaluation.Constant.All
+import           Evaluation.CkMachine
+
+import qualified Quotation.Spec as Quotation
 import           Generators
 import           Hedgehog                hiding (Var, annotate)
 import           Language.PlutusCore
 import           PlutusPrelude
-import qualified Quotation.Spec          as Quotation
 import           Test.Tasty
 import           Test.Tasty.Golden
 import           Test.Tasty.Hedgehog
@@ -84,6 +86,7 @@ allTests plcFiles rwFiles typeFiles = testGroup "all tests"
     , testsRewrite rwFiles
     , testsType typeFiles
     , test_constantApplication
+    , test_evaluateCk
     , Quotation.tests
     ]
 

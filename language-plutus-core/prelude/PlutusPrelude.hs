@@ -27,6 +27,7 @@ module PlutusPrelude ( -- * Reëxports from base
                      -- * Reëxports from "Control.Composition"
                      , (.*)
                      -- * Custom functions
+                     , prettyText
                      , prettyString
                      , render
                      , repeatM
@@ -73,6 +74,14 @@ import           GHC.Natural                             (Natural)
 
 infixr 2 ?
 
+-- | Render a 'Program' as strict 'Text'.
+prettyText :: Pretty a => a -> T.Text
+prettyText = render . pretty
+
+-- | Render a 'Program' as 'String'.
+prettyString :: Pretty a => a -> String
+prettyString = renderString . layoutPretty defaultLayoutOptions . pretty
+
 render :: Doc a -> T.Text
 render = renderStrict . layoutSmart defaultLayoutOptions
 
@@ -89,9 +98,6 @@ instance Functor f => Functor (PairT b f) where
 
 (?) :: Alternative f => Bool -> a -> f a
 (?) b x = x <$ guard b
-
-prettyString :: Pretty a => a -> String
-prettyString = renderString . layoutPretty defaultLayoutOptions . pretty
 
 -- | Like a version of 'everywhere' for recursion schemes.
 hoist :: (Recursive t, Corecursive t) => (Base t t -> Base t t) -> t -> t
