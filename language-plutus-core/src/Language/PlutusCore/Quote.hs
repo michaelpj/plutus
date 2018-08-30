@@ -22,7 +22,6 @@ module Language.PlutusCore.Quote (
 
 import           Control.Monad.Except
 import qualified Control.Monad.Morph               as MM
-import           Control.Monad.Reader
 import           Control.Monad.State
 import qualified Data.ByteString.Lazy              as BSL
 import           Data.Functor.Identity
@@ -48,7 +47,7 @@ emptyFreshState = Unique 0
 -- fresh-name generation, and parsing.
 newtype QuoteT m a = QuoteT { unQuoteT :: StateT FreshState m a }
     -- the MonadState constraint is handy, but it's useless outside since we don't export the state type
-    deriving (Functor, Applicative, Monad, MonadTrans, MM.MFunctor, MonadState FreshState)
+    deriving (Functor, Applicative, Monad, MonadTrans, MM.MFunctor, MonadState FreshState, MonadError e)
 
 -- | Run a quote from an empty identifier state. Note that the resulting term cannot necessarily
 -- be safely combined with other terms - that should happen inside 'QuoteT'.
@@ -77,12 +76,14 @@ freshName ann str = Name ann str <$> freshUnique
 freshTyName :: (Monad m) => a -> BSL.ByteString -> QuoteT m (TyName a)
 freshTyName = fmap TyName .* freshName
 
-mapParseRun :: (MonadError c m, Is (Error a) c) => StateT IdentifierState (Except (ParseError a)) b -> QuoteT m b
+mapParseRun :: forall a b c m . (MonadError c m, Is (Error a) c) => StateT IdentifierState (Except (ParseError a)) b -> QuoteT m b
 -- we need to run the parser starting from our current next unique, then throw away the rest of the
 -- parser state and get back the new next unique
-mapParseRun run = MM.hoist (liftEither . first embed . convertError . runExcept) $ QuoteT $ StateT $ \nextU -> do
-    (p, (_, _, u)) <- runStateT run (identifierStateFrom nextU)
-    pure (p, u)
+mapParseRun run = do
+    nextU <- get
+    (p, (_, _, u)) <- (liftEither . first (embed @(Error a) . embed)) $ runExcept $ runStateT run (identifierStateFrom nextU)
+    put u
+    pure p
 
 -- | Parse a PLC program. The resulting program will have fresh names. The underlying monad must be capable
 -- of handling any parse errors.
@@ -106,11 +107,11 @@ annotateProgram (Program a v t) = Program a v <$> annotateTerm t
 -- | Annotate a PLC term, so that all names are annotated with their types/kinds.
 annotateTerm :: forall a b m . (MonadError b m, Is (Error a) b) => Term TyName Name a -> QuoteT m (Term TyNameWithKind NameWithType a)
 annotateTerm t = do
-  (ts, t') <- (lift . liftEither . first ((embed @(Error a)). embed)) (annotateTermST t)
+  (ts, t') <- (liftEither . first (embed @(Error a). embed)) (annotateTermST t)
   updateMaxU ts
   pure t'
       where
-          updateMaxU :: (Monad m) => TypeState a -> QuoteT m ()
+          updateMaxU :: TypeState a -> QuoteT m ()
           updateMaxU (TypeState _ tys) = do
               nextU <- get
               let tsMaxU = maybe 0 (fst . fst) (IM.maxViewWithKey tys)
@@ -126,4 +127,4 @@ typecheckTerm :: forall a b m. (MonadError b m, Is (Error a) b) => Natural -> Te
 typecheckTerm n t = do
   nextU <- get
   let maxU = unUnique nextU - 1
-  (lift . liftEither . first ((embed @(Error a)) . embed)) (runTypeCheckM maxU n (typeOf t))
+  (liftEither . first (embed @(Error a) . embed)) (runTypeCheckM maxU n (typeOf t))
