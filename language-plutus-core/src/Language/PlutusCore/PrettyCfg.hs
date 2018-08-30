@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- | This module contains the 'PrettyCfg' typeclass, a more sophisticated
 -- typeclass for pretty-printing that allows us to dump debug information only
 -- when wanted.
@@ -30,6 +31,9 @@ instance PrettyCfg Integer
 
 instance PrettyCfg a => PrettyCfg [a] where
     prettyCfg cfg = list . fmap (prettyCfg cfg)
+
+instance PrettyCfg () where
+    prettyCfg _ _ = ""
 
 renderCfg :: PrettyCfg a => Configuration -> a -> T.Text
 renderCfg = render .* prettyCfg
