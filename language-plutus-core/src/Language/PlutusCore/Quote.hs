@@ -1,5 +1,7 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE Rank2Types       #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications      #-}
 
 module Language.PlutusCore.Quote (
               runQuoteT
@@ -19,7 +21,8 @@ module Language.PlutusCore.Quote (
             ) where
 
 import           Control.Monad.Except
-import           Control.Monad.Morph               as MM
+import qualified Control.Monad.Morph               as MM
+import           Control.Monad.Reader
 import           Control.Monad.State
 import qualified Data.ByteString.Lazy              as BSL
 import           Data.Functor.Identity
@@ -28,6 +31,7 @@ import           Language.PlutusCore.Lexer         (AlexPosn)
 
 import           Language.PlutusCore.Error
 import           Language.PlutusCore.Name
+import           Language.PlutusCore.Is
 import           Language.PlutusCore.Parser        (ParseError, parseST, parseTermST, parseTypeST)
 import           Language.PlutusCore.Renamer
 import           Language.PlutusCore.Type
@@ -73,36 +77,36 @@ freshName ann str = Name ann str <$> freshUnique
 freshTyName :: (Monad m) => a -> BSL.ByteString -> QuoteT m (TyName a)
 freshTyName = fmap TyName .* freshName
 
-mapParseRun :: (MonadError (Error a) m) => StateT IdentifierState (Except (ParseError a)) b -> QuoteT m b
+mapParseRun :: (MonadError c m, Is (Error a) c) => StateT IdentifierState (Except (ParseError a)) b -> QuoteT m b
 -- we need to run the parser starting from our current next unique, then throw away the rest of the
 -- parser state and get back the new next unique
-mapParseRun run = MM.hoist (liftEither . convertError . runExcept) $ QuoteT $ StateT $ \nextU -> do
+mapParseRun run = MM.hoist (liftEither . first embed . convertError . runExcept) $ QuoteT $ StateT $ \nextU -> do
     (p, (_, _, u)) <- runStateT run (identifierStateFrom nextU)
     pure (p, u)
 
 -- | Parse a PLC program. The resulting program will have fresh names. The underlying monad must be capable
 -- of handling any parse errors.
-parseProgram :: (MonadError (Error AlexPosn) m) => BSL.ByteString -> QuoteT m (Program TyName Name AlexPosn)
+parseProgram :: (MonadError b m, Is (Error AlexPosn) b) => BSL.ByteString -> QuoteT m (Program TyName Name AlexPosn)
 parseProgram str = mapParseRun (parseST str)
 
 -- | Parse a PLC term. The resulting program will have fresh names. The underlying monad must be capable
 -- of handling any parse errors.
-parseTerm :: (MonadError (Error AlexPosn) m) => BSL.ByteString -> QuoteT m (Term TyName Name AlexPosn)
+parseTerm :: (MonadError b m, Is (Error AlexPosn) b) => BSL.ByteString -> QuoteT m (Term TyName Name AlexPosn)
 parseTerm str = mapParseRun (parseTermST str)
 
 -- | Parse a PLC type. The resulting program will have fresh names. The underlying monad must be capable
 -- of handling any parse errors.
-parseType :: (MonadError (Error AlexPosn) m) => BSL.ByteString -> QuoteT m (Type TyName AlexPosn)
+parseType :: (MonadError b m,  Is (Error AlexPosn) b) => BSL.ByteString -> QuoteT m (Type TyName AlexPosn)
 parseType str = mapParseRun (parseTypeST str)
 
 -- | Annotate a PLC program, so that all names are annotated with their types/kinds.
-annotateProgram :: (MonadError (Error a) m) => Program TyName Name a -> QuoteT m (Program TyNameWithKind NameWithType a)
+annotateProgram :: (MonadError b m, Is (Error a) b) => Program TyName Name a -> QuoteT m (Program TyNameWithKind NameWithType a)
 annotateProgram (Program a v t) = Program a v <$> annotateTerm t
 
 -- | Annotate a PLC term, so that all names are annotated with their types/kinds.
-annotateTerm :: (MonadError (Error a) m) => Term TyName Name a -> QuoteT m (Term TyNameWithKind NameWithType a)
+annotateTerm :: forall a b m . (MonadError b m, Is (Error a) b) => Term TyName Name a -> QuoteT m (Term TyNameWithKind NameWithType a)
 annotateTerm t = do
-  (ts, t') <- (lift . liftEither . convertError) (annotateTermST t)
+  (ts, t') <- (lift . liftEither . first ((embed @(Error a)). embed)) (annotateTermST t)
   updateMaxU ts
   pure t'
       where
@@ -114,12 +118,12 @@ annotateTerm t = do
               put $ Unique $ max maxU tsMaxU
 
 -- | Typecheck a PLC program.
-typecheckProgram :: (MonadError (Error a) m) => Natural -> Program TyNameWithKind NameWithType a -> QuoteT m (Type TyNameWithKind ())
+typecheckProgram :: (MonadError b m, Is (Error a) b) => Natural -> Program TyNameWithKind NameWithType a -> QuoteT m (Type TyNameWithKind ())
 typecheckProgram n (Program _ _ t) = typecheckTerm n t
 
 -- | Typecheck a PLC term.
-typecheckTerm :: (MonadError (Error a) m) => Natural -> Term TyNameWithKind NameWithType a -> QuoteT m (Type TyNameWithKind ())
+typecheckTerm :: forall a b m. (MonadError b m, Is (Error a) b) => Natural -> Term TyNameWithKind NameWithType a -> QuoteT m (Type TyNameWithKind ())
 typecheckTerm n t = do
   nextU <- get
   let maxU = unUnique nextU - 1
-  (lift . liftEither . convertError) (runTypeCheckM maxU n (typeOf t))
+  (lift . liftEither . first ((embed @(Error a)) . embed)) (runTypeCheckM maxU n (typeOf t))

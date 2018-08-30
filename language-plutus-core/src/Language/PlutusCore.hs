@@ -2,6 +2,8 @@ module Language.PlutusCore
     ( Configuration (..)
     , defaultCfg
     , debugCfg
+    , Is
+    , embed
       -- * Parser
     , parse
     , parseST
@@ -123,6 +125,7 @@ import           Language.PlutusCore.CBOR
 import           Language.PlutusCore.CkMachine
 import           Language.PlutusCore.Constant
 import           Language.PlutusCore.Error
+import           Language.PlutusCore.Is
 import           Language.PlutusCore.Lexer
 import           Language.PlutusCore.Lexer.Type
 import           Language.PlutusCore.Name

@@ -41,6 +41,7 @@ library
     other-modules:
         Language.PlutusCore.Type
         Language.PlutusCore.Name
+        Language.PlutusCore.Is
         Language.PlutusCore.Lexer
         Language.PlutusCore.Lexer.Type
         Language.PlutusCore.Parser

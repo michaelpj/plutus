@@ -1,11 +1,12 @@
 {-# LANGUAGE ConstrainedClassMethods #-}
 {-# LANGUAGE DeriveAnyClass          #-}
 {-# LANGUAGE FlexibleInstances       #-}
+{-# LANGUAGE MultiParamTypeClasses   #-}
 
 module Language.PlutusCore.Error ( Error (..)
-                                 , IsError (..)
                                  ) where
 
+import           Language.PlutusCore.Is
 import           Language.PlutusCore.Lexer
 import           Language.PlutusCore.Normalize
 import           Language.PlutusCore.PrettyCfg
@@ -22,6 +23,7 @@ data Error a = ParseError (ParseError a)
              | OtherError T.Text
              deriving (Generic, NFData)
 
+{-
 class IsError f where
 
     asError :: f a -> Error a
@@ -36,21 +38,19 @@ class IsError f where
     collectErrors (Left x)          = asLeft x
     collectErrors (Right (Left x))  = asLeft x
     collectErrors (Right (Right x)) = Right x
+-}
 
-instance IsError Error where
-    asError = id
+instance Is (ParseError a) (Error a) where
+    embed = ParseError
 
-instance IsError ParseError where
-    asError = ParseError
+instance Is (RenameError a) (Error a) where
+    embed = RenameError
 
-instance IsError RenameError where
-    asError = RenameError
+instance Is (TypeError a) (Error a) where
+    embed = TypeError
 
-instance IsError TypeError where
-    asError = TypeError
-
-instance IsError NormalizationError where
-    asError = NormalizationError
+instance Is (NormalizationError a) (Error a) where
+    embed = NormalizationError
 
 instance (PrettyCfg a) => PrettyCfg (Error a) where
     prettyCfg cfg (ParseError e)         = prettyCfg cfg e
