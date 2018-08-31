@@ -1,0 +1,14 @@
+packages: 
+  language-plutus-core/
+  plutus-prototype/
+
+constraints: language-plutus-core +development
+
+package language-plutus-core:
+  optimization: 2
+  tests: true
+  benchmarks: true
+  documentation: true
+  program-options
+    alex-options: -g
+    happy-options: -gcsa

@@ -1,0 +1,22 @@
+packages: 
+  language-plutus-core/
+  plutus-prototype/
+
+constraints: language-plutus-core +development
+allow-newer:
+    base
+    template-haskell
+    stm
+    Cabal
+
+package language-plutus-core:
+  optimization: 2
+  tests: true
+  benchmarks: true
+  documentation: true
+  with-compiler: ghc-8.6.1
+
+  program-options
+    alex-options: -g
+    happy-options: -gcsa
+
