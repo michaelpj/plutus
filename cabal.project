@@ -4,11 +4,12 @@ packages:
 
 constraints: language-plutus-core +development
 
-package language-plutus-core:
+package language-plutus-core
   optimization: 2
   tests: true
   benchmarks: true
   documentation: true
-  program-options
-    alex-options: -g
-    happy-options: -gcsa
+
+program-options
+  alex-options: -g
+  happy-options: -gcsa
