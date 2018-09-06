@@ -21,6 +21,8 @@ import           Test.Tasty.Golden
 import qualified Data.ByteString.Lazy as BSL
 import           Data.Text.Encoding   (encodeUtf8)
 
+import qualified Lib as Lib
+
 main :: IO ()
 main = defaultMain tests
 

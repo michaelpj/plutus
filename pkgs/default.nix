@@ -55667,6 +55667,28 @@ text
 ];
 doHaddock = false;
 description = "TH frontend to the Plutus compiler";
+"plutus-use-cases" = callPackage
+({
+  mkDerivation
+, base
+, mtl
+, stdenv
+, template-haskell
+, transformers
+}:
+mkDerivation {
+
+pname = "plutus-use-cases";
+version = "0.1.0.0";
+src = ./../plutus-use-cases;
+libraryHaskellDepends = [
+base
+mtl
+template-haskell
+transformers
+];
+doHaddock = false;
+description = "Collection of smart contracts to develop the plutus/wallet interface";
 license = stdenv.lib.licenses.bsd3;
 
 }) {};

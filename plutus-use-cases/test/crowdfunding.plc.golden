@@ -1,0 +1,893 @@
+(program 1.0.0
+  (lam
+    ds_1
+    (all p_matchOut_0 (type) (fun p_matchOut_0 p_matchOut_0))
+    (lam
+      ds_3
+      (all p_matchOut_2 (type) (fun p_matchOut_2 p_matchOut_2))
+      (lam
+        p_20
+        (all PendingTx_matchOut_4 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun (all Tx_matchOut_5 (type) (fun (fun [[(lam a_6 (type) (lam b_7 (type) (all p_matchOut_8 (type) (fun (fun a_6 (fun b_7 p_matchOut_8)) p_matchOut_8)))) (all TxIn_matchOut_9 (type) (fun (fun (all TxOutRef_matchOut_10 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_10))) TxOutRef_matchOut_10)) (fun [(con integer) (con 64)] TxIn_matchOut_9)) TxIn_matchOut_9))] (all TxIn_matchOut_11 (type) (fun (fun (all TxOutRef_matchOut_12 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_12))) TxOutRef_matchOut_12)) (fun [(con integer) (con 64)] TxIn_matchOut_11)) TxIn_matchOut_11))] (fun [[(lam a_13 (type) (lam b_14 (type) (all p_matchOut_15 (type) (fun (fun a_13 (fun b_14 p_matchOut_15)) p_matchOut_15)))) [(lam a_16 (type) (all TxOut_matchOut_17 (type) (fun (fun [(con integer) (con 64)] TxOut_matchOut_17) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun a_16 TxOut_matchOut_17))) TxOut_matchOut_17)))) [(con integer) (con 64)]]] [(lam a_18 (type) (all TxOut_matchOut_19 (type) (fun (fun [(con integer) (con 64)] TxOut_matchOut_19) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun a_18 TxOut_matchOut_19))) TxOut_matchOut_19)))) [(con integer) (con 64)]]] Tx_matchOut_5)) Tx_matchOut_5)) PendingTx_matchOut_4))) PendingTx_matchOut_4))
+        (lam
+          ds_22
+          (all Campaign_matchOut_21 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] Campaign_matchOut_21))) Campaign_matchOut_21))
+          (lam
+            contribPubKey_26
+            [(lam a_23 (type) (all Maybe_matchOut_24 (type) (fun Maybe_matchOut_24 (fun (fun a_23 Maybe_matchOut_24) Maybe_matchOut_24)))) (all PubKey_matchOut_25 (type) (fun PubKey_matchOut_25 PubKey_matchOut_25))]
+            [
+              [
+                {
+                  ds_1
+                  (fun (all a_28 (type) (fun a_28 a_28)) (all p_matchOut_27 (type) (fun p_matchOut_27 p_matchOut_27)))
+                }
+                (lam
+                  thunk_375
+                  (all a_376 (type) (fun a_376 a_376))
+                  [
+                    [
+                      {
+                        ds_3
+                        (fun (all a_30 (type) (fun a_30 a_30)) (all p_matchOut_29 (type) (fun p_matchOut_29 p_matchOut_29)))
+                      }
+                      (lam
+                        thunk_371
+                        (all a_372 (type) (fun a_372 a_372))
+                        [
+                          [
+                            {
+                              ds_22
+                              (fun (all a_32 (type) (fun a_32 a_32)) (all p_matchOut_31 (type) (fun p_matchOut_31 p_matchOut_31)))
+                            }
+                            (lam
+                              dt_33
+                              [(con integer) (con 64)]
+                              (lam
+                                dt_34
+                                [(con integer) (con 64)]
+                                (lam
+                                  dt_35
+                                  [(con integer) (con 64)]
+                                  (lam
+                                    thunk_367
+                                    (all a_368 (type) (fun a_368 a_368))
+                                    [
+                                      (lam
+                                        campaignCollectionDeadline_36
+                                        [(con integer) (con 64)]
+                                        [
+                                          (lam
+                                            pendingTxBlockHeight_60
+                                            [(con integer) (con 64)]
+                                            [
+                                              (lam
+                                                ds_162
+                                                [[(lam a_155 (type) (lam b_156 (type) (all p_matchOut_157 (type) (fun (fun a_155 (fun b_156 p_matchOut_157)) p_matchOut_157)))) (all TxIn_matchOut_158 (type) (fun (fun (all TxOutRef_matchOut_159 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_159))) TxOutRef_matchOut_159)) (fun [(con integer) (con 64)] TxIn_matchOut_158)) TxIn_matchOut_158))] (all TxIn_matchOut_160 (type) (fun (fun (all TxOutRef_matchOut_161 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_161))) TxOutRef_matchOut_161)) (fun [(con integer) (con 64)] TxIn_matchOut_160)) TxIn_matchOut_160))]
+                                                [
+                                                  (lam
+                                                    t1_178
+                                                    (all TxIn_matchOut_176 (type) (fun (fun (all TxOutRef_matchOut_177 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_177))) TxOutRef_matchOut_177)) (fun [(con integer) (con 64)] TxIn_matchOut_176)) TxIn_matchOut_176))
+                                                    [
+                                                      (lam
+                                                        t2_194
+                                                        (all TxIn_matchOut_192 (type) (fun (fun (all TxOutRef_matchOut_193 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_193))) TxOutRef_matchOut_193)) (fun [(con integer) (con 64)] TxIn_matchOut_192)) TxIn_matchOut_192))
+                                                        [
+                                                          [
+                                                            [
+                                                              {
+                                                                [
+                                                                  [
+                                                                    {
+                                                                      (abs
+                                                                        e_195
+                                                                        (type)
+                                                                        (error
+                                                                          e_195
+                                                                        )
+                                                                      )
+                                                                      (fun (all Bool_matchOut_196 (type) (fun Bool_matchOut_196 (fun Bool_matchOut_196 Bool_matchOut_196))) (fun (all Bool_matchOut_197 (type) (fun Bool_matchOut_197 (fun Bool_matchOut_197 Bool_matchOut_197))) (all Bool_matchOut_198 (type) (fun Bool_matchOut_198 (fun Bool_matchOut_198 Bool_matchOut_198)))))
+                                                                    }
+                                                                    [
+                                                                      [
+                                                                        {
+                                                                          (abs
+                                                                            e_199
+                                                                            (type)
+                                                                            (error
+                                                                              e_199
+                                                                            )
+                                                                          )
+                                                                          (fun (all Bool_matchOut_200 (type) (fun Bool_matchOut_200 (fun Bool_matchOut_200 Bool_matchOut_200))) (fun (all Bool_matchOut_201 (type) (fun Bool_matchOut_201 (fun Bool_matchOut_201 Bool_matchOut_201))) (all Bool_matchOut_202 (type) (fun Bool_matchOut_202 (fun Bool_matchOut_202 Bool_matchOut_202)))))
+                                                                        }
+                                                                        [
+                                                                          [
+                                                                            {
+                                                                              (con
+                                                                                greaterThanInteger
+                                                                              )
+                                                                              (con 64)
+                                                                            }
+                                                                            pendingTxBlockHeight_60
+                                                                          ]
+                                                                          dt_33
+                                                                        ]
+                                                                      ]
+                                                                      [
+                                                                        [
+                                                                          {
+                                                                            (abs
+                                                                              e_203
+                                                                              (type)
+                                                                              (error
+                                                                                e_203
+                                                                              )
+                                                                            )
+                                                                            (fun (all Bool_matchOut_204 (type) (fun Bool_matchOut_204 (fun Bool_matchOut_204 Bool_matchOut_204))) (fun (all Bool_matchOut_205 (type) (fun Bool_matchOut_205 (fun Bool_matchOut_205 Bool_matchOut_205))) (all Bool_matchOut_206 (type) (fun Bool_matchOut_206 (fun Bool_matchOut_206 Bool_matchOut_206)))))
+                                                                          }
+                                                                          [
+                                                                            [
+                                                                              {
+                                                                                (con
+                                                                                  lessThanEqualsInteger
+                                                                                )
+                                                                                (con 64)
+                                                                              }
+                                                                              pendingTxBlockHeight_60
+                                                                            ]
+                                                                            campaignCollectionDeadline_36
+                                                                          ]
+                                                                        ]
+                                                                        [
+                                                                          [
+                                                                            {
+                                                                              (abs
+                                                                                e_207
+                                                                                (type)
+                                                                                (error
+                                                                                  e_207
+                                                                                )
+                                                                              )
+                                                                              (fun (all Bool_matchOut_208 (type) (fun Bool_matchOut_208 (fun Bool_matchOut_208 Bool_matchOut_208))) (fun (all Bool_matchOut_209 (type) (fun Bool_matchOut_209 (fun Bool_matchOut_209 Bool_matchOut_209))) (all Bool_matchOut_210 (type) (fun Bool_matchOut_210 (fun Bool_matchOut_210 Bool_matchOut_210)))))
+                                                                            }
+                                                                            [
+                                                                              [
+                                                                                {
+                                                                                  (con
+                                                                                    greaterThanEqualsInteger
+                                                                                  )
+                                                                                  (con 64)
+                                                                                }
+                                                                                [
+                                                                                  [
+                                                                                    {
+                                                                                      (con
+                                                                                        addInteger
+                                                                                      )
+                                                                                      (con 64)
+                                                                                    }
+                                                                                    [
+                                                                                      [
+                                                                                        {
+                                                                                          [
+                                                                                            [
+                                                                                              {
+                                                                                                t1_178
+                                                                                                (fun (all a_213 (type) (fun a_213 a_213)) [(lam a_211 (type) (all Unit_matchOut_212 (type) (fun (fun a_211 Unit_matchOut_212) Unit_matchOut_212))) [(con integer) (con 64)]])
+                                                                                              }
+                                                                                              (lam
+                                                                                                ds_215
+                                                                                                (all TxOutRef_matchOut_214 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_214))) TxOutRef_matchOut_214))
+                                                                                                (lam
+                                                                                                  dt_216
+                                                                                                  [(con integer) (con 64)]
+                                                                                                  (lam
+                                                                                                    thunk_231
+                                                                                                    (all a_232 (type) (fun a_232 a_232))
+                                                                                                    [
+                                                                                                      [
+                                                                                                        {
+                                                                                                          ds_215
+                                                                                                          (fun (all a_219 (type) (fun a_219 a_219)) [(lam a_217 (type) (all Unit_matchOut_218 (type) (fun (fun a_217 Unit_matchOut_218) Unit_matchOut_218))) [(con integer) (con 64)]])
+                                                                                                        }
+                                                                                                        (lam
+                                                                                                          dt_220
+                                                                                                          [(con integer) (con 64)]
+                                                                                                          (lam
+                                                                                                            dt_221
+                                                                                                            [(con integer) (con 64)]
+                                                                                                            (lam
+                                                                                                              dt_222
+                                                                                                              [(con integer) (con 64)]
+                                                                                                              (lam
+                                                                                                                thunk_227
+                                                                                                                (all a_228 (type) (fun a_228 a_228))
+                                                                                                                [
+                                                                                                                  {
+                                                                                                                    (abs
+                                                                                                                      a_223
+                                                                                                                      (type)
+                                                                                                                      (lam
+                                                                                                                        Unit_arg0_226
+                                                                                                                        a_223
+                                                                                                                        (abs
+                                                                                                                          Unit_matchOut_224
+                                                                                                                          (type)
+                                                                                                                          (lam
+                                                                                                                            Unit_225
+                                                                                                                            (fun a_223 Unit_matchOut_224)
+                                                                                                                            [
+                                                                                                                              Unit_225
+                                                                                                                              Unit_arg0_226
+                                                                                                                            ]
+                                                                                                                          )
+                                                                                                                        )
+                                                                                                                      )
+                                                                                                                    )
+                                                                                                                    [(con integer) (con 64)]
+                                                                                                                  }
+                                                                                                                  dt_220
+                                                                                                                ]
+                                                                                                              )
+                                                                                                            )
+                                                                                                          )
+                                                                                                        )
+                                                                                                      ]
+                                                                                                      (abs
+                                                                                                        a_229
+                                                                                                        (type)
+                                                                                                        (lam
+                                                                                                          x_230
+                                                                                                          a_229
+                                                                                                          x_230
+                                                                                                        )
+                                                                                                      )
+                                                                                                    ]
+                                                                                                  )
+                                                                                                )
+                                                                                              )
+                                                                                            ]
+                                                                                            (abs
+                                                                                              a_233
+                                                                                              (type)
+                                                                                              (lam
+                                                                                                x_234
+                                                                                                a_233
+                                                                                                x_234
+                                                                                              )
+                                                                                            )
+                                                                                          ]
+                                                                                          (fun (all a_235 (type) (fun a_235 a_235)) [(con integer) (con 64)])
+                                                                                        }
+                                                                                        (lam
+                                                                                          v1_236
+                                                                                          [(con integer) (con 64)]
+                                                                                          (lam
+                                                                                            thunk_237
+                                                                                            (all a_238 (type) (fun a_238 a_238))
+                                                                                            v1_236
+                                                                                          )
+                                                                                        )
+                                                                                      ]
+                                                                                      (abs
+                                                                                        a_239
+                                                                                        (type)
+                                                                                        (lam
+                                                                                          x_240
+                                                                                          a_239
+                                                                                          x_240
+                                                                                        )
+                                                                                      )
+                                                                                    ]
+                                                                                  ]
+                                                                                  [
+                                                                                    [
+                                                                                      {
+                                                                                        [
+                                                                                          [
+                                                                                            {
+                                                                                              t2_194
+                                                                                              (fun (all a_243 (type) (fun a_243 a_243)) [(lam a_241 (type) (all Unit_matchOut_242 (type) (fun (fun a_241 Unit_matchOut_242) Unit_matchOut_242))) [(con integer) (con 64)]])
+                                                                                            }
+                                                                                            (lam
+                                                                                              ds_245
+                                                                                              (all TxOutRef_matchOut_244 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_244))) TxOutRef_matchOut_244))
+                                                                                              (lam
+                                                                                                dt_246
+                                                                                                [(con integer) (con 64)]
+                                                                                                (lam
+                                                                                                  thunk_261
+                                                                                                  (all a_262 (type) (fun a_262 a_262))
+                                                                                                  [
+                                                                                                    [
+                                                                                                      {
+                                                                                                        ds_245
+                                                                                                        (fun (all a_249 (type) (fun a_249 a_249)) [(lam a_247 (type) (all Unit_matchOut_248 (type) (fun (fun a_247 Unit_matchOut_248) Unit_matchOut_248))) [(con integer) (con 64)]])
+                                                                                                      }
+                                                                                                      (lam
+                                                                                                        dt_250
+                                                                                                        [(con integer) (con 64)]
+                                                                                                        (lam
+                                                                                                          dt_251
+                                                                                                          [(con integer) (con 64)]
+                                                                                                          (lam
+                                                                                                            dt_252
+                                                                                                            [(con integer) (con 64)]
+                                                                                                            (lam
+                                                                                                              thunk_257
+                                                                                                              (all a_258 (type) (fun a_258 a_258))
+                                                                                                              [
+                                                                                                                {
+                                                                                                                  (abs
+                                                                                                                    a_253
+                                                                                                                    (type)
+                                                                                                                    (lam
+                                                                                                                      Unit_arg0_256
+                                                                                                                      a_253
+                                                                                                                      (abs
+                                                                                                                        Unit_matchOut_254
+                                                                                                                        (type)
+                                                                                                                        (lam
+                                                                                                                          Unit_255
+                                                                                                                          (fun a_253 Unit_matchOut_254)
+                                                                                                                          [
+                                                                                                                            Unit_255
+                                                                                                                            Unit_arg0_256
+                                                                                                                          ]
+                                                                                                                        )
+                                                                                                                      )
+                                                                                                                    )
+                                                                                                                  )
+                                                                                                                  [(con integer) (con 64)]
+                                                                                                                }
+                                                                                                                dt_250
+                                                                                                              ]
+                                                                                                            )
+                                                                                                          )
+                                                                                                        )
+                                                                                                      )
+                                                                                                    ]
+                                                                                                    (abs
+                                                                                                      a_259
+                                                                                                      (type)
+                                                                                                      (lam
+                                                                                                        x_260
+                                                                                                        a_259
+                                                                                                        x_260
+                                                                                                      )
+                                                                                                    )
+                                                                                                  ]
+                                                                                                )
+                                                                                              )
+                                                                                            )
+                                                                                          ]
+                                                                                          (abs
+                                                                                            a_263
+                                                                                            (type)
+                                                                                            (lam
+                                                                                              x_264
+                                                                                              a_263
+                                                                                              x_264
+                                                                                            )
+                                                                                          )
+                                                                                        ]
+                                                                                        (fun (all a_265 (type) (fun a_265 a_265)) [(con integer) (con 64)])
+                                                                                      }
+                                                                                      (lam
+                                                                                        v2_266
+                                                                                        [(con integer) (con 64)]
+                                                                                        (lam
+                                                                                          thunk_267
+                                                                                          (all a_268 (type) (fun a_268 a_268))
+                                                                                          v2_266
+                                                                                        )
+                                                                                      )
+                                                                                    ]
+                                                                                    (abs
+                                                                                      a_269
+                                                                                      (type)
+                                                                                      (lam
+                                                                                        x_270
+                                                                                        a_269
+                                                                                        x_270
+                                                                                      )
+                                                                                    )
+                                                                                  ]
+                                                                                ]
+                                                                              ]
+                                                                              dt_34
+                                                                            ]
+                                                                          ]
+                                                                          [
+                                                                            [
+                                                                              {
+                                                                                (abs
+                                                                                  e_271
+                                                                                  (type)
+                                                                                  (error
+                                                                                    e_271
+                                                                                  )
+                                                                                )
+                                                                                (fun (all PendingTx_matchOut_272 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun (all Tx_matchOut_273 (type) (fun (fun [[(lam a_274 (type) (lam b_275 (type) (all p_matchOut_276 (type) (fun (fun a_274 (fun b_275 p_matchOut_276)) p_matchOut_276)))) (all TxIn_matchOut_277 (type) (fun (fun (all TxOutRef_matchOut_278 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_278))) TxOutRef_matchOut_278)) (fun [(con integer) (con 64)] TxIn_matchOut_277)) TxIn_matchOut_277))] (all TxIn_matchOut_279 (type) (fun (fun (all TxOutRef_matchOut_280 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_280))) TxOutRef_matchOut_280)) (fun [(con integer) (con 64)] TxIn_matchOut_279)) TxIn_matchOut_279))] (fun [[(lam a_281 (type) (lam b_282 (type) (all p_matchOut_283 (type) (fun (fun a_281 (fun b_282 p_matchOut_283)) p_matchOut_283)))) [(lam a_284 (type) (all TxOut_matchOut_285 (type) (fun (fun [(con integer) (con 64)] TxOut_matchOut_285) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun a_284 TxOut_matchOut_285))) TxOut_matchOut_285)))) [(con integer) (con 64)]]] [(lam a_286 (type) (all TxOut_matchOut_287 (type) (fun (fun [(con integer) (con 64)] TxOut_matchOut_287) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun a_286 TxOut_matchOut_287))) TxOut_matchOut_287)))) [(con integer) (con 64)]]] Tx_matchOut_273)) Tx_matchOut_273)) PendingTx_matchOut_272))) PendingTx_matchOut_272)) (fun (all PubKey_matchOut_288 (type) (fun PubKey_matchOut_288 PubKey_matchOut_288)) (all Bool_matchOut_289 (type) (fun Bool_matchOut_289 (fun Bool_matchOut_289 Bool_matchOut_289)))))
+                                                                              }
+                                                                              p_20
+                                                                            ]
+                                                                            (abs
+                                                                              PubKey_matchOut_290
+                                                                              (type)
+                                                                              (lam
+                                                                                PubKey_291
+                                                                                PubKey_matchOut_290
+                                                                                PubKey_291
+                                                                              )
+                                                                            )
+                                                                          ]
+                                                                        ]
+                                                                      ]
+                                                                    ]
+                                                                  ]
+                                                                  [
+                                                                    [
+                                                                      {
+                                                                        (abs
+                                                                          e_292
+                                                                          (type)
+                                                                          (error
+                                                                            e_292
+                                                                          )
+                                                                        )
+                                                                        (fun (all Bool_matchOut_293 (type) (fun Bool_matchOut_293 (fun Bool_matchOut_293 Bool_matchOut_293))) (fun (all Bool_matchOut_294 (type) (fun Bool_matchOut_294 (fun Bool_matchOut_294 Bool_matchOut_294))) (all Bool_matchOut_295 (type) (fun Bool_matchOut_295 (fun Bool_matchOut_295 Bool_matchOut_295)))))
+                                                                      }
+                                                                      [
+                                                                        [
+                                                                          {
+                                                                            (con
+                                                                              greaterThanInteger
+                                                                            )
+                                                                            (con 64)
+                                                                          }
+                                                                          pendingTxBlockHeight_60
+                                                                        ]
+                                                                        campaignCollectionDeadline_36
+                                                                      ]
+                                                                    ]
+                                                                    [
+                                                                      [
+                                                                        {
+                                                                          (abs
+                                                                            e_296
+                                                                            (type)
+                                                                            (error
+                                                                              e_296
+                                                                            )
+                                                                          )
+                                                                          (fun (all Bool_matchOut_297 (type) (fun Bool_matchOut_297 (fun Bool_matchOut_297 Bool_matchOut_297))) (fun (all Bool_matchOut_298 (type) (fun Bool_matchOut_298 (fun Bool_matchOut_298 Bool_matchOut_298))) (all Bool_matchOut_299 (type) (fun Bool_matchOut_299 (fun Bool_matchOut_299 Bool_matchOut_299)))))
+                                                                        }
+                                                                        [
+                                                                          [
+                                                                            [
+                                                                              {
+                                                                                {
+                                                                                  (abs
+                                                                                    b_300
+                                                                                    (type)
+                                                                                    (abs
+                                                                                      a_301
+                                                                                      (type)
+                                                                                      {
+                                                                                        (abs
+                                                                                          e_302
+                                                                                          (type)
+                                                                                          (error
+                                                                                            e_302
+                                                                                          )
+                                                                                        )
+                                                                                        (fun b_300 (fun (fun a_301 b_300) (fun [(lam a_303 (type) (all Maybe_matchOut_304 (type) (fun Maybe_matchOut_304 (fun (fun a_303 Maybe_matchOut_304) Maybe_matchOut_304)))) a_301] b_300)))
+                                                                                      }
+                                                                                    )
+                                                                                  )
+                                                                                  (all Bool_matchOut_305 (type) (fun Bool_matchOut_305 (fun Bool_matchOut_305 Bool_matchOut_305)))
+                                                                                }
+                                                                                (all PubKey_matchOut_306 (type) (fun PubKey_matchOut_306 PubKey_matchOut_306))
+                                                                              }
+                                                                              (abs
+                                                                                Bool_matchOut_307
+                                                                                (type)
+                                                                                (lam
+                                                                                  False_308
+                                                                                  Bool_matchOut_307
+                                                                                  (lam
+                                                                                    True_309
+                                                                                    Bool_matchOut_307
+                                                                                    False_308
+                                                                                  )
+                                                                                )
+                                                                              )
+                                                                            ]
+                                                                            (lam
+                                                                              k_311
+                                                                              (all PubKey_matchOut_310 (type) (fun PubKey_matchOut_310 PubKey_matchOut_310))
+                                                                              [
+                                                                                [
+                                                                                  {
+                                                                                    (abs
+                                                                                      e_312
+                                                                                      (type)
+                                                                                      (error
+                                                                                        e_312
+                                                                                      )
+                                                                                    )
+                                                                                    (fun (all Bool_matchOut_313 (type) (fun Bool_matchOut_313 (fun Bool_matchOut_313 Bool_matchOut_313))) (fun (all Bool_matchOut_314 (type) (fun Bool_matchOut_314 (fun Bool_matchOut_314 Bool_matchOut_314))) (all Bool_matchOut_315 (type) (fun Bool_matchOut_315 (fun Bool_matchOut_315 Bool_matchOut_315)))))
+                                                                                  }
+                                                                                  [
+                                                                                    [
+                                                                                      {
+                                                                                        (abs
+                                                                                          e_316
+                                                                                          (type)
+                                                                                          (error
+                                                                                            e_316
+                                                                                          )
+                                                                                        )
+                                                                                        (fun (all TxIn_matchOut_317 (type) (fun (fun (all TxOutRef_matchOut_318 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_318))) TxOutRef_matchOut_318)) (fun [(con integer) (con 64)] TxIn_matchOut_317)) TxIn_matchOut_317)) (fun (all PubKey_matchOut_319 (type) (fun PubKey_matchOut_319 PubKey_matchOut_319)) (all Bool_matchOut_320 (type) (fun Bool_matchOut_320 (fun Bool_matchOut_320 Bool_matchOut_320)))))
+                                                                                      }
+                                                                                      t1_178
+                                                                                    ]
+                                                                                    k_311
+                                                                                  ]
+                                                                                ]
+                                                                                [
+                                                                                  [
+                                                                                    {
+                                                                                      (abs
+                                                                                        e_321
+                                                                                        (type)
+                                                                                        (error
+                                                                                          e_321
+                                                                                        )
+                                                                                      )
+                                                                                      (fun (all TxIn_matchOut_322 (type) (fun (fun (all TxOutRef_matchOut_323 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_323))) TxOutRef_matchOut_323)) (fun [(con integer) (con 64)] TxIn_matchOut_322)) TxIn_matchOut_322)) (fun (all PubKey_matchOut_324 (type) (fun PubKey_matchOut_324 PubKey_matchOut_324)) (all Bool_matchOut_325 (type) (fun Bool_matchOut_325 (fun Bool_matchOut_325 Bool_matchOut_325)))))
+                                                                                    }
+                                                                                    t2_194
+                                                                                  ]
+                                                                                  k_311
+                                                                                ]
+                                                                              ]
+                                                                            )
+                                                                          ]
+                                                                          contribPubKey_26
+                                                                        ]
+                                                                      ]
+                                                                      [
+                                                                        [
+                                                                          [
+                                                                            {
+                                                                              {
+                                                                                (abs
+                                                                                  b_326
+                                                                                  (type)
+                                                                                  (abs
+                                                                                    a_327
+                                                                                    (type)
+                                                                                    {
+                                                                                      (abs
+                                                                                        e_328
+                                                                                        (type)
+                                                                                        (error
+                                                                                          e_328
+                                                                                        )
+                                                                                      )
+                                                                                      (fun b_326 (fun (fun a_327 b_326) (fun [(lam a_329 (type) (all Maybe_matchOut_330 (type) (fun Maybe_matchOut_330 (fun (fun a_329 Maybe_matchOut_330) Maybe_matchOut_330)))) a_327] b_326)))
+                                                                                    }
+                                                                                  )
+                                                                                )
+                                                                                (all Bool_matchOut_331 (type) (fun Bool_matchOut_331 (fun Bool_matchOut_331 Bool_matchOut_331)))
+                                                                              }
+                                                                              (all PubKey_matchOut_332 (type) (fun PubKey_matchOut_332 PubKey_matchOut_332))
+                                                                            }
+                                                                            (abs
+                                                                              Bool_matchOut_333
+                                                                              (type)
+                                                                              (lam
+                                                                                False_334
+                                                                                Bool_matchOut_333
+                                                                                (lam
+                                                                                  True_335
+                                                                                  Bool_matchOut_333
+                                                                                  False_334
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                          ]
+                                                                          [
+                                                                            {
+                                                                              (abs
+                                                                                e_336
+                                                                                (type)
+                                                                                (error
+                                                                                  e_336
+                                                                                )
+                                                                              )
+                                                                              (fun (all PendingTx_matchOut_337 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun (all Tx_matchOut_338 (type) (fun (fun [[(lam a_339 (type) (lam b_340 (type) (all p_matchOut_341 (type) (fun (fun a_339 (fun b_340 p_matchOut_341)) p_matchOut_341)))) (all TxIn_matchOut_342 (type) (fun (fun (all TxOutRef_matchOut_343 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_343))) TxOutRef_matchOut_343)) (fun [(con integer) (con 64)] TxIn_matchOut_342)) TxIn_matchOut_342))] (all TxIn_matchOut_344 (type) (fun (fun (all TxOutRef_matchOut_345 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_345))) TxOutRef_matchOut_345)) (fun [(con integer) (con 64)] TxIn_matchOut_344)) TxIn_matchOut_344))] (fun [[(lam a_346 (type) (lam b_347 (type) (all p_matchOut_348 (type) (fun (fun a_346 (fun b_347 p_matchOut_348)) p_matchOut_348)))) [(lam a_349 (type) (all TxOut_matchOut_350 (type) (fun (fun [(con integer) (con 64)] TxOut_matchOut_350) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun a_349 TxOut_matchOut_350))) TxOut_matchOut_350)))) [(con integer) (con 64)]]] [(lam a_351 (type) (all TxOut_matchOut_352 (type) (fun (fun [(con integer) (con 64)] TxOut_matchOut_352) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun a_351 TxOut_matchOut_352))) TxOut_matchOut_352)))) [(con integer) (con 64)]]] Tx_matchOut_338)) Tx_matchOut_338)) PendingTx_matchOut_337))) PendingTx_matchOut_337)) (fun (all PubKey_matchOut_353 (type) (fun PubKey_matchOut_353 PubKey_matchOut_353)) (all Bool_matchOut_354 (type) (fun Bool_matchOut_354 (fun Bool_matchOut_354 Bool_matchOut_354)))))
+                                                                            }
+                                                                            p_20
+                                                                          ]
+                                                                        ]
+                                                                        contribPubKey_26
+                                                                      ]
+                                                                    ]
+                                                                  ]
+                                                                ]
+                                                                (fun (all a_356 (type) (fun a_356 a_356)) (all p_matchOut_355 (type) (fun p_matchOut_355 p_matchOut_355)))
+                                                              }
+                                                              (lam
+                                                                thunk_359
+                                                                (all a_360 (type) (fun a_360 a_360))
+                                                                {
+                                                                  (abs
+                                                                    e_357
+                                                                    (type)
+                                                                    (error e_357
+                                                                    )
+                                                                  )
+                                                                  (all p_matchOut_358 (type) (fun p_matchOut_358 p_matchOut_358))
+                                                                }
+                                                              )
+                                                            ]
+                                                            (lam
+                                                              thunk_363
+                                                              (all a_364 (type) (fun a_364 a_364))
+                                                              (abs
+                                                                p_matchOut_361
+                                                                (type)
+                                                                (lam
+                                                                  bad_name_362
+                                                                  p_matchOut_361
+                                                                  bad_name_362
+                                                                )
+                                                              )
+                                                            )
+                                                          ]
+                                                          (abs
+                                                            a_365
+                                                            (type)
+                                                            (lam
+                                                              x_366 a_365 x_366
+                                                            )
+                                                          )
+                                                        ]
+                                                      )
+                                                      [
+                                                        [
+                                                          {
+                                                            ds_162
+                                                            (fun (all a_181 (type) (fun a_181 a_181)) (all TxIn_matchOut_179 (type) (fun (fun (all TxOutRef_matchOut_180 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_180))) TxOutRef_matchOut_180)) (fun [(con integer) (con 64)] TxIn_matchOut_179)) TxIn_matchOut_179)))
+                                                          }
+                                                          (lam
+                                                            t1_184
+                                                            (all TxIn_matchOut_182 (type) (fun (fun (all TxOutRef_matchOut_183 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_183))) TxOutRef_matchOut_183)) (fun [(con integer) (con 64)] TxIn_matchOut_182)) TxIn_matchOut_182))
+                                                            (lam
+                                                              t2_187
+                                                              (all TxIn_matchOut_185 (type) (fun (fun (all TxOutRef_matchOut_186 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_186))) TxOutRef_matchOut_186)) (fun [(con integer) (con 64)] TxIn_matchOut_185)) TxIn_matchOut_185))
+                                                              (lam
+                                                                thunk_188
+                                                                (all a_189 (type) (fun a_189 a_189))
+                                                                t2_187
+                                                              )
+                                                            )
+                                                          )
+                                                        ]
+                                                        (abs
+                                                          a_190
+                                                          (type)
+                                                          (lam x_191 a_190 x_191
+                                                          )
+                                                        )
+                                                      ]
+                                                    ]
+                                                  )
+                                                  [
+                                                    [
+                                                      {
+                                                        ds_162
+                                                        (fun (all a_165 (type) (fun a_165 a_165)) (all TxIn_matchOut_163 (type) (fun (fun (all TxOutRef_matchOut_164 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_164))) TxOutRef_matchOut_164)) (fun [(con integer) (con 64)] TxIn_matchOut_163)) TxIn_matchOut_163)))
+                                                      }
+                                                      (lam
+                                                        t1_168
+                                                        (all TxIn_matchOut_166 (type) (fun (fun (all TxOutRef_matchOut_167 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_167))) TxOutRef_matchOut_167)) (fun [(con integer) (con 64)] TxIn_matchOut_166)) TxIn_matchOut_166))
+                                                        (lam
+                                                          t2_171
+                                                          (all TxIn_matchOut_169 (type) (fun (fun (all TxOutRef_matchOut_170 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_170))) TxOutRef_matchOut_170)) (fun [(con integer) (con 64)] TxIn_matchOut_169)) TxIn_matchOut_169))
+                                                          (lam
+                                                            thunk_172
+                                                            (all a_173 (type) (fun a_173 a_173))
+                                                            t1_168
+                                                          )
+                                                        )
+                                                      )
+                                                    ]
+                                                    (abs
+                                                      a_174
+                                                      (type)
+                                                      (lam x_175 a_174 x_175)
+                                                    )
+                                                  ]
+                                                ]
+                                              )
+                                              [
+                                                [
+                                                  {
+                                                    [
+                                                      [
+                                                        {
+                                                          p_20
+                                                          (fun (all a_76 (type) (fun a_76 a_76)) (all Tx_matchOut_61 (type) (fun (fun [[(lam a_62 (type) (lam b_63 (type) (all p_matchOut_64 (type) (fun (fun a_62 (fun b_63 p_matchOut_64)) p_matchOut_64)))) (all TxIn_matchOut_65 (type) (fun (fun (all TxOutRef_matchOut_66 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_66))) TxOutRef_matchOut_66)) (fun [(con integer) (con 64)] TxIn_matchOut_65)) TxIn_matchOut_65))] (all TxIn_matchOut_67 (type) (fun (fun (all TxOutRef_matchOut_68 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_68))) TxOutRef_matchOut_68)) (fun [(con integer) (con 64)] TxIn_matchOut_67)) TxIn_matchOut_67))] (fun [[(lam a_69 (type) (lam b_70 (type) (all p_matchOut_71 (type) (fun (fun a_69 (fun b_70 p_matchOut_71)) p_matchOut_71)))) [(lam a_72 (type) (all TxOut_matchOut_73 (type) (fun (fun [(con integer) (con 64)] TxOut_matchOut_73) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun a_72 TxOut_matchOut_73))) TxOut_matchOut_73)))) [(con integer) (con 64)]]] [(lam a_74 (type) (all TxOut_matchOut_75 (type) (fun (fun [(con integer) (con 64)] TxOut_matchOut_75) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun a_74 TxOut_matchOut_75))) TxOut_matchOut_75)))) [(con integer) (con 64)]]] Tx_matchOut_61)) Tx_matchOut_61)))
+                                                        }
+                                                        (lam
+                                                          dt_77
+                                                          [(con integer) (con 64)]
+                                                          (lam
+                                                            dt_78
+                                                            [(con integer) (con 64)]
+                                                            (lam
+                                                              pendingTxTransaction_94
+                                                              (all Tx_matchOut_79 (type) (fun (fun [[(lam a_80 (type) (lam b_81 (type) (all p_matchOut_82 (type) (fun (fun a_80 (fun b_81 p_matchOut_82)) p_matchOut_82)))) (all TxIn_matchOut_83 (type) (fun (fun (all TxOutRef_matchOut_84 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_84))) TxOutRef_matchOut_84)) (fun [(con integer) (con 64)] TxIn_matchOut_83)) TxIn_matchOut_83))] (all TxIn_matchOut_85 (type) (fun (fun (all TxOutRef_matchOut_86 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_86))) TxOutRef_matchOut_86)) (fun [(con integer) (con 64)] TxIn_matchOut_85)) TxIn_matchOut_85))] (fun [[(lam a_87 (type) (lam b_88 (type) (all p_matchOut_89 (type) (fun (fun a_87 (fun b_88 p_matchOut_89)) p_matchOut_89)))) [(lam a_90 (type) (all TxOut_matchOut_91 (type) (fun (fun [(con integer) (con 64)] TxOut_matchOut_91) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun a_90 TxOut_matchOut_91))) TxOut_matchOut_91)))) [(con integer) (con 64)]]] [(lam a_92 (type) (all TxOut_matchOut_93 (type) (fun (fun [(con integer) (con 64)] TxOut_matchOut_93) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun a_92 TxOut_matchOut_93))) TxOut_matchOut_93)))) [(con integer) (con 64)]]] Tx_matchOut_79)) Tx_matchOut_79))
+                                                              (lam
+                                                                thunk_95
+                                                                (all a_96 (type) (fun a_96 a_96))
+                                                                pendingTxTransaction_94
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      ]
+                                                      (abs
+                                                        a_97
+                                                        (type)
+                                                        (lam x_98 a_97 x_98)
+                                                      )
+                                                    ]
+                                                    (fun (all a_106 (type) (fun a_106 a_106)) [[(lam a_99 (type) (lam b_100 (type) (all p_matchOut_101 (type) (fun (fun a_99 (fun b_100 p_matchOut_101)) p_matchOut_101)))) (all TxIn_matchOut_102 (type) (fun (fun (all TxOutRef_matchOut_103 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_103))) TxOutRef_matchOut_103)) (fun [(con integer) (con 64)] TxIn_matchOut_102)) TxIn_matchOut_102))] (all TxIn_matchOut_104 (type) (fun (fun (all TxOutRef_matchOut_105 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_105))) TxOutRef_matchOut_105)) (fun [(con integer) (con 64)] TxIn_matchOut_104)) TxIn_matchOut_104))])
+                                                  }
+                                                  (lam
+                                                    ds_114
+                                                    [[(lam a_107 (type) (lam b_108 (type) (all p_matchOut_109 (type) (fun (fun a_107 (fun b_108 p_matchOut_109)) p_matchOut_109)))) (all TxIn_matchOut_110 (type) (fun (fun (all TxOutRef_matchOut_111 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_111))) TxOutRef_matchOut_111)) (fun [(con integer) (con 64)] TxIn_matchOut_110)) TxIn_matchOut_110))] (all TxIn_matchOut_112 (type) (fun (fun (all TxOutRef_matchOut_113 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_113))) TxOutRef_matchOut_113)) (fun [(con integer) (con 64)] TxIn_matchOut_112)) TxIn_matchOut_112))]
+                                                    (lam
+                                                      ds_122
+                                                      [[(lam a_115 (type) (lam b_116 (type) (all p_matchOut_117 (type) (fun (fun a_115 (fun b_116 p_matchOut_117)) p_matchOut_117)))) [(lam a_118 (type) (all TxOut_matchOut_119 (type) (fun (fun [(con integer) (con 64)] TxOut_matchOut_119) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun a_118 TxOut_matchOut_119))) TxOut_matchOut_119)))) [(con integer) (con 64)]]] [(lam a_120 (type) (all TxOut_matchOut_121 (type) (fun (fun [(con integer) (con 64)] TxOut_matchOut_121) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun a_120 TxOut_matchOut_121))) TxOut_matchOut_121)))) [(con integer) (con 64)]]]
+                                                      (lam
+                                                        thunk_151
+                                                        (all a_152 (type) (fun a_152 a_152))
+                                                        [
+                                                          [
+                                                            {
+                                                              ds_114
+                                                              (fun (all a_130 (type) (fun a_130 a_130)) [[(lam a_123 (type) (lam b_124 (type) (all p_matchOut_125 (type) (fun (fun a_123 (fun b_124 p_matchOut_125)) p_matchOut_125)))) (all TxIn_matchOut_126 (type) (fun (fun (all TxOutRef_matchOut_127 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_127))) TxOutRef_matchOut_127)) (fun [(con integer) (con 64)] TxIn_matchOut_126)) TxIn_matchOut_126))] (all TxIn_matchOut_128 (type) (fun (fun (all TxOutRef_matchOut_129 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_129))) TxOutRef_matchOut_129)) (fun [(con integer) (con 64)] TxIn_matchOut_128)) TxIn_matchOut_128))])
+                                                            }
+                                                            (lam
+                                                              t1_133
+                                                              (all TxIn_matchOut_131 (type) (fun (fun (all TxOutRef_matchOut_132 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_132))) TxOutRef_matchOut_132)) (fun [(con integer) (con 64)] TxIn_matchOut_131)) TxIn_matchOut_131))
+                                                              (lam
+                                                                t2_136
+                                                                (all TxIn_matchOut_134 (type) (fun (fun (all TxOutRef_matchOut_135 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_135))) TxOutRef_matchOut_135)) (fun [(con integer) (con 64)] TxIn_matchOut_134)) TxIn_matchOut_134))
+                                                                (lam
+                                                                  thunk_147
+                                                                  (all a_148 (type) (fun a_148 a_148))
+                                                                  [
+                                                                    [
+                                                                      {
+                                                                        {
+                                                                          (abs
+                                                                            a_137
+                                                                            (type)
+                                                                            (abs
+                                                                              b_138
+                                                                              (type)
+                                                                              (lam
+                                                                                p_arg0_141
+                                                                                a_137
+                                                                                (lam
+                                                                                  p_arg1_142
+                                                                                  b_138
+                                                                                  (abs
+                                                                                    p_matchOut_139
+                                                                                    (type)
+                                                                                    (lam
+                                                                                      bad_name_140
+                                                                                      (fun a_137 (fun b_138 p_matchOut_139))
+                                                                                      [
+                                                                                        [
+                                                                                          bad_name_140
+                                                                                          p_arg0_141
+                                                                                        ]
+                                                                                        p_arg1_142
+                                                                                      ]
+                                                                                    )
+                                                                                  )
+                                                                                )
+                                                                              )
+                                                                            )
+                                                                          )
+                                                                          (all TxIn_matchOut_143 (type) (fun (fun (all TxOutRef_matchOut_144 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_144))) TxOutRef_matchOut_144)) (fun [(con integer) (con 64)] TxIn_matchOut_143)) TxIn_matchOut_143))
+                                                                        }
+                                                                        (all TxIn_matchOut_145 (type) (fun (fun (all TxOutRef_matchOut_146 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_146))) TxOutRef_matchOut_146)) (fun [(con integer) (con 64)] TxIn_matchOut_145)) TxIn_matchOut_145))
+                                                                      }
+                                                                      t1_133
+                                                                    ]
+                                                                    t2_136
+                                                                  ]
+                                                                )
+                                                              )
+                                                            )
+                                                          ]
+                                                          (abs
+                                                            a_149
+                                                            (type)
+                                                            (lam
+                                                              x_150 a_149 x_150
+                                                            )
+                                                          )
+                                                        ]
+                                                      )
+                                                    )
+                                                  )
+                                                ]
+                                                (abs
+                                                  a_153
+                                                  (type)
+                                                  (lam x_154 a_153 x_154)
+                                                )
+                                              ]
+                                            ]
+                                          )
+                                          [
+                                            [
+                                              {
+                                                p_20
+                                                (fun (all a_37 (type) (fun a_37 a_37)) [(con integer) (con 64)])
+                                              }
+                                              (lam
+                                                dt_38
+                                                [(con integer) (con 64)]
+                                                (lam
+                                                  dt_39
+                                                  [(con integer) (con 64)]
+                                                  (lam
+                                                    pendingTxTransaction_55
+                                                    (all Tx_matchOut_40 (type) (fun (fun [[(lam a_41 (type) (lam b_42 (type) (all p_matchOut_43 (type) (fun (fun a_41 (fun b_42 p_matchOut_43)) p_matchOut_43)))) (all TxIn_matchOut_44 (type) (fun (fun (all TxOutRef_matchOut_45 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_45))) TxOutRef_matchOut_45)) (fun [(con integer) (con 64)] TxIn_matchOut_44)) TxIn_matchOut_44))] (all TxIn_matchOut_46 (type) (fun (fun (all TxOutRef_matchOut_47 (type) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] TxOutRef_matchOut_47))) TxOutRef_matchOut_47)) (fun [(con integer) (con 64)] TxIn_matchOut_46)) TxIn_matchOut_46))] (fun [[(lam a_48 (type) (lam b_49 (type) (all p_matchOut_50 (type) (fun (fun a_48 (fun b_49 p_matchOut_50)) p_matchOut_50)))) [(lam a_51 (type) (all TxOut_matchOut_52 (type) (fun (fun [(con integer) (con 64)] TxOut_matchOut_52) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun a_51 TxOut_matchOut_52))) TxOut_matchOut_52)))) [(con integer) (con 64)]]] [(lam a_53 (type) (all TxOut_matchOut_54 (type) (fun (fun [(con integer) (con 64)] TxOut_matchOut_54) (fun (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] (fun a_53 TxOut_matchOut_54))) TxOut_matchOut_54)))) [(con integer) (con 64)]]] Tx_matchOut_40)) Tx_matchOut_40))
+                                                    (lam
+                                                      thunk_56
+                                                      (all a_57 (type) (fun a_57 a_57))
+                                                      dt_38
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            ]
+                                            (abs
+                                              a_58 (type) (lam x_59 a_58 x_59)
+                                            )
+                                          ]
+                                        ]
+                                      )
+                                      dt_35
+                                    ]
+                                  )
+                                )
+                              )
+                            )
+                          ]
+                          (abs a_369 (type) (lam x_370 a_369 x_370))
+                        ]
+                      )
+                    ]
+                    (abs a_373 (type) (lam x_374 a_373 x_374))
+                  ]
+                )
+              ]
+              (abs a_377 (type) (lam x_378 a_377 x_378))
+            ]
+          )
+        )
+      )
+    )
+  )
+)
