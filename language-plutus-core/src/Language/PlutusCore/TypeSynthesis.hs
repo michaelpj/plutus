@@ -178,10 +178,10 @@ dummyKind = Type ()
 dummyType :: Type TyNameWithKind ()
 dummyType = TyVar () dummyTyName
 
--- | Extract type of a term.
+-- | Extract type of a term. The resulting type is a type value.
 typeOf :: Term TyNameWithKind NameWithType a -> TypeCheckM a (Type TyNameWithKind ())
-typeOf (Var _ (NameWithType (Name (_, ty) _ _))) = pure (void ty)
-typeOf (LamAbs _ _ ty t)                         = TyFun () (void ty) <$> typeOf t
+typeOf (Var _ (NameWithType (Name (_, ty) _ _))) = void <$> tyReduce ty
+typeOf (LamAbs _ _ ty t)                         = TyFun () <$> (void <$> tyReduce ty) <*> typeOf t
 typeOf (Error x ty)                              = do
     k <- kindOf ty
     case k of
@@ -198,45 +198,41 @@ typeOf (Constant _ (BuiltinBS _ n _))            = pure (bsType n)
 typeOf (Constant _ (BuiltinSize _ n))            = pure (sizeType n)
 typeOf (Apply x fun arg) = do
     funTy <- typeOf fun
-    reducedFunTy <- tyReduce funTy
-    case reducedFunTy of
+    case funTy of
         TyFun _ i o -> do
-            reducedInTy <- tyReduce i
             argTy <- typeOf arg
-            reducedArgTy <- tyReduce argTy
             -- for the equality check
             typeCheckStep
-            if reducedInTy == reducedArgTy
+            if i == argTy
                 then pure o
                 else throwError (TypeMismatch x (void arg) i argTy)
         _ -> throwError (TypeMismatch x (void fun) (TyFun () dummyType dummyType) funTy)
 typeOf (TyInst x instBody instArgTy) = do
     bodyTy <- typeOf instBody
-    reducedBodyTy <- tyReduce bodyTy
-    case reducedBodyTy of
+    reducedArg <- tyReduce instArgTy
+    case bodyTy of
         TyForall _ n k tyBody -> do
             k' <- kindOf instArgTy
             -- for the equality check
             typeCheckStep
             if k == k'
-                then tySubstitute (extractUnique n) (void instArgTy) tyBody
+                then tySubstitute (extractUnique n) (void reducedArg) tyBody >>= tyReduce
                 else throwError (KindMismatch x (void instArgTy) k k')
         _ -> throwError (TypeMismatch x (void instBody) (TyForall () dummyTyName dummyKind dummyType) (void bodyTy))
 typeOf (Unwrap x body) = do
     bodyTy <- typeOf body
-    reducedBodyTy <- tyReduce bodyTy
-    case reducedBodyTy of
-        TyFix _ n fixArg -> tySubstitute (extractUnique n) reducedBodyTy fixArg
+    case bodyTy of
+        TyFix _ n fixArg -> tySubstitute (extractUnique n) bodyTy fixArg >>= tyReduce
         _                -> throwError (TypeMismatch x (void body) (TyFix () dummyTyName dummyType) (void bodyTy))
 typeOf (Wrap x n ty body) = do
     bodyTy <- typeOf body
-    reducedBodyTy <- tyReduce bodyTy
-    fixed <- tySubstitute (extractUnique n) (TyFix () (void n) (void ty)) (void ty)
+    reducedTy <- tyReduce ty
+    fixed <- tySubstitute (extractUnique n) (TyFix () (void n) (void reducedTy)) (void reducedTy)
     reducedF <- tyReduce fixed
     -- for the equality check
     typeCheckStep
-    if reducedBodyTy == reducedF
-        then pure (TyFix () (void n) (void ty))
+    if bodyTy == reducedF
+        then pure (TyFix () (void n) (void reducedTy))
         else throwError (TypeMismatch x (void body) fixed (void bodyTy))
 
 extractUnique :: TyNameWithKind a -> Unique
