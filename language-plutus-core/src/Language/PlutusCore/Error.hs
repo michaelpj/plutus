@@ -19,7 +19,7 @@ import           PlutusPrelude
 import qualified Data.Text                     as T
 
 data NormalizationError tyname name a = BadType a (Type tyname a) T.Text
-                                      | BadTerm a (Term tyname name a) T.Text
+                                      | BadTerm a (Term Type tyname name a) T.Text
                                       deriving (Show, Eq, Generic, NFData)
 
 instance (PrettyCfg (tyname a), PrettyCfg (name a), PrettyCfg a) => PrettyCfg (NormalizationError tyname name a) where
@@ -39,7 +39,7 @@ instance (PrettyCfg a) => PrettyCfg (RenameError a) where
 
 data TypeError a = InternalError -- ^ This is thrown if builtin lookup fails
                  | KindMismatch a (Type TyNameWithKind ()) (Kind ()) (Kind ())
-                 | TypeMismatch a (Term TyNameWithKind NameWithType ()) (Type TyNameWithKind ()) (Type TyNameWithKind ())
+                 | TypeMismatch a (Term NormalizedType TyNameWithKind NameWithType ()) (Type TyNameWithKind ()) (NormalizedType TyNameWithKind ())
                  | OutOfGas
                  deriving (Show, Eq, Generic, NFData)
 

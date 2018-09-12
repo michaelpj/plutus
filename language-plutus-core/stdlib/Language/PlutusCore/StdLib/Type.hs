@@ -29,7 +29,7 @@ data HoledType tyname a = HoledType
 -- | A 'Type' that starts with a 'TyFix' (i.e. a recursive type) packaged along with a
 -- specified 'Wrap' that allows to construct elements of this type.
 data RecursiveType tyname a = RecursiveType
-    { _recursiveWrap :: forall name. Term tyname name a -> Term tyname name a
+    { _recursiveWrap :: forall name. Term Type tyname name a -> Term Type tyname name a
     , _recursiveType :: Type tyname a
     }
 

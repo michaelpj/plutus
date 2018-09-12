@@ -27,7 +27,7 @@ import           Data.Semigroup
 -- | Haskell denotation of a PLC object. An object can be a 'BuiltinName' or a variable for example.
 data Denotation object size r = forall a. Denotation
     { _denotationObject :: object                         -- ^ A PLC object.
-    , _denotationToTerm :: object -> Term TyName Name ()  -- ^ How to embed the object into a term.
+    , _denotationToTerm :: object -> Term Type TyName Name ()  -- ^ How to embed the object into a term.
     , _denotationItself :: a                              -- ^ The denotation of the object.
                                                           -- E.g. the denotation of 'AddInteger' is '(+)'.
     , _denotationScheme :: TypeScheme size a r            -- ^ The 'TypeScheme' of the object.

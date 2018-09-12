@@ -25,6 +25,8 @@ module Language.PlutusCore.Type ( Term (..)
                                 , RenamedType
                                 , RenamedTerm
                                 , TyNameWithKind (..)
+                                -- * Normalized types
+                                , NormalizedType (..)
                                 ) where
 
 import qualified Data.ByteString.Lazy           as BSL
@@ -113,7 +115,7 @@ tyLoc (TyInt l _)        = l
 tyLoc (TyLam l _ _ _)    = l
 tyLoc (TyApp l _ _)      = l
 
-termLoc :: Term tyname name a -> a
+termLoc :: Term tpe tyname name a -> a
 termLoc (Var l _)        = l
 termLoc (TyAbs l _ _ _)  = l
 termLoc (Apply l _ _)    = l
@@ -133,33 +135,33 @@ data Constant a = BuiltinInt a Natural Integer
 
 -- TODO make this parametric in tyname as well
 -- | A 'Term' is a value.
-data Term tyname name a = Var a (name a) -- ^ A named variable
-                        | TyAbs a (tyname a) (Kind a) (Term tyname name a)
-                        | LamAbs a (name a) (Type tyname a) (Term tyname name a)
-                        | Apply a (Term tyname name a) (Term tyname name a)
+data Term tpe tyname name a = Var a (name a) -- ^ A named variable
+                        | TyAbs a (tyname a) (Kind a) (Term tpe tyname name a)
+                        | LamAbs a (name a) (tpe tyname a) (Term tpe tyname name a)
+                        | Apply a (Term tpe tyname name a) (Term tpe tyname name a)
                         | Constant a (Constant a) -- ^ A constant term
-                        | TyInst a (Term tyname name a) (Type tyname a)
-                        | Unwrap a (Term tyname name a)
-                        | Wrap a (tyname a) (Type tyname a) (Term tyname name a)
-                        | Error a (Type tyname a)
+                        | TyInst a (Term tpe tyname name a) (tpe tyname a)
+                        | Unwrap a (Term tpe tyname name a)
+                        | Wrap a (tyname a) (tpe tyname a) (Term tpe tyname name a)
+                        | Error a (tpe tyname a)
                         deriving (Functor, Show, Eq, Generic, NFData, Lift)
 
-data TermF tyname name a x = VarF a (name a)
+data TermF tpe tyname name a x = VarF a (name a)
                            | TyAbsF a (tyname a) (Kind a) x
-                           | LamAbsF a (name a) (Type tyname a) x
+                           | LamAbsF a (name a) (tpe tyname a) x
                            | ApplyF a x x
                            | ConstantF a (Constant a)
-                           | TyInstF a x (Type tyname a)
+                           | TyInstF a x (tpe tyname a)
                            | UnwrapF a x
-                           | WrapF a (tyname a) (Type tyname a) x
-                           | ErrorF a (Type tyname a)
+                           | WrapF a (tyname a) (tpe tyname a) x
+                           | ErrorF a (tpe tyname a)
                            deriving (Functor)
 
-type instance Base (Term tyname name a) = TermF tyname name a
+type instance Base (Term tpe tyname name a) = TermF tpe tyname name a
 
-type Value = Term
+type Value = Term Type
 
-instance Recursive (Term tyname name a) where
+instance Recursive (Term tpe tyname name a) where
     project (Var x n)         = VarF x n
     project (TyAbs x n k t)   = TyAbsF x n k t
     project (LamAbs x n ty t) = LamAbsF x n ty t
@@ -170,7 +172,7 @@ instance Recursive (Term tyname name a) where
     project (Wrap x tn ty t)  = WrapF x tn ty t
     project (Error x ty)      = ErrorF x ty
 
-instance Corecursive (Term tyname name a) where
+instance Corecursive (Term tpe tyname name a) where
     embed (VarF x n)         = Var x n
     embed (TyAbsF x n k t)   = TyAbs x n k t
     embed (LamAbsF x n ty t) = LamAbs x n ty t
@@ -201,7 +203,7 @@ instance Recursive (Kind a) where
 
 -- | A 'Program' is simply a 'Term' coupled with a 'Version' of the core
 -- language.
-data Program tyname name a = Program a (Version a) (Term tyname name a)
+data Program tpe tyname name a = Program a (Version a) (Term tpe tyname name a)
                  deriving (Show, Eq, Functor, Generic, NFData, Lift)
 
 instance Pretty (Kind a) where
@@ -210,7 +212,7 @@ instance Pretty (Kind a) where
         a SizeF{}             = "(size)"
         a (KindArrowF _ k k') = parens ("fun" <+> k <+> k')
 
-instance (PrettyCfg (f a), PrettyCfg (g a)) => PrettyCfg (Program f g a) where
+instance (PrettyCfg (f a), PrettyCfg (g a), PrettyCfg (tpe f a)) => PrettyCfg (Program tpe f g a) where
     prettyCfg cfg (Program _ v t) = parens' ("program" <+> pretty v <//> prettyCfg cfg t)
 
 instance PrettyCfg (Constant a) where
@@ -219,7 +221,7 @@ instance PrettyCfg (Constant a) where
     prettyCfg _ (BuiltinBS _ s b)   = pretty s <+> "!" <+> prettyBytes b
     prettyCfg cfg (BuiltinName _ n) = prettyCfg cfg n
 
-instance (PrettyCfg (f a), PrettyCfg (g a)) => PrettyCfg (Term f g a) where
+instance (PrettyCfg (f a), PrettyCfg (g a), PrettyCfg (tpe f a)) => PrettyCfg (Term tpe f g a) where
     prettyCfg cfg = cata a where
         a (ConstantF _ b)    = parens' ("con" </> prettyCfg cfg b)
         a (ApplyF _ t t')    = brackets' (vsep' [t, t'])
@@ -242,12 +244,19 @@ instance (PrettyCfg (f a)) => PrettyCfg (Type f a) where
         a (TyIntF _ n)        = parens ("con" <+> pretty n)
         a (TyLamF _ n k t)    = parens ("lam" <+> prettyCfg cfg n <+> pretty k <+> t)
 
-type RenamedTerm a = Term TyNameWithKind NameWithType a
+newtype NormalizedType tyname a = NormalizedType { getNormalizedType :: Type tyname a }
+    deriving (Show, Eq, Functor, Generic)
+    deriving newtype NFData
+
+instance PrettyCfg (tyname a) => PrettyCfg (NormalizedType tyname a) where
+    prettyCfg cfg nt = prettyCfg cfg (getNormalizedType nt)
+
+type RenamedTerm a = Term NormalizedType TyNameWithKind NameWithType a
 newtype NameWithType a = NameWithType (Name (a, RenamedType a))
     deriving (Show, Eq, Functor, Generic)
     deriving newtype NFData
 
-type RenamedType a = Type TyNameWithKind a
+type RenamedType a = NormalizedType TyNameWithKind a
 newtype TyNameWithKind a = TyNameWithKind { unTyNameWithKind :: TyName (a, Kind a) }
     deriving (Show, Eq, Functor, Generic)
     deriving newtype NFData

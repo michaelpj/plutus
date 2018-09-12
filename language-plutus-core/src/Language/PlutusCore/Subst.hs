@@ -15,9 +15,9 @@ import           Data.Set
 -- | Naively substitute names using the given functions (i.e. do not account for scoping).
 substTerm ::
   (tyname a -> Maybe (Type tyname a)) ->
-  (name a -> Maybe (Term tyname name a)) ->
-  Term tyname name a ->
-  Term tyname name a
+  (name a -> Maybe (Term Type tyname name a)) ->
+  Term Type tyname name a ->
+  Term Type tyname name a
 substTerm tynameF nameF = hoist f
   where
     f (VarF a bnd)         = case nameF bnd of
@@ -44,7 +44,7 @@ substTy tynameF = hoist f
 -- Free variables
 
 -- | Get all the free term variables in a term.
-fvTerm :: (Ord (name a)) => Term tyname name a -> Set (name a)
+fvTerm :: (Ord (name a)) => Term tpe tyname name a -> Set (name a)
 fvTerm = cata f
   where
     f (VarF _ n)        = singleton n
@@ -57,7 +57,7 @@ fvTerm = cata f
     f _                 = empty
 
 -- | Get all the free type variables in a term.
-ftvTerm :: (Ord (tyname a)) => Term tyname name a -> Set (tyname a)
+ftvTerm :: (Ord (tyname a)) => Term Type tyname name a -> Set (tyname a)
 ftvTerm = cata f
   where
     f (TyAbsF _ ty _ t)  = delete ty t

@@ -166,7 +166,7 @@ decodeConstant = go =<< decodeTag
           go 3 = BuiltinName () <$> decodeBuiltinName
           go _ = fail "Failed to decode Constant ()"
 
-encodeTerm :: Term TyName Name a -> Encoding
+encodeTerm :: Term Type TyName Name a -> Encoding
 encodeTerm = cata a where
     a (VarF _ n)         = encodeTag 0 <> encodeName n
     a (TyAbsF _ tn k t)  = encodeTag 1 <> encodeTyName tn <> encodeKind k <> t
@@ -178,7 +178,7 @@ encodeTerm = cata a where
     a (WrapF _ tn ty t)  = encodeTag 7 <> encodeTyName tn <> encodeType ty <> t
     a (ErrorF _ ty)      = encodeTag 8 <> encodeType ty
 
-decodeTerm :: Decoder s (Term TyName Name ())
+decodeTerm :: Decoder s (Term Type TyName Name ())
 decodeTerm = go =<< decodeTag
     where go 0 = Var () <$> decodeName
           go 1 = TyAbs () <$> decodeTyName <*> decodeKind <*> decodeTerm
@@ -192,17 +192,17 @@ decodeTerm = go =<< decodeTag
           go _ = fail "Failed to decode Term TyName Name ()"
 
 -- | Encode a program/ For use with the @cborg@ library.
-encodeProgram :: Program TyName Name a -> Encoding
+encodeProgram :: Program Type TyName Name a -> Encoding
 encodeProgram (Program _ v t) = encodeVersion v <> encodeTerm t
 
 -- | 'Decoder' for a 'Program'
-decodeProgram :: Decoder s (Program TyName Name ())
+decodeProgram :: Decoder s (Program Type TyName Name ())
 decodeProgram = Program () <$> decodeVersion <*> decodeTerm
 
 -- | Encode a program as a 'ByteString'
-writeProgram :: Program TyName Name a -> BSL.ByteString
+writeProgram :: Program Type TyName Name a -> BSL.ByteString
 writeProgram = toLazyByteString . encodeProgram
 
 -- | Attempt to deserialize a 'Program' form a 'ByteString'
-readProgram :: BSL.ByteString -> Either DeserialiseFailure (Program TyName Name ())
+readProgram :: BSL.ByteString -> Either DeserialiseFailure (Program Type TyName Name ())
 readProgram = fmap snd . deserialiseFromBytes decodeProgram

@@ -23,8 +23,8 @@ data IterApp head arg = IterApp
     }
 
 -- | An iterated application of a 'Term' to a list of 'Term's.
-type TermIterApp tyname name a =
-    IterApp (Term tyname name a) (Term tyname name a)
+type TermIterApp tpe tyname name a =
+    IterApp (Term tpe tyname name a) (Term tpe tyname name a)
 
 -- | An iterated application of a 'BuiltinName' to a list of 'Value's.
 type PrimIterApp tyname name a =
@@ -45,19 +45,19 @@ constantAsBuiltinName (BuiltinName _ name) = Just name
 constantAsBuiltinName _                    = Nothing
 
 -- | View a 'Term' as a 'Constant'.
-termAsConstant :: Term tyname name a -> Maybe (Constant a)
+termAsConstant :: Term tpe tyname name a -> Maybe (Constant a)
 termAsConstant (Constant _ constant) = Just constant
 termAsConstant _                     = Nothing
 
 -- | An iterated application of a 'Term' to a list of 'Term's.
-termAsTermIterApp :: Term tyname name a -> TermIterApp tyname name a
+termAsTermIterApp :: Term tpe tyname name a -> TermIterApp tpe tyname name a
 termAsTermIterApp = go [] where
     go args (Apply _ fun arg) = go (arg : args) fun
     go args (TyInst _ fun _)  = go args fun
     go args  fun              = IterApp fun args
 
 -- | View a 'Term' as an iterated application of a 'BuiltinName' to a list of 'Value's.
-termAsPrimIterApp :: Term tyname name a -> Maybe (PrimIterApp tyname name a)
+termAsPrimIterApp :: Term Type tyname name a -> Maybe (PrimIterApp tyname name a)
 termAsPrimIterApp term = do
     let IterApp termHead spine = termAsTermIterApp term
     headName <- termAsConstant termHead >>= constantAsBuiltinName
@@ -65,7 +65,7 @@ termAsPrimIterApp term = do
     Just $ IterApp headName spine
 
 -- | Check whether a 'Term' is a 'Value'.
-isValue :: Term tyname name a -> Bool
+isValue :: Term Type tyname name a -> Bool
 isValue (TyAbs  _ _ _ body) = isValue body
 isValue (Wrap   _ _ _ term) = isValue term
 isValue LamAbs{}            = True

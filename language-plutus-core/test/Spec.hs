@@ -34,7 +34,7 @@ compareName = (==) `on` nameString
 compareTyName :: TyName a -> TyName a -> Bool
 compareTyName (TyName n) (TyName n') = compareName n n'
 
-compareTerm :: Eq a => Term TyName Name a -> Term TyName Name a -> Bool
+compareTerm :: Eq a => Term Type TyName Name a -> Term Type TyName Name a -> Bool
 compareTerm (Var _ n) (Var _ n')                   = compareName n n'
 compareTerm (TyAbs _ n k t) (TyAbs _ n' k' t')     = compareTyName n n' && k == k' && compareTerm t t'
 compareTerm (LamAbs _ n ty t) (LamAbs _ n' ty' t') = compareName n n' && compareType ty ty' && compareTerm t t'
@@ -57,7 +57,7 @@ compareType (TyApp _ t t') (TyApp _ t'' t''')        = compareType t t'' && comp
 compareType (TyInt _ n) (TyInt _ n')                 = n == n'
 compareType _ _                                      = False
 
-compareProgram :: Eq a => Program TyName Name a -> Program TyName Name a -> Bool
+compareProgram :: Eq a => Program Type TyName Name a -> Program Type TyName Name a -> Bool
 compareProgram (Program _ v t) (Program _ v' t') = v == v' && compareTerm t t'
 
 propCBOR :: Property

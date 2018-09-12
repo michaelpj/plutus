@@ -53,9 +53,9 @@ metavarMapTerm :: Set.Set (Name a) -> Q Exp
 metavarMapTerm ftvs = let ftvsL = nameString <$> toList ftvs in
     [|
         let
-            subs :: [Term TyName Name ()]
+            subs :: [Term Type TyName Name ()]
             subs = $(substs ftvsL)
-            qm :: Map.Map BSL.ByteString (Term TyName Name ())
+            qm :: Map.Map BSL.ByteString (Term Type TyName Name ())
             qm = Map.fromList $ zip ftvsL subs
         in pure qm
     |]
@@ -83,10 +83,10 @@ metavarSubstType ty tyMetavars = substTy
                         ty
 
 metavarSubstTerm ::
-  Term TyName Name () ->
+  Term Type TyName Name () ->
   Map.Map BSL.ByteString (Type TyName ()) ->
-  Map.Map BSL.ByteString (Term TyName Name ()) ->
-  Term TyName Name ()
+  Map.Map BSL.ByteString (Term Type TyName Name ()) ->
+  Term Type TyName Name ()
 metavarSubstTerm t tyMetavars termMetavars = substTerm
                         (\n -> Map.lookup (nameString $ unTyName n) tyMetavars)
                         (\n -> Map.lookup (nameString n) termMetavars)
@@ -127,7 +127,7 @@ compileTerm s = do
         termMetavars = metavarMapTerm (fvTerm compileTimeT)
     [|
         let
-            quoted :: Quote (Term TyName Name ())
+            quoted :: Quote (Term Type TyName Name ())
             quoted = do
                 -- See note [Parsing and TH stages]
                 runtimeT <- (fmap void . MM.hoist (Identity . unsafeDropErrors) . parseTerm . strToBs) s
@@ -158,7 +158,7 @@ compileProgram s = do
         termMetavars= metavarMapTerm (fvTerm compileTimeT)
     [|
         let
-            quoted :: Quote (Program TyName Name ())
+            quoted :: Quote (Program Type TyName Name ())
             quoted = do
                 -- See note [Parsing and TH stages]
                 (Program a v runtimeT) <- (fmap void . MM.hoist (Identity . unsafeDropErrors) . parseProgram . strToBs) s

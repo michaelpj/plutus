@@ -134,7 +134,7 @@ Kind : parens(type) { Type $1 }
 
 {
 
-tyInst :: a -> Term tyname name a -> NonEmpty (Type tyname a) -> Term tyname name a
+tyInst :: a -> Term Type tyname name a -> NonEmpty (Type tyname a) -> Term Type tyname name a
 tyInst loc t (ty :| []) = TyInst loc t ty
 tyInst loc t (ty :| tys) = TyInst loc (tyInst loc t (ty:|init tys)) (last tys)
 
@@ -142,7 +142,7 @@ tyApps :: a -> Type tyname a -> NonEmpty (Type tyname a) -> Type tyname a
 tyApps loc ty (ty' :| [])  = TyApp loc ty ty'
 tyApps loc ty (ty' :| tys) = TyApp loc (tyApps loc ty (ty':|init tys)) (last tys)
 
-app :: a -> Term tyname name a -> NonEmpty (Term tyname name a) -> Term tyname name a
+app :: a -> Term Type tyname name a -> NonEmpty (Term Type tyname name a) -> Term Type tyname name a
 app loc t (t' :| []) = Apply loc t t'
 app loc t (t' :| ts) = Apply loc (app loc t (t':|init ts)) (last ts)
 
@@ -151,10 +151,10 @@ handleInteger x sz i = case makeBuiltinInt sz i of
     Nothing -> throwError (Overflow x sz i)
     Just bi -> pure $ x <$ bi
 
-parseST :: BSL.ByteString -> StateT IdentifierState (Except (ParseError AlexPosn)) (Program TyName Name AlexPosn)
+parseST :: BSL.ByteString -> StateT IdentifierState (Except (ParseError AlexPosn)) (Program Type TyName Name AlexPosn)
 parseST str =  runAlexST' str (runExceptT parsePlutusCoreProgram) >>= liftEither
 
-parseTermST :: BSL.ByteString -> StateT IdentifierState (Except (ParseError AlexPosn)) (Term TyName Name AlexPosn)
+parseTermST :: BSL.ByteString -> StateT IdentifierState (Except (ParseError AlexPosn)) (Term Type TyName Name AlexPosn)
 parseTermST str = runAlexST' str (runExceptT parsePlutusCoreTerm) >>= liftEither
 
 parseTypeST :: BSL.ByteString -> StateT IdentifierState (Except (ParseError AlexPosn)) (Type TyName AlexPosn)
@@ -171,12 +171,12 @@ mapParseRun run = convertErrors asError $ do
 
 -- | Parse a PLC program. The resulting program will have fresh names. The underlying monad must be capable
 -- of handling any parse errors.
-parseProgram :: (MonadError (Error AlexPosn) m, MonadQuote m) => BSL.ByteString -> m (Program TyName Name AlexPosn)
+parseProgram :: (MonadError (Error AlexPosn) m, MonadQuote m) => BSL.ByteString -> m (Program Type TyName Name AlexPosn)
 parseProgram str = mapParseRun (parseST str)
 
 -- | Parse a PLC term. The resulting program will have fresh names. The underlying monad must be capable
 -- of handling any parse errors.
-parseTerm :: (MonadError (Error AlexPosn) m, MonadQuote m) => BSL.ByteString -> m (Term TyName Name AlexPosn)
+parseTerm :: (MonadError (Error AlexPosn) m, MonadQuote m) => BSL.ByteString -> m (Term Type TyName Name AlexPosn)
 parseTerm str = mapParseRun (parseTermST str)
 
 -- | Parse a PLC type. The resulting program will have fresh names. The underlying monad must be capable
@@ -189,7 +189,7 @@ parseType str = mapParseRun (parseTypeST str)
 -- >>> :set -XOverloadedStrings
 -- >>> parse "(program 0.1.0 [(con addInteger) x y])"
 -- Right (Program (AlexPn 1 1 2) (Version (AlexPn 9 1 10) 0 1 0) (Apply (AlexPn 15 1 16) (Apply (AlexPn 15 1 16) (Constant (AlexPn 17 1 18) (BuiltinName (AlexPn 21 1 22) AddInteger)) (Var (AlexPn 33 1 34) (Name {nameAttribute = AlexPn 33 1 34, nameString = "x", nameUnique = Unique {unUnique = 0}}))) (Var (AlexPn 35 1 36) (Name {nameAttribute = AlexPn 35 1 36, nameString = "y", nameUnique = Unique {unUnique = 1}}))))
-parse :: BSL.ByteString -> Either (ParseError AlexPosn) (Program TyName Name AlexPosn)
+parse :: BSL.ByteString -> Either (ParseError AlexPosn) (Program Type TyName Name AlexPosn)
 parse str = fmap fst $ runExcept $ runStateT (parseST str) emptyIdentifierState
 
 type Parse = ExceptT (ParseError AlexPosn) Alex

@@ -17,7 +17,7 @@ import           PlutusPrelude
 -- | 'const' as a PLC term.
 --
 -- > /\ (A B :: *) -> \(x : A) (y : B) -> x
-getBuiltinConst :: Quote (Term TyName Name ())
+getBuiltinConst :: Quote (Term Type TyName Name ())
 getBuiltinConst = do
     a <- freshTyName () "a"
     b <- freshTyName () "b"
@@ -47,7 +47,7 @@ getBuiltinSelf = do
 -- | @unroll@ as a PLC term.
 --
 -- > /\(a :: *) -> \(s : self a) -> unwrap s s
-getBuiltinUnroll :: Quote (Term TyName Name ())
+getBuiltinUnroll :: Quote (Term Type TyName Name ())
 getBuiltinUnroll = do
     builtinSelf <- getBuiltinSelf
     a <- freshTyName () "a"
@@ -66,7 +66,7 @@ getBuiltinUnroll = do
 -- >    unroll {a -> b} (wrap \(s : self (a -> b)) \(x : a) -> f (unroll {a -> b} s) x)
 --
 -- See @plutus-prototype/docs/fomega/z-combinator-benchmarks@ for details.
-getBuiltinFix :: Quote (Term TyName Name ())
+getBuiltinFix :: Quote (Term Type TyName Name ())
 getBuiltinFix = do
     self   <- getBuiltinSelf
     unroll <- getBuiltinUnroll

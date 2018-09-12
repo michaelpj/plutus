@@ -19,29 +19,30 @@ import           Test.Tasty
 import           Test.Tasty.HUnit
 
 -- | Assert a 'Term' is well-typed.
-assertQuoteWellTyped :: HasCallStack => Quote (Term TyName Name ()) -> Assertion
+assertQuoteWellTyped :: HasCallStack => Quote (Term Type TyName Name ()) -> Assertion
 assertQuoteWellTyped getTerm = case runExcept $ runQuoteT $ typecheck getTerm of
     Left e -> assertFailure $ fold
             [ "Type error : ", prettyCfgString e ]
     Right _ -> return ()
 
 -- | Assert a term is ill-typed.
-assertQuoteIllTyped :: HasCallStack => Quote (Term TyName Name ()) -> Assertion
+assertQuoteIllTyped :: HasCallStack => Quote (Term Type TyName Name ()) -> Assertion
 assertQuoteIllTyped getTerm = case runExcept $ runQuoteT $ typecheck getTerm of
     Right term -> assertFailure $ "Well-typed: " ++ prettyCfgString term
     Left _     -> return ()
 
-typecheck :: (MonadError (Error ()) m, MonadQuote m) => Quote (Term TyName Name ()) -> m ()
+typecheck :: (MonadError (Error ()) m, MonadQuote m) => Quote (Term Type TyName Name ()) -> m ()
 typecheck getTerm = do
     t <- liftQuote getTerm
-    annotated <- annotateTerm t
+    normalized <- checkTerm t
+    annotated <- annotateTerm normalized
     _ <- typecheckTerm 1000 annotated
     pure ()
 
 -- | Self-application. An example of ill-typed term.
 --
 -- > /\ (A :: *) -> \(x : A) -> x x
-getBuiltinSelfApply :: Quote (Term TyName Name ())
+getBuiltinSelfApply :: Quote (Term Type TyName Name ())
 getBuiltinSelfApply = do
     a <- freshTyName () "a"
     x <- freshName () "x"

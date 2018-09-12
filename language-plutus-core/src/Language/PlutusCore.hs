@@ -136,24 +136,25 @@ fileTypeCfg :: Configuration -> FilePath -> IO T.Text
 fileTypeCfg cfg = fmap (either (renderCfg cfg) id . printType) . BSL.readFile
 
 checkFile :: FilePath -> IO (Maybe T.Text)
-checkFile = fmap (either (pure . prettyCfgText) id . fmap (fmap prettyCfgText . check) . parse) . BSL.readFile
+checkFile bs = do
+    input <- BSL.readFile bs
+    let result = runExcept $ runQuoteT (checkProgram =<< parseProgram input)
+    pure $ case result of
+        Left e -> Just (prettyCfgText e)
+        Right _ -> Nothing
 
 -- | Print the type of a program contained in a 'ByteString'
 printType :: (MonadError (Error AlexPosn) m) => BSL.ByteString -> m T.Text
-printType bs = runQuoteT $ prettyCfgText <$> (typecheckProgram 1000 <=< annotateProgram <=< (liftEither . convertError . parseScoped)) bs
+printType bs = runQuoteT $ prettyCfgText <$> (typecheckProgram 1000 <=< annotateProgram <=< checkProgram <=< (liftEither . convertError . parseScoped)) bs
 
 -- | Parse and rewrite so that names are globally unique, not just unique within
 -- their scope.
-parseScoped :: (MonadError (Error AlexPosn) m) => BSL.ByteString -> m (Program TyName Name AlexPosn)
+parseScoped :: (MonadError (Error AlexPosn) m) => BSL.ByteString -> m (Program Type TyName Name AlexPosn)
 parseScoped str = liftEither $ convertError $ fmap (\(p, s) -> rename s p) $ runExcept $ runStateT (parseST str) emptyIdentifierState
 
 -- | Parse a program and typecheck it.
-parseTypecheck :: (MonadError (Error AlexPosn) m, MonadQuote m) => Natural -> BSL.ByteString -> m (Type TyNameWithKind ())
-parseTypecheck gas bs = do
-    parsed <- parseProgram bs
-    checkProgram parsed
-    annotated <- annotateProgram parsed
-    typecheckProgram gas annotated
+parseTypecheck :: (MonadError (Error AlexPosn) m, MonadQuote m) => Natural -> BSL.ByteString -> m (NormalizedType TyNameWithKind ())
+parseTypecheck gas = typecheckProgram gas <=< annotateProgram <=< checkProgram <=< parseProgram
 
 -- | Parse a program and run it using the CK machine.
 parseRunCk :: (MonadError (Error AlexPosn) m) => BSL.ByteString -> m CkEvalResult

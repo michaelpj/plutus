@@ -37,7 +37,7 @@ getBuiltinList = do
 -- |  '[]' as a PLC term.
 --
 -- >  /\(a :: *) -> wrap /\(r :: *) -> \(z : r) (f : a -> list a -> r) -> z
-getBuiltinNil :: Quote (Term TyName Name ())
+getBuiltinNil :: Quote (Term Type TyName Name ())
 getBuiltinNil = do
     list <- getBuiltinList
     a <- freshTyName () "a"
@@ -58,7 +58,7 @@ getBuiltinNil = do
 --
 -- > /\(a :: *) -> \(x : a) (xs : list a) ->
 -- >     wrap /\(r :: *) -> \(z : r) (f : a -> list a -> r) -> f x xs
-getBuiltinCons :: Quote (Term TyName Name ())
+getBuiltinCons :: Quote (Term Type TyName Name ())
 getBuiltinCons = do
     list <- getBuiltinList
     a  <- freshTyName () "a"
@@ -87,7 +87,7 @@ getBuiltinCons = do
 -- > /\(a :: *) (r :: *) -> \(f : r -> a -> r) (z : r) ->
 -- >     fix {list a} {r} \(rec : list a -> r) (xs : list a) ->
 -- >         unwrap xs {r} z \(x : a) (xs' : list a) -> f (rec xs') x
-getBuiltinFoldrList :: Quote (Term TyName Name ())
+getBuiltinFoldrList :: Quote (Term Type TyName Name ())
 getBuiltinFoldrList = do
     list <- getBuiltinList
     fix  <- getBuiltinFix
@@ -122,7 +122,7 @@ getBuiltinFoldrList = do
 -- > /\(a :: *) (r :: *) -> \(f : r -> a -> r) ->
 -- >     fix {r} {list a -> r} \(rec : r -> list a -> r) (z : r) (xs : list a) ->
 -- >         unwrap xs {r} z \(x : a) -> rec (f z x)
-getBuiltinFoldList :: Quote (Term TyName Name ())
+getBuiltinFoldList :: Quote (Term Type TyName Name ())
 getBuiltinFoldList = do
     list <- getBuiltinList
     fix  <- getBuiltinFix
@@ -156,7 +156,7 @@ getBuiltinFoldList = do
 -- > /\(s :: *) -> foldl'ist {integer s} {integer s} (addInteger {s}) s!0
 --
 -- TODO: once sizes are added, make the implementation match the comment (which is wrong).
-getBuiltinSum :: Natural -> Quote (Term TyName Name ())
+getBuiltinSum :: Natural -> Quote (Term Type TyName Name ())
 getBuiltinSum s = do
     foldList <- getBuiltinFoldList
     let int = TyBuiltin () TyInteger

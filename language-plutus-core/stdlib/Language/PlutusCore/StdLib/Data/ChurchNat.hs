@@ -27,7 +27,7 @@ getBuiltinChurchNat = do
 -- | Church-encoded '0' as a PLC term.
 --
 -- > /\(r :: *) -> \(z : r) (f : r -> r) -> z
-getBuiltinChurchZero :: Quote (Term TyName Name ())
+getBuiltinChurchZero :: Quote (Term Type TyName Name ())
 getBuiltinChurchZero = do
     r <- freshTyName () "r"
     z <- freshName () "z"
@@ -41,7 +41,7 @@ getBuiltinChurchZero = do
 -- | Church-encoded 'succ' as a PLC term.
 --
 -- > \(n : nat) -> /\(r :: *) -> \(z : r) (f : r -> r) -> f (n {r} z f)
-getBuiltinChurchSucc :: Quote (Term TyName Name ())
+getBuiltinChurchSucc :: Quote (Term Type TyName Name ())
 getBuiltinChurchSucc = do
     nat <- getBuiltinChurchNat
     n <- freshName () "n"

@@ -55,7 +55,7 @@ type PlcGenT m = GenT (ReaderT (BuiltinGensT m) m)
 
 -- | One iterated application of a @head@ to @arg@s represented in three distinct ways.
 data IterAppValue head arg r = IterAppValue
-    { _iterTerm :: Term TyName Name ()       -- ^ As a PLC 'Term'.
+    { _iterTerm :: Term Type TyName Name ()       -- ^ As a PLC 'Term'.
     , _iterApp  :: IterApp head arg          -- ^ As an 'IterApp'.
     , _iterTbv  :: TypedBuiltinValue Size r  -- ^ As a Haskell value.
     }
@@ -129,16 +129,16 @@ genSchemedTermOf (TypeSchemeAllSize _)  = error "Not implemented."
 genIterAppValue
     :: forall head r m. Monad m
     => Denotation head Size r
-    -> PlcGenT m (IterAppValue head (Term TyName Name ()) r)
+    -> PlcGenT m (IterAppValue head (Term Type TyName Name ()) r)
 genIterAppValue (Denotation object toTerm meta scheme) = result where
     result = Gen.just $ go scheme (toTerm object) id meta
 
     go
         :: TypeScheme Size c r
-        -> Term TyName Name ()
-        -> ([Term TyName Name ()] -> [Term TyName Name ()])
+        -> Term Type TyName Name ()
+        -> ([Term Type TyName Name ()] -> [Term Type TyName Name ()])
         -> c
-        -> PlcGenT m (Maybe (IterAppValue head (Term TyName Name ()) r))
+        -> PlcGenT m (Maybe (IterAppValue head (Term Type TyName Name ()) r))
     go (TypeSchemeBuiltin builtin) term args y =     -- Computed the result.
         return $ case unsafePerformIO . tryAny $ evaluate y of
             Left _   -> Nothing

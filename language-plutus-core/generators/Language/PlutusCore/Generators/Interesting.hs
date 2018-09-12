@@ -21,15 +21,15 @@ import qualified Hedgehog.Gen                             as Gen
 import qualified Hedgehog.Range                           as Range
 
 -- | Convert an 'Integer' to a @nat@. TODO: convert PLC's @integer@ to @nat@ instead.
-getBuiltinIntegerToNat :: Integer -> Quote (Term TyName Name ())
+getBuiltinIntegerToNat :: Integer -> Quote (Term Type TyName Name ())
 getBuiltinIntegerToNat n
     | n < 0     = error $ "getBuiltinIntegerToNat: negative argument: " ++ show n
     | otherwise = go n where
           go 0 = getBuiltinZero
           go m = Apply () <$> getBuiltinSucc <*> go (m - 1)
 
--- | Convert a @nat@ to an 'Integer'. TODO: this should be just @Quote (Term TyName Name ())@.
-getBuiltinNatToInteger :: Natural -> Term TyName Name () -> Quote (Term TyName Name ())
+-- | Convert a @nat@ to an 'Integer'. TODO: this should be just @Quote (Term Type TyName Name ())@.
+getBuiltinNatToInteger :: Natural -> Term Type TyName Name () -> Quote (Term Type TyName Name ())
 getBuiltinNatToInteger s n = do
     builtinFoldNat <- getBuiltinFoldNat
     let int = Constant () . BuiltinInt () s
@@ -41,7 +41,7 @@ getBuiltinNatToInteger s n = do
           ]
 
 -- | Convert a Haskell list of 'Term's to a PLC @list@.
-getListToBuiltinList :: Type TyName () -> [Term TyName Name ()] -> Quote (Term TyName Name ())
+getListToBuiltinList :: Type TyName () -> [Term Type TyName Name ()] -> Quote (Term Type TyName Name ())
 getListToBuiltinList ty ts = do
     builtinNil  <- getBuiltinNil
     builtinCons <- getBuiltinCons

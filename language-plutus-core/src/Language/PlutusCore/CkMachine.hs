@@ -22,7 +22,7 @@ infix 4 |>, <|
 
 data Frame
     = FrameApplyFun (Value TyName Name ())       -- ^ @[V _]@
-    | FrameApplyArg (Term TyName Name ())        -- ^ @[_ N]@
+    | FrameApplyArg (Term Type TyName Name ())        -- ^ @[_ N]@
     | FrameTyInstArg (Type TyName ())            -- ^ @{_ A}@
     | FrameUnwrap                                -- ^ @(unwrap _)@
     | FrameWrap () (TyName ()) (Type TyName ())  -- ^ @(wrap α A _)@
@@ -45,7 +45,7 @@ data CkError
 -- | The type of exceptions the CK machine can throw.
 data CkException = CkException
     { _ckExceptionError :: CkError              -- ^ An error.
-    , _ckExceptionCause :: Term TyName Name ()  -- ^ A 'Term' that caused the error.
+    , _ckExceptionCause :: Term Type TyName Name ()  -- ^ A 'Term' that caused the error.
     }
 
 -- | The type of results the CK machine returns.
@@ -86,7 +86,7 @@ ckEvalResultToMaybe CkEvalFailure       = Nothing
 -- | Substitute a 'Value' for a variable in a 'Term' that can contain duplicate binders.
 -- Do not descend under binders that bind the same variable as the one we're substituting for.
 substituteDb
-    :: Eq (name a) => name a -> Value tyname name a -> Term tyname name a -> Term tyname name a
+    :: Eq (name a) => name a -> Value tyname name a -> Term Type tyname name a -> Term Type tyname name a
 substituteDb varFor new = go where
     go (Var ann var)            = if var == varFor then new else Var ann var
     go (TyAbs ann tyn ty body)  = TyAbs ann tyn ty (go body)
@@ -110,7 +110,7 @@ substituteDb varFor new = go where
 -- > s ▷ lam x A M  ↦ s ◁ lam x A M
 -- > s ▷ con cn     ↦ s ◁ con cn
 -- > s ▷ error A    ↦ ◆
-(|>) :: Context -> Term TyName Name () -> CkEvalResult
+(|>) :: Context -> Term Type TyName Name () -> CkEvalResult
 stack |> TyInst _ fun ty      = FrameTyInstArg ty : stack |> fun
 stack |> Apply _ fun arg      = FrameApplyArg arg : stack |> fun
 stack |> Wrap ann tyn ty term = FrameWrap ann tyn ty : stack |> term
@@ -145,7 +145,7 @@ FrameUnwrap          : stack <| wrapped   = case wrapped of
 -- In case of 'TyAbs' just ignore the type. Otherwise check if the term is an
 -- iterated application of a 'BuiltinName' to a list of 'Value's and, if succesful,
 -- apply the term to the type via 'TyInst'.
-instantiateEvaluate :: Context -> Type TyName () -> Term TyName Name () -> CkEvalResult
+instantiateEvaluate :: Context -> Type TyName () -> Term Type TyName Name () -> CkEvalResult
 instantiateEvaluate stack _  (TyAbs _ _ _ body) = stack |> body
 instantiateEvaluate stack ty fun
     | isJust $ termAsPrimIterApp fun = stack <| TyInst () fun ty
@@ -180,10 +180,10 @@ applyEvaluate stack fun                    arg =
 -- The reason for that is that the operational semantics of constant applications is
 -- unaffected by types as it supports full type erasure, hence @{F A}@ can never compute
 -- if @F@ does not compute, so we simply do not introduce a rule that can't possibly fire.
-evaluateCk :: Term TyName Name () -> CkEvalResult
+evaluateCk :: Term Type TyName Name () -> CkEvalResult
 evaluateCk = ([] |>)
 
 -- | Run a program using the CK machine. May throw a 'CkException'.
 -- Calls 'evaluateCk' under the hood, so the same caveats apply.
-runCk :: Program TyName Name () -> CkEvalResult
+runCk :: Program Type TyName Name () -> CkEvalResult
 runCk (Program _ _ term) = evaluateCk term

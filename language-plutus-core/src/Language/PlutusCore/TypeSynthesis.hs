@@ -26,7 +26,7 @@ import           PlutusPrelude
 
 -- | A builtin table contains the kinds of builtin types and the types of
 -- builtin names.
-data BuiltinTable = BuiltinTable (M.Map TypeBuiltin (Kind ())) (M.Map BuiltinName (Type TyNameWithKind ()))
+data BuiltinTable = BuiltinTable (M.Map TypeBuiltin (Kind ())) (M.Map BuiltinName (NormalizedType TyNameWithKind ()))
 
 -- | The type checking monad contains the 'BuiltinTable' and it lets us throw
 -- 'TypeError's.
@@ -37,19 +37,19 @@ isType Type{} = True
 isType _      = False
 
 -- | Create a new 'Type' for an integer operation.
-intop :: (MonadQuote m) => m (Type TyNameWithKind ())
+intop :: (MonadQuote m) => m (NormalizedType TyNameWithKind ())
 intop = do
     nam <- newTyName (Size ())
     let ity = TyApp () (TyBuiltin () TyInteger) (TyVar () nam)
         fty = TyFun () ity (TyFun () ity ity)
-    pure $ TyForall () nam (Size ()) fty
+    pure $ NormalizedType $ TyForall () nam (Size ()) fty
 
 -- | Create a new 'Type' for an integer relation
-intRel :: (MonadQuote m)  => m (Type TyNameWithKind ())
-intRel = builtinRel TyInteger
+intRel :: (MonadQuote m)  => m (NormalizedType TyNameWithKind ())
+intRel = NormalizedType <$> builtinRel TyInteger
 
-bsRel :: (MonadQuote m) => m (Type TyNameWithKind ())
-bsRel = builtinRel TyByteString
+bsRel :: (MonadQuote m) => m (NormalizedType TyNameWithKind ())
+bsRel = NormalizedType <$> builtinRel TyByteString
 
 -- | Create a dummy 'TyName'
 newTyName :: (MonadQuote m) => Kind () -> m (TyNameWithKind ())
@@ -78,8 +78,8 @@ builtinRel bi = do
         fty = TyFun () ity (TyFun () ity b)
     pure $ TyForall () nam (Size ()) fty
 
-txHash :: Type TyNameWithKind ()
-txHash = TyApp () (TyBuiltin () TyByteString) (TyInt () 256)
+txHash :: NormalizedType TyNameWithKind ()
+txHash = NormalizedType $ TyApp () (TyBuiltin () TyByteString) (TyInt () 256)
 
 defaultTable :: (MonadQuote m) => m BuiltinTable
 defaultTable = do
@@ -101,11 +101,11 @@ defaultTable = do
     pure $ BuiltinTable tyTable termTable
 
 -- | Type-check a PLC program.
-typecheckProgram :: (MonadError (Error a) m, MonadQuote m) => Natural -> Program TyNameWithKind NameWithType a -> m (Type TyNameWithKind ())
+typecheckProgram :: (MonadError (Error a) m, MonadQuote m) => Natural -> Program NormalizedType TyNameWithKind NameWithType a -> m (NormalizedType TyNameWithKind ())
 typecheckProgram n (Program _ _ t) = typecheckTerm n t
 
 -- | Type-check a PLC term.
-typecheckTerm :: (MonadError (Error a) m, MonadQuote m) => Natural -> Term TyNameWithKind NameWithType a -> m (Type TyNameWithKind ())
+typecheckTerm :: (MonadError (Error a) m, MonadQuote m) => Natural -> Term NormalizedType TyNameWithKind NameWithType a -> m (NormalizedType TyNameWithKind ())
 typecheckTerm n t = convertErrors asError $ runTypeCheckM n (typeOf t)
 
 -- | Kind-check a PLC term.
@@ -172,14 +172,14 @@ kindOf (TyApp x ty ty') = do
 intApp :: Type a () -> Natural -> Type a ()
 intApp ty n = TyApp () ty (TyInt () n)
 
-integerType :: Natural -> Type a ()
-integerType = intApp (TyBuiltin () TyInteger)
+integerType :: Natural -> NormalizedType a ()
+integerType = NormalizedType . intApp (TyBuiltin () TyInteger)
 
-bsType :: Natural -> Type a ()
-bsType = intApp (TyBuiltin () TyByteString)
+bsType :: Natural -> NormalizedType a ()
+bsType = NormalizedType . intApp (TyBuiltin () TyByteString)
 
-sizeType :: Natural -> Type a ()
-sizeType = intApp (TyBuiltin () TySize)
+sizeType :: Natural -> NormalizedType a ()
+sizeType = NormalizedType . intApp (TyBuiltin () TySize)
 
 dummyUnique :: Unique
 dummyUnique = Unique 0
@@ -194,61 +194,63 @@ dummyType :: Type TyNameWithKind ()
 dummyType = TyVar () dummyTyName
 
 -- | Extract type of a term.
-typeOf :: Term TyNameWithKind NameWithType a -> TypeCheckM a (Type TyNameWithKind ())
+typeOf :: Term NormalizedType TyNameWithKind NameWithType a -> TypeCheckM a (NormalizedType TyNameWithKind ())
 typeOf (Var _ (NameWithType (Name (_, ty) _ _))) = pure (void ty)
-typeOf (LamAbs _ _ ty t)                         = TyFun () (void ty) <$> typeOf t
+typeOf (LamAbs _ _ ty t)                         = NormalizedType <$> TyFun () (getNormalizedType $ void ty) <$> (getNormalizedType <$> typeOf t)
 typeOf (Error x ty)                              = do
-    k <- kindOf ty
+    k <- kindOf $ getNormalizedType ty
     case k of
         Type{} -> pure (void ty)
-        _      -> throwError (KindMismatch x (void ty) (Type ()) k)
-typeOf (TyAbs _ n k t)                           = TyForall () (void n) (void k) <$> typeOf t
+        _      -> throwError (KindMismatch x (getNormalizedType $ void ty) (Type ()) k)
+typeOf (TyAbs _ n k t)                           = NormalizedType <$> TyForall () (void n) (void k) <$> (getNormalizedType <$> typeOf t)
 typeOf (Constant _ (BuiltinName _ n)) = do
     (BuiltinTable _ st) <- ask
     case M.lookup n st of
         Just k -> pure k
         _      -> throwError InternalError
-typeOf (Constant _ (BuiltinInt _ n _))           = pure (integerType n)
-typeOf (Constant _ (BuiltinBS _ n _))            = pure (bsType n)
-typeOf (Constant _ (BuiltinSize _ n))            = pure (sizeType n)
+typeOf (Constant _ (BuiltinInt _ n _))           = pure $ integerType n
+typeOf (Constant _ (BuiltinBS _ n _))            = pure $ bsType n
+typeOf (Constant _ (BuiltinSize _ n))            = pure $ sizeType n
 typeOf (Apply x t t') = do
     ty <- typeOf t
-    case ty of
+    case getNormalizedType ty of
         TyFun _ ty' ty'' -> do
             ty''' <- typeOf t'
             typeCheckStep
-            if ty' == ty'''
-                then pure ty''
+            if ty' == getNormalizedType ty'''
+                -- subpart of known-normalized type, so normalized
+                then pure $ NormalizedType ty''
                 else throwError (TypeMismatch x (void t') ty' ty''')
         _ -> throwError (TypeMismatch x (void t) (TyFun () dummyType dummyType) ty)
 typeOf (TyInst x t ty) = do
     ty' <- typeOf t
-    case ty' of
+    case getNormalizedType ty' of
         TyForall _ n k ty'' -> do
-            k' <- kindOf ty
+            k' <- kindOf $ getNormalizedType ty
             typeCheckStep
             if k == k'
-                then pure (tyReduce (tySubstitute (extractUnique n) (void ty) ty''))
-                else throwError (KindMismatch x (void ty) k k')
+                then pure (tyReduce (tySubstitute (extractUnique n) (getNormalizedType $ void ty) ty''))
+                else throwError (KindMismatch x (getNormalizedType $ void ty) k k')
         _ -> throwError (TypeMismatch x (void t) (TyForall () dummyTyName dummyKind dummyType) (void ty'))
 typeOf (Unwrap x t) = do
     ty <- typeOf t
-    case ty of
+    case getNormalizedType ty of
         TyFix _ n ty' -> do
-            let subst = tySubstitute (extractUnique n) ty ty'
+            let subst = tySubstitute (extractUnique n) (getNormalizedType ty) ty'
             pure (tyReduce subst)
         _             -> throwError (TypeMismatch x (void t) (TyFix () dummyTyName dummyType) (void ty))
 typeOf (Wrap x n ty t) = do
     ty' <- typeOf t
-    let fixed = tySubstitute (extractUnique n) (TyFix () (void n) (void ty)) (void ty)
+    let fixed = tySubstitute (extractUnique n) (TyFix () (void n) (getNormalizedType $ void ty)) (getNormalizedType $ void ty)
     typeCheckStep
     if tyReduce fixed == ty'
-        then pure (TyFix () (void n) (void ty))
+        then pure $ NormalizedType $ TyFix () (void n) (getNormalizedType $ void ty)
         else throwError (TypeMismatch x (void t) fixed (void ty'))
 
 extractUnique :: TyNameWithKind a -> Unique
 extractUnique = nameUnique . unTyName . unTyNameWithKind
 
+-- TODO: only allow substituting in normalized types to avoid wasting work later
 -- TODO: make type substitutions occur in a state monad + benchmark
 tySubstitute :: Unique -- ^ Unique associated with type variable
              -> Type TyNameWithKind a -- ^ Type we are binding to free variable
@@ -259,12 +261,13 @@ tySubstitute u ty = cata a where
     a x                                                  = embed x
 
 -- also this should involve contexts
-tyReduce :: Type TyNameWithKind a -> Type TyNameWithKind a
-tyReduce (TyApp _ (TyLam _ (TyNameWithKind (TyName (Name _ _ u))) _ ty) ty') = tySubstitute u ty' (tyReduce ty) -- TODO: use the substitution monad here
-tyReduce (TyForall x tn k ty)                                                = TyForall x tn k (tyReduce ty)
-tyReduce (TyFun x ty ty') | isTypeValue ty                                   = TyFun x (tyReduce ty) (tyReduce ty')
-                          | otherwise                                        = TyFun x (tyReduce ty) ty'
-tyReduce (TyLam x tn k ty)                                                   = TyLam x tn k (tyReduce ty)
-tyReduce (TyApp x ty ty') | isTypeValue ty                                   = TyApp x (tyReduce ty) (tyReduce ty')
-                          | otherwise                                        = TyApp x (tyReduce ty) ty'
-tyReduce x                                                                   = x
+tyReduce :: Type TyNameWithKind a -> NormalizedType TyNameWithKind a
+-- TODO: is this case correct - do we not need to reduce after substituting?
+tyReduce (TyApp _ (TyLam _ (TyNameWithKind (TyName (Name _ _ u))) _ ty) ty') = NormalizedType $ tySubstitute u ty' (getNormalizedType $ tyReduce ty) -- TODO: use the substitution monad here
+tyReduce (TyForall x tn k ty)                                                = NormalizedType $ TyForall x tn k (getNormalizedType $ tyReduce ty)
+tyReduce (TyFun x ty ty') | isTypeValue ty                                   = NormalizedType $ TyFun x (getNormalizedType $ tyReduce ty) (getNormalizedType $ tyReduce ty')
+                          | otherwise                                        = NormalizedType $ TyFun x (getNormalizedType $ tyReduce ty) ty'
+tyReduce (TyLam x tn k ty)                                                   = NormalizedType $ TyLam x tn k (getNormalizedType $ tyReduce ty)
+tyReduce (TyApp x ty ty') | isTypeValue ty                                   = NormalizedType $ TyApp x (getNormalizedType $ tyReduce ty) (getNormalizedType $ tyReduce ty')
+                          | otherwise                                        = NormalizedType $ TyApp x (getNormalizedType $ tyReduce ty) ty'
+tyReduce x                                                                   = NormalizedType x

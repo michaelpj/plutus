@@ -30,7 +30,7 @@ showTest = BSL.fromStrict . encodeUtf8 . debugText
 unit :: Quote (Type TyName ())
 unit = [plcType|(all a (type) (fun a a))|]
 
-one :: Quote (Term TyName Name ())
+one :: Quote (Term Type TyName Name ())
 one = [plcTerm|(abs a (type) (lam x a x))|]
 
 bool :: Quote (Type TyName ())
@@ -38,19 +38,19 @@ bool = do
     u <- unit
     [plcType|(all a (type) (fun (fun u a) (fun (fun u a) a))) |]
 
-true :: Quote (Term TyName Name ())
+true :: Quote (Term Type TyName Name ())
 true = do
     u <- unit
     o <- one
     [plcTerm|(abs a (type) (lam x (fun u a) (lam y (fun u a) [x o])))|]
 
-false :: Quote (Term TyName Name ())
+false :: Quote (Term Type TyName Name ())
 false = do
     u <- unit
     o <- one
     [plcTerm|(abs a (type) (lam x (fun u a) (lam y (fun u a) [y o])))|]
 
-free :: Quote (Term TyName Name ())
+free :: Quote (Term Type TyName Name ())
 free = do
   -- both occurences should be the same variable
   f <- TyVar () <$> freshTyName () "free"

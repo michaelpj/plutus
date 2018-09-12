@@ -34,7 +34,7 @@ getBuiltinNat = do
 -- |  '0' as a PLC term.
 --
 -- > wrap /\(r :: *) -> \(z : r) (f : nat -> r) -> z
-getBuiltinZero :: Quote (Term TyName Name ())
+getBuiltinZero :: Quote (Term Type TyName Name ())
 getBuiltinZero = do
     RecursiveType wrapNat nat <- holedToRecursive <$> getBuiltinNat
     r <- freshTyName () "r"
@@ -50,7 +50,7 @@ getBuiltinZero = do
 -- |  'succ' as a PLC term.
 --
 -- > \(n : nat) -> wrap /\(r :: *) -> \(z : r) (f : nat -> r) -> f n
-getBuiltinSucc :: Quote (Term TyName Name ())
+getBuiltinSucc :: Quote (Term Type TyName Name ())
 getBuiltinSucc = do
     RecursiveType wrapNat nat <- holedToRecursive <$> getBuiltinNat
     n <- freshName () "n"
@@ -71,7 +71,7 @@ getBuiltinSucc = do
 -- > /\(r :: *) -> \(f : r -> r) (z : r) ->
 -- >     fix {nat} {r} \(rec : nat -> r) (n : nat) ->
 -- >         unwrap n {r} z \(n' : nat) -> f (rec n')
-getBuiltinFoldrNat :: Quote (Term TyName Name ())
+getBuiltinFoldrNat :: Quote (Term Type TyName Name ())
 getBuiltinFoldrNat = do
     RecursiveType _ nat <- holedToRecursive <$> getBuiltinNat
     fix <- getBuiltinFix
@@ -99,7 +99,7 @@ getBuiltinFoldrNat = do
 -- > /\(r :: *) -> \(f : r -> r) ->
 -- >     fix {r} {nat -> r} \(rec : r -> nat -> r) (z : r) (n : nat) ->
 -- >         unwrap n {r} z (rec (f z))
-getBuiltinFoldNat :: Quote (Term TyName Name ())
+getBuiltinFoldNat :: Quote (Term Type TyName Name ())
 getBuiltinFoldNat = do
     RecursiveType _ nat <- holedToRecursive <$> getBuiltinNat
     fix <- getBuiltinFix

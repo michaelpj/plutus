@@ -58,7 +58,7 @@ genType = simpleRecursive nonRecursive recursive
           recursive = [funGen, applyGen]
           nonRecursive = [varGen, lamGen, forallGen, numGen]
 
-genTerm :: MonadGen m => m (Term TyName Name AlexPosn)
+genTerm :: MonadGen m => m (Term Type TyName Name AlexPosn)
 genTerm = simpleRecursive nonRecursive recursive
     where varGen = Var emptyPosn <$> genName
           absGen = TyAbs emptyPosn <$> genTyName <*> genKind <*> genTerm
@@ -71,9 +71,8 @@ genTerm = simpleRecursive nonRecursive recursive
           recursive = [absGen, instGen, lamGen, applyGen, unwrapGen, wrapGen]
           nonRecursive = [varGen, Constant emptyPosn <$> genBuiltin, errorGen]
 
-genProgram :: MonadGen m => m (Program TyName Name AlexPosn)
+genProgram :: MonadGen m => m (Program Type TyName Name AlexPosn)
 genProgram = Program emptyPosn <$> genVersion <*> genTerm
 
 emptyPosn :: AlexPosn
 emptyPosn = AlexPn 0 0 0
-

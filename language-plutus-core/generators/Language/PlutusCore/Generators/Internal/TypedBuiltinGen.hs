@@ -40,7 +40,7 @@ genLowerBytes range = BSL.fromStrict <$> Gen.utf8 range Gen.lower
 
 -- | A PLC 'Term' along with the correspoding Haskell value.
 data TermOf a = TermOf
-    { _termOfTerm  :: Term TyName Name ()  -- ^ The PLC term
+    { _termOfTerm  :: Term Type TyName Name ()  -- ^ The PLC term
     , _termOfValue :: a                    -- ^ The Haskell value.
     } deriving (Functor)
 -- This has an interesting @Apply@ instance (no pun intended).
