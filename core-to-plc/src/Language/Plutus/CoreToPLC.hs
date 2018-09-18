@@ -1,27 +1,4 @@
 {-# LANGUAGE ConstraintKinds   #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE ViewPatterns      #-}
-
-module Language.Plutus.CoreToPLC where
-
-import           Language.Plutus.CoreToPLC.Error
-import           Language.Plutus.CoreToPLC.Primitives     as Prims
-
-import qualified Class                                    as GHC
-import qualified GhcPlugins                               as GHC
-import qualified Kind                                     as GHC
-import qualified MkId                                     as GHC
-import qualified Pair                                     as GHC
-import qualified PrelNames                                as GHC
-import qualified PrimOp                                   as GHC
-import qualified TysPrim                                  as GHC
-
-import qualified Language.PlutusCore                      as PLC
-import           Language.PlutusCore.Quote
-import qualified Language.PlutusCore.StdLib.Data.Function as Function
 import qualified Language.PlutusCore.StdLib.Data.Unit     as Unit
 
 import qualified Language.Haskell.TH.Syntax               as TH
@@ -82,7 +59,7 @@ type TypeDefs = Map.Map GHC.Name (EvalState ())
 type ConvertingState = TypeDefs
 
 -- See Note [Scopes]
-type Converting m = (Monad m, MonadError ConvError m, MonadQuote m, MonadReader ConvertingContext m, MonadState ConvertingState m)
+type Converting m = (Monad m, MonadError ConvError m, MonadQuote m, MonadReader ConvertingContext m, MonadState ConvertingState m, GHC.MonadThings m)
 
 strToBs :: String -> BSL.ByteString
 strToBs = BSL.fromStrict . TE.encodeUtf8 . T.pack
@@ -708,6 +685,7 @@ convExpr e = withContextM (sdToTxt $ "Converting expr:" GHC.<+> GHC.ppr e) $ do
         GHC.Var (flip Map.lookup prims . GHC.varName -> Just term) -> liftQuote term
         -- the term we get must be closed - we don't resolve most references
         -- TODO: possibly relax this?
+        GHC.Var n@(GHC.idDetails -> GHC.VanillaId) -> GHC.lookupId
         GHC.Var n@(GHC.idDetails -> GHC.VanillaId) -> freeVariable $ "Variable:" GHC.<+> GHC.ppr n GHC.$+$ (GHC.ppr $ GHC.idDetails n)
         GHC.Var n -> unsupported $ "Variable" GHC.<+> GHC.ppr n GHC.$+$ (GHC.ppr $ GHC.idDetails n)
         GHC.Lit lit -> PLC.Constant () <$> convLiteral lit
