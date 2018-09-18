@@ -46,22 +46,9 @@ checkT (Wrap l tn ty t)  = Wrap l tn <$> typeValue ty <*> checkT t
 checkT (Unwrap l t)      = Unwrap l <$> checkT t
 checkT (LamAbs l n ty t) = LamAbs l n <$> typeValue ty <*> checkT t
 checkT (Apply l t t')    = Apply l <$> checkT t <*> checkT t'
-checkT (TyAbs l tn k t)  = TyAbs l tn k <$> termValue t
+checkT (TyAbs l tn k t)  = TyAbs l tn k <$> checkT t
 checkT t@Var{}           = pure t
 checkT t@Constant{}      = pure t
-
--- ensure a term is a value
-termValue :: Term tyname name a -> Either (NormalizationError tyname name a) (Term tyname name a)
-termValue (LamAbs l n ty t) = LamAbs l n <$> typeValue ty <*> checkT t
-termValue (Wrap l tn ty t)  = Wrap l tn <$> typeValue ty <*> termValue t
-termValue (TyAbs l tn k t)  = TyAbs l tn k <$> termValue t
-termValue t                 = builtinValue t
-
-builtinValue :: Term tyname name a -> Either (NormalizationError tyname name a) (Term tyname name a)
-builtinValue t@Constant{}    = pure t
-builtinValue (TyInst l t ty) = TyInst l <$> builtinValue t <*> pure ty
-builtinValue (Apply l t t')  = Apply l <$> builtinValue t <*> termValue t'
-builtinValue t               = Left $ BadTerm (termLoc t) t "builtin value"
 
 isTypeValue :: Type tyname a -> Bool
 isTypeValue = isRight . typeValue
