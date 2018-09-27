@@ -57,4 +57,5 @@ library
         bytestring -any,
         memory -any,
         core-to-plc -any,
-        cborg -any
+        cborg -any,
+        microlens -any
