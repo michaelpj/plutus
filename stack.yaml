@@ -9,6 +9,7 @@ packages:
 - plutus-th
 - plutus-use-cases
 - wallet-api
+- wallet-api-gen
 
 - location:
     git: https://github.com/input-output-hk/cardano-crypto

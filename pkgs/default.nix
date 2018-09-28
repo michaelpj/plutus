@@ -78288,7 +78288,6 @@ license = stdenv.lib.licenses.mit;
 , cryptonite
 , free
 , ghc
-, hedgehog
 , language-plutus-core
 , memory
 , mmorph
@@ -78297,8 +78296,6 @@ license = stdenv.lib.licenses.mit;
 , plutus-th
 , prettyprinter
 , stdenv
-, tasty
-, tasty-hedgehog
 , template-haskell
 , text
 , transformers
@@ -78328,6 +78325,37 @@ template-haskell
 text
 transformers
 ];
+doHaddock = false;
+description = "Wallet API";
+license = stdenv.lib.licenses.bsd3;
+
+}) {};
+"wallet-api-gen" = callPackage
+({
+  mkDerivation
+, base
+, containers
+, hedgehog
+, stdenv
+, tasty
+, tasty-hedgehog
+, text
+, wallet-api
+}:
+mkDerivation {
+
+pname = "wallet-api-gen";
+version = "0.1.0.0";
+src = ./../wallet-api-gen;
+libraryHaskellDepends = [
+base
+containers
+hedgehog
+tasty
+tasty-hedgehog
+text
+wallet-api
+];
 testHaskellDepends = [
 base
 containers
@@ -78335,9 +78363,10 @@ hedgehog
 tasty
 tasty-hedgehog
 text
+wallet-api
 ];
 doHaddock = false;
-description = "Wallet API";
+description = "Hedgehog generators for wallet-api";
 license = stdenv.lib.licenses.bsd3;
 
 }) {};

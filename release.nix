@@ -22,6 +22,7 @@ let
     plutus-th = supportedSystems;
     plutus-use-cases = supportedSystems;
     wallet-api = supportedSystems;
+    wallet-api-gen = supportedSystems;
     # don't need to build the spec on anything other than one platform
     plutus-core-spec = [ "x86_64-linux" ];
   };

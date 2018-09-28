@@ -60,6 +60,7 @@ let
       plutus-th = doHaddockHydra (addRealTimeTestLogs (filterSource super.plutus-th));
       plutus-use-cases = addRealTimeTestLogs (filterSource super.plutus-use-cases);
       wallet-api = doHaddockHydra (addRealTimeTestLogs (filterSource super.wallet-api));
+      wallet-api-gen = doHaddockHydra (addRealTimeTestLogs (filterSource super.wallet-api-gen));
     };
   };
   other = rec {
