@@ -36,14 +36,13 @@ getBuiltinConst = do
 -- | @Self@ as a PLC type.
 --
 -- > \(a :: *) -> fix \(self :: *) -> self -> a
-getBuiltinSelf :: Quote (HoledType TyName ())
+getBuiltinSelf :: Quote (Type TyName ())
 getBuiltinSelf = do
     a    <- freshTyName () "a"
     self <- freshTyName () "self"
     return
-        . HoledType self $ \hole ->
-          TyLam () a (Type ())
-        . hole
+        . TyFix () self
+        . TyLam () a (Type ())
         . TyFun () (TyVar () self)
         $ TyVar () a
 
@@ -55,11 +54,9 @@ getBuiltinUnroll = do
     self <- getBuiltinSelf
     a <- freshTyName () "a"
     s <- freshName () "s"
-    let RecursiveType _ selfA =
-            holedToRecursive . holedTyApp self $ TyVar () a
     return
         . TyAbs () a (Type ())
-        . LamAbs () s selfA
+        . LamAbs () s (TyApp () self (TyVar () a))
         . Apply () (Unwrap () $ Var () s)
         $ Var () s
 
@@ -81,8 +78,6 @@ getBuiltinFix = do
     x <- freshName () "x"
     let funAB = TyFun () (TyVar () a) $ TyVar () b
         unrollFunAB u = TyInst () u funAB
-        RecursiveType wrapSelfFunAB selfFunAB =
-            holedToRecursive $ holedTyApp self funAB
     return
         . TyAbs () a (Type ())
         . TyAbs () b (Type ())

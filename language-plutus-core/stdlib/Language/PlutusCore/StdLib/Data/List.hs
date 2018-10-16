@@ -14,25 +14,23 @@ import           Language.PlutusCore.MkPlc
 import           Language.PlutusCore.Name
 import           Language.PlutusCore.Quote
 import           Language.PlutusCore.StdLib.Data.Function
-import           Language.PlutusCore.StdLib.Type
 import           Language.PlutusCore.Type
 import           PlutusPrelude                            hiding (list)
 
 -- | @List@ as a PLC type.
 --
--- > \(a :: *). fix \(list :: *) -> all (r :: *). r -> (a -> list -> r) -> r
-getBuiltinList :: Quote (HoledType TyName ())
+-- > fix \(list :: * -> *) -> \(a :: *) -> all (r :: *). r -> (a -> list a -> r) -> r
+getBuiltinList :: Quote (Type TyName ())
 getBuiltinList = do
     a    <- freshTyName () "a"
     list <- freshTyName () "list"
     r    <- freshTyName () "r"
     return
-        . HoledType list $ \hole ->
-          TyLam () a (Type ())
-        . hole
+        . TyFix () list
+        . TyLam () a (Type ())
         . TyForall () r (Type ())
         . TyFun () (TyVar () r)
-        . TyFun () (TyFun () (TyVar () a) . TyFun () (TyVar () list) $ TyVar () r)
+        . TyFun () (TyFun () (TyVar () a) . TyFun () (TyApp () (TyVar () list) (TyVar () a)) $ TyVar () r)
         $ TyVar () r
 
 -- |  '[]' as a PLC term.
@@ -40,47 +38,41 @@ getBuiltinList = do
 -- >  /\(a :: *) -> wrap /\(r :: *) -> \(z : r) (f : a -> list a -> r) -> z
 getBuiltinNil :: Quote (Term TyName Name ())
 getBuiltinNil = do
-    list <- getBuiltinList
+    (TyFix () list listF) <- getBuiltinList
     a <- freshTyName () "a"
     r <- freshTyName () "r"
     z <- freshName () "z"
     f <- freshName () "f"
-    let RecursiveType wrapListA listA =
-            holedToRecursive . holedTyApp list $ TyVar () a
     return
         . TyAbs () a (Type ())
-        . wrapListA
+        . Wrap () list (TyApp () listF (TyVar () a))
         . TyAbs () r (Type ())
         . LamAbs () z (TyVar () r)
-        . LamAbs () f (TyFun () (TyVar () a) . TyFun () listA $ TyVar () r)
+        . LamAbs () f (TyFun () (TyVar () a) . TyFun () (TyApp () (TyVar() list) (TyVar () a)) $ TyVar () r)
         $ Var () z
 
 -- |  '(:)' as a PLC term.
 --
 -- > /\(a :: *) -> \(x : a) (xs : list a) ->
 -- >     wrap /\(r :: *) -> \(z : r) (f : a -> list a -> r) -> f x xs
---
--- @listA@ appears twice in types in the term,
--- so this is not really a definition with unique names.
 getBuiltinCons :: Quote (Term TyName Name ())
 getBuiltinCons = do
-    list <- getBuiltinList
+    list1 <- getBuiltinList
+    (TyFix () list listF) <- getBuiltinList
     a  <- freshTyName () "a"
     x  <- freshName () "x"
     xs <- freshName () "xs"
     r  <- freshTyName () "r"
     z  <- freshName () "z"
     f  <- freshName () "f"
-    let RecursiveType wrapListA listA =
-            holedToRecursive . holedTyApp list $ TyVar () a
     return
         . TyAbs () a (Type ())
         . LamAbs () x (TyVar () a)
-        . LamAbs () xs listA
-        . wrapListA
+        . LamAbs () xs list1
+        . Wrap () list (TyApp () listF (TyVar () a))
         . TyAbs () r (Type ())
         . LamAbs () z (TyVar () r)
-        . LamAbs () f (TyFun () (TyVar () a) . TyFun () listA $ TyVar () r)
+        . LamAbs () f (TyFun () (TyVar () a) . TyFun () (TyApp () (TyVar () list) (TyVar () a)) $ TyVar () r)
         $ mkIterApp (Var () f)
           [ Var () x
           , Var () xs
@@ -96,9 +88,11 @@ getBuiltinCons = do
 -- so this is not really a definition with unique names.
 getBuiltinFoldrList :: Quote (Term TyName Name ())
 getBuiltinFoldrList = do
-    list <- getBuiltinList
-    fix  <- getBuiltinFix
     a   <- freshTyName () "a"
+    list <- getBuiltinList
+    let listA = TyApp () list (TyVar () a)
+
+    fix  <- getBuiltinFix
     r   <- freshTyName () "r"
     f   <- freshName () "f"
     z   <- freshName () "z"
@@ -106,8 +100,6 @@ getBuiltinFoldrList = do
     xs  <- freshName () "xs"
     x   <- freshName () "x"
     xs' <- freshName () "xs'"
-    let RecursiveType _ listA =
-            holedToRecursive . holedTyApp list $ TyVar () a
     return
         . TyAbs () a (Type ())
         . TyAbs () r (Type ())
@@ -134,9 +126,11 @@ getBuiltinFoldrList = do
 -- so this is not really a definition with unique names.
 getBuiltinFoldList :: Quote (Term TyName Name ())
 getBuiltinFoldList = do
-    list <- getBuiltinList
-    fix  <- getBuiltinFix
     a   <- freshTyName () "a"
+    list <- getBuiltinList
+    let listA = TyApp () list (TyVar () a)
+
+    fix  <- getBuiltinFix
     r   <- freshTyName () "r"
     f   <- freshName () "f"
     rec <- freshName () "rec"
@@ -144,8 +138,6 @@ getBuiltinFoldList = do
     xs  <- freshName () "xs"
     x   <- freshName () "x"
     xs' <- freshName () "xs'"
-    let RecursiveType _ listA =
-            holedToRecursive . holedTyApp list $ TyVar () a
     return
         . TyAbs () a (Type ())
         . TyAbs () r (Type ())
