@@ -85,6 +85,7 @@ test-suite core-to-plc-plugin
     hs-source-dirs: test
     other-modules:
         IllTyped
+        External
     default-language: Haskell2010
     build-depends:
         base >=4.9 && <5,

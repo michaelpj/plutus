@@ -11,6 +11,7 @@
 module Main (main) where
 
 import           IllTyped
+import           External
 
 import           Common
 import           PlutusPrelude                            (bsToStr, strToBs)
@@ -73,6 +74,7 @@ tests = testGroup "conversion" <$> sequence [
   , datat
   , recursiveTypes
   , recursion
+  , externalFunctions
   , errors
   , generics
   ]
@@ -288,7 +290,6 @@ recursiveTypes = testNested "recursiveTypes" [
 
 recursion :: TestNested
 recursion = testNested "recursiveFunctions" [
-    -- currently broken, will come back to this later
     golden "fib" fib
     , goldenEval "fib4" [ fib, plc @"4" (4::Int) ]
     , golden "sum" sumDirect
@@ -306,6 +307,14 @@ fib = plc @"fib" (
     let fib :: Int -> Int
         fib n = if n == 0 then 0 else if n == 1 then 1 else fib(n-1) + fib(n-2)
     in fib)
+
+externalFunctions :: TestNested
+externalFunctions = testNested "externalFunctions" [
+    golden "externalAnd" externalAnd
+    ]
+
+externalAnd :: PlcCode
+externalAnd = plc (\(x::Bool) (y::Bool) -> myAnd x y)
 
 errors :: TestNested
 errors = testNested "errors" [

@@ -36,8 +36,9 @@ import           Control.Monad.State
 import qualified Data.ByteString.Lazy                           as BSL
 import qualified Data.List.NonEmpty                             as NE
 import qualified Data.Map                                       as Map
-
 import           Data.List                                      (elemIndex)
+import Lens.Micro
+
 
 {- Note [System FC and System FW]
 Haskell uses system FC, which includes type equalities and coercions.
@@ -87,6 +88,22 @@ isPrimitiveWrapper i = case GHC.idDetails i of
 isPrimitiveDataCon :: GHC.DataCon -> Bool
 isPrimitiveDataCon dc = dc == GHC.intDataCon
 
+hoistDef :: Converting m => GHC.Var -> GHC.CoreExpr -> m PLCTerm
+hoistDef v e =
+    let
+        name = GHC.getName v
+    in withContextM (sdToTxt $ "Converting definition of:" GHC.<+> GHC.ppr v) $ do
+        defs <- gets csTermDefs
+        case Map.lookup name defs of
+            Just (d, _) -> pure $ tdTerm d
+            Nothing -> do
+                e' <- convExpr e
+                var <- convVarFresh v
+                let fvs = GHC.exprFreeVarsList e
+                let deps = fmap GHC.getName fvs
+                let def = Def Abstract var e'
+                modify $ over termDefs (Map.insert name (def, deps))
+                pure $ tdTerm def
 
 {- Note [Recursive lets]
 We need to define these with a fixpoint. We can derive a fixpoint operator for values
@@ -162,10 +179,11 @@ convExpr e = withContextM (sdToTxt $ "Converting expr:" GHC.<+> GHC.ppr e) $ do
 
                 pure $ constrs !! index
         GHC.Var (flip Map.lookup prims . GHC.getName -> Just term) -> liftQuote term
-        -- the term we get must be closed - we don't resolve most references
-        -- TODO: possibly relax this?
-        GHC.Var n@(GHC.idDetails -> GHC.VanillaId) -> throwSd FreeVariableError $ "Variable:" GHC.<+> GHC.ppr n GHC.$+$ (GHC.ppr $ GHC.idDetails n)
-        GHC.Var n -> throwSd UnsupportedError $ "Variable" GHC.<+> GHC.ppr n GHC.$+$ (GHC.ppr $ GHC.idDetails n)
+        -- look at unfoldings
+        GHC.Var n@(GHC.idInfo -> idInfo) -> case GHC.unfoldingInfo idInfo of
+            GHC.CoreUnfolding{GHC.uf_tmpl=unfolding} -> hoistDef n unfolding
+            GHC.NoUnfolding -> throwSd FreeVariableError $ "Variable:" GHC.<+> GHC.ppr n GHC.<+> "must be INLINABLE to be used"
+            x -> throwSd UnsupportedError $ "Variable:" GHC.<+> GHC.ppr n GHC.<+> "has unsupported kind of unfolding" GHC.$+$ GHC.ppr x
         GHC.Lit lit -> PLC.Constant () <$> convLiteral lit
         -- arg can be a type here, in which case it's a type instantiation
         GHC.App l (GHC.Type t) -> PLC.TyInst () <$> convExpr l <*> convType t

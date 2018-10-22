@@ -1,0 +1,47 @@
+(program 1.0.0
+  [
+    (lam
+      myAnd_23
+      (fun (all Bool_matchOut_1 (type) (fun Bool_matchOut_1 (fun Bool_matchOut_1 Bool_matchOut_1))) (fun (all Bool_matchOut_1 (type) (fun Bool_matchOut_1 (fun Bool_matchOut_1 Bool_matchOut_1))) (all Bool_matchOut_1 (type) (fun Bool_matchOut_1 (fun Bool_matchOut_1 Bool_matchOut_1)))))
+      myAnd_23
+    )
+    (lam
+      x_14
+      (all Bool_matchOut_1 (type) (fun Bool_matchOut_1 (fun Bool_matchOut_1 Bool_matchOut_1)))
+      (lam
+        y_15
+        (all Bool_matchOut_1 (type) (fun Bool_matchOut_1 (fun Bool_matchOut_1 Bool_matchOut_1)))
+        [
+          [
+            [
+              {
+                [
+                  (lam
+                    x_9
+                    (all Bool_matchOut_1 (type) (fun Bool_matchOut_1 (fun Bool_matchOut_1 Bool_matchOut_1)))
+                    x_9
+                  )
+                  x_14
+                ]
+                (fun (all a_16 (type) (fun a_16 a_16)) (all Bool_matchOut_1 (type) (fun Bool_matchOut_1 (fun Bool_matchOut_1 Bool_matchOut_1))))
+              }
+              (lam
+                thunk_17
+                (all a_18 (type) (fun a_18 a_18))
+                (abs
+                  Bool_matchOut_3
+                  (type)
+                  (lam
+                    True_4 Bool_matchOut_3 (lam False_5 Bool_matchOut_3 True_4)
+                  )
+                )
+              )
+            ]
+            (lam thunk_19 (all a_20 (type) (fun a_20 a_20)) y_15)
+          ]
+          (abs a_21 (type) (lam x_22 a_21 x_22))
+        ]
+      )
+    )
+  ]
+)
