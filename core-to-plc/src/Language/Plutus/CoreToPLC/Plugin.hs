@@ -127,7 +127,7 @@ pluginPass :: PluginOptions -> GHC.ModGuts -> GHC.CoreM GHC.ModGuts
 pluginPass opts guts = qqMarkerName >>= \case
     -- nothing to do
     Nothing -> pure guts
-    Just name -> GHC.bindsOnlyPass (mapM $ convertMarkedExprsBind opts name) guts
+    Just name -> GHC.bindsOnlyPass (mapM $ \b -> do { GHC.debugTraceMsg (GHC.ppr b); convertMarkedExprsBind opts name b; } ) guts
 
 {- Note [Hooking in the plugin]
 Working out what to process and where to put it is tricky. We are going to turn the result in

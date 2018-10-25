@@ -180,7 +180,7 @@ convExpr e = withContextM (sdToTxt $ "Converting expr:" GHC.<+> GHC.ppr e) $ do
                 pure $ constrs !! index
         GHC.Var (flip Map.lookup prims . GHC.getName -> Just term) -> liftQuote term
         -- look at unfoldings
-        GHC.Var n@(GHC.idInfo -> idInfo) -> case GHC.unfoldingInfo idInfo of
+        GHC.Var n -> case GHC.realIdUnfolding n of
             GHC.CoreUnfolding{GHC.uf_tmpl=unfolding} -> hoistDef n unfolding
             GHC.NoUnfolding -> throwSd FreeVariableError $ "Variable:" GHC.<+> GHC.ppr n GHC.<+> "must be INLINABLE to be used"
             x -> throwSd UnsupportedError $ "Variable:" GHC.<+> GHC.ppr n GHC.<+> "has unsupported kind of unfolding" GHC.$+$ GHC.ppr x

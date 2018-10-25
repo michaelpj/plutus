@@ -311,10 +311,11 @@ fib = plc @"fib" (
 externalFunctions :: TestNested
 externalFunctions = testNested "externalFunctions" [
     golden "externalAnd" externalAnd
+    , golden "externalNand" externalNand
     ]
 
 externalAnd :: PlcCode
-externalAnd = plc (\(x::Bool) (y::Bool) -> myAnd x y)
+externalAnd = plc @"externalAnd" (\(x::Bool) (y::Bool) -> myAnd x y)
 
 errors :: TestNested
 errors = testNested "errors" [
