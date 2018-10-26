@@ -11,7 +11,6 @@
 module Main (main) where
 
 import           IllTyped
-import           External
 
 import           Common
 import           PlutusPrelude                            (bsToStr, strToBs)
@@ -19,6 +18,7 @@ import           PlutusPrelude                            (bsToStr, strToBs)
 import qualified Language.Plutus.CoreToPLC.Builtins       as Builtins
 import           Language.Plutus.CoreToPLC.Plugin
 import           Language.Plutus.Lift
+import qualified Language.Plutus.Prelude as PP
 
 import           Language.PlutusCore
 import           Language.PlutusCore.Evaluation.CkMachine
@@ -311,11 +311,11 @@ fib = plc @"fib" (
 externalFunctions :: TestNested
 externalFunctions = testNested "externalFunctions" [
     golden "externalAnd" externalAnd
-    , golden "externalNand" externalNand
+    --, golden "externalNand" externalNand
     ]
 
 externalAnd :: PlcCode
-externalAnd = plc @"externalAnd" (\(x::Bool) (y::Bool) -> myAnd x y)
+externalAnd = plc @"externalAnd" (\(x::Bool) (y::Bool) -> x PP.&& y)
 
 errors :: TestNested
 errors = testNested "errors" [
