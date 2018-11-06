@@ -19,7 +19,10 @@ import           Data.Functor.Foldable.Monadic
 import           Language.PlutusCore.Error
 import           Language.PlutusCore.Name
 import           Language.PlutusCore.Type
+import           Language.PlutusCore.Annotations
 import           PlutusPrelude
+
+import Lens.Micro.Extras
 
 -- | Ensure that all terms and types are well-formed accoring to Fig. 2
 checkProgram :: (MonadError (Error a) m) => Program TyName Name a -> m ()
@@ -64,7 +67,7 @@ builtinValue :: Term tyname name a -> Either (NormalizationError tyname name a) 
 builtinValue t@Constant{}    = pure t
 builtinValue (TyInst l t ty) = TyInst l <$> builtinValue t <*> pure ty
 builtinValue (Apply l t t')  = Apply l <$> builtinValue t <*> termValue t'
-builtinValue t               = Left $ BadTerm (termLoc t) t "builtin value"
+builtinValue t               = Left $ BadTerm (view annotation t) t "builtin value"
 
 isTypeValue :: Type tyname a -> Bool
 isTypeValue = isRight . typeValue
@@ -95,4 +98,4 @@ neutralType = cataM aM where
     isNeutralType TyAppF{} = True
     isNeutralType _        = False
 
-    tyLocF = tyLoc . embed
+    tyLocF = view annotation . embed

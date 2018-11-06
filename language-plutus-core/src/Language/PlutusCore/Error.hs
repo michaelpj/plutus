@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
 module Language.PlutusCore.Error
@@ -17,6 +18,7 @@ module Language.PlutusCore.Error
     , convertError
     ) where
 
+import           Language.PlutusCore.Annotations
 import           Language.PlutusCore.Lexer.Type
 import           Language.PlutusCore.Name
 import           Language.PlutusCore.Pretty
@@ -25,6 +27,8 @@ import           PlutusPrelude
 
 import qualified Data.Text                          as T
 import           Data.Text.Prettyprint.Doc.Internal (Doc (Text))
+
+import           Lens.Micro.Extras
 
 -- | An error encountered during parsing.
 data ParseError a
@@ -116,12 +120,12 @@ instance (Pretty a, PrettyBy config (Type tyname a), PrettyBy config (Term tynam
         "is not a" <+> pretty expct <> "."
 
 instance (Pretty a, HasPrettyConfigName config) => PrettyBy config (RenameError a) where
-    prettyBy config (UnboundVar n@(Name l _ _)) =
-        "Error at" <+> pretty l <>
+    prettyBy config (UnboundVar n) =
+        "Error at" <+> pretty (view @a annotation n) <>
         ". Variable" <+> prettyBy config n <+>
         "is not in scope."
-    prettyBy config (UnboundTyVar n@(TyName (Name l _ _))) =
-        "Error at" <+> pretty l <>
+    prettyBy config (UnboundTyVar n) =
+        "Error at" <+> pretty (view @a annotation n) <>
         ". Type variable" <+> prettyBy config n <+>
         "is not in scope."
 

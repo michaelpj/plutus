@@ -33,6 +33,7 @@ flag development
 library
     exposed-modules:
         Language.PlutusCore
+        Language.PlutusCore.Annotations
         Language.PlutusCore.Quote
         Language.PlutusCore.MkPlc
         Language.PlutusCore.TH
