@@ -24,7 +24,6 @@ import qualified Wallet.Generators                                   as Gen
 import qualified Language.Plutus.Runtime                             as Runtime
 import           Language.Plutus.TH
                           (plutus)
-import           Language.Marlowe.Semantics
 import           Language.Marlowe.Compiler
 import qualified Wallet.UTXO                                         as UTXO
 import qualified Debug.Trace as Debug
@@ -44,7 +43,12 @@ marlowe = property $ do
     (result, st) <- forAll $ Gen.runTraceOn model $ do
         -- Init a contract
         let w = Wallet 1
-        -- walletAction w (contribute c ds v)
+        blockchainActions >>= walletsNotifyBlock [w]
+        txs <- walletAction w (createContract Null 1)
+        blockchainActions >>= walletsNotifyBlock [w]
+        let txOutRef = snd . head . filter (isPayToScriptOut . fst) . txOutRefs $ head txs
+        Debug.traceM $ show txs
+        -- walletAction w ()
         return ()
     Hedgehog.assert (True)
 
