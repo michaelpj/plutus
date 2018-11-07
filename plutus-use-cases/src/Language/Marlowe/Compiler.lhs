@@ -18,6 +18,7 @@
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE StrictData    #-}
 {-# LANGUAGE TemplateHaskell   #-}
+{-# OPTIONS -fplugin=Language.Plutus.CoreToPLC.Plugin -fplugin-opt Language.Plutus.CoreToPLC.Plugin:dont-typecheck #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 module Language.Marlowe.Compiler where
@@ -38,7 +39,7 @@ import           Wallet.API                 (EventTrigger (..), Range (..), Wall
                                              pubKey, signAndSubmit)
 
 import           Wallet.UTXO                        (Address', DataScript (..), TxOutRef', Validator (..), scriptTxIn,
-                                                        scriptTxOut, applyScript)
+                                                        scriptTxOut, applyScript, emptyValidator, unitData)
 import qualified Wallet.UTXO                        as UTXO
 
 import qualified Language.Plutus.Runtime.TH         as TH
@@ -49,7 +50,9 @@ import           Prelude                            (Int, Bool (..), Num (..), S
 \end{code}
 
 \section{Marlowe}
+
 \begin{code}
+
 data Contract = Null
               | CommitCash IdentCC PubKey Value Timeout Timeout Contract Contract
               | Pay IdentPay Person Person Value Timeout Contract
@@ -58,6 +61,7 @@ data Contract = Null
 \end{code}
 
 Assumptions
+
 \begin{itemize}
 \item Fees are payed by transaction issues. For simplicity, assume zero fees.
 \item PubKey is actually a hash of a public key
@@ -70,7 +74,9 @@ example = CommitCash (IdentCC 1) (PubKey 1) (Value 100) (Block 200) (Block 256)
             Null
 \end{spec}
 
+
 \section{Questions}
+
 
 Q: Should we put together the first CommitCash with the Contract setup? Contract setup would still require some money.
 
@@ -94,6 +100,7 @@ Q: How to distinguish different instances of contracts? Is it a thing?
 \item No offchain messages (`internal messages` in Ethereum)? How to call a function?
 Answer: currently only via transaction
 \end{itemize}
+
 
 \section{Contract Initialization} \label{ContractInit}
 
@@ -142,6 +149,8 @@ squarednode/.style={rectangle, draw=orange!60, fill=orange!5, very thick, minimu
 \draw[->,thick] (commitcash.south) -- (txOut2.west);
 \end{tikzpicture}
 
+
+
 \section{Semantics}
 
 Contract execution is a chain of transactions, where contract state is passed through dataScript,
@@ -161,6 +170,7 @@ Possibly allow redeem of cash spent by mistake on this address? How?
 
 If we have all chain of txs of a contract we could allow redeems of mistakenly put money,
 and that would allow a contract creator to withdraw the contract initialization payment. \ref{ContractInit}
+
 
 \subsection{CommitCash}
 
@@ -232,7 +242,7 @@ type Cash = Value
 type Person      = PubKey
 
 
-contractPlcCode = $(plutus [| CommitCash (IdentCC 1) (PubKey 1) 123 100 200 Null Null |])
+-- contractPlcCode = $(plutus [| CommitCash (IdentCC 1) (PubKey 1) 123 100 200 Null Null |])
 
 -- Commitments, choices and payments are all identified by identifiers.
 -- Their types are given here. In a more sophisticated model these would
@@ -314,75 +324,12 @@ instance TypeablePlc IdentCC
 \end{code}
 
 \begin{code}
-marloweValidator :: Validator
-marloweValidator =  Validator result where
-    result = UTXO.fromPlcCode $(plutus [| \(redeemer :: CC) (pendingTx :: PendingTx ValidatorHash) (dataScript :: MarloweState) ->
-        let
-            MarloweState state contract = dataScript
-
-            command = redeemer
-
-            txInputs :: [PendingTxIn]
-            txInputs = pendingTxInputs pendingTx
-
-            txOutputs :: [PendingTxOut]
-            txOutputs = pendingTxOutputs pendingTx
-
-            input :: Input
-            input = case command of
-                CC{} -> Input (Set.singleton command) Set.empty Map.empty
-
-            blockHeight = pendingTxBlockHeight pendingTx
-
-            os = OS { blockNumber = fromIntegral blockHeight }
-
-            validInput = True -- TODO check inputs
-
-            infixr 3 &&
-            (&&) :: Bool -> Bool -> Bool
-            (&&) = $(TH.and)
-
-            step :: Input -> State -> Contract -> OS -> (State,Contract,AS)
-            step _ st Null _ = (st, Null, [])
-            step _ st _ _    = (st, Null, [])
-
-            stepAll :: Input -> State -> Contract -> OS -> (State, Contract, AS)
-            stepAll com st con os = stepAllAux com st con os []
-
-            stepAllAux :: Input -> State -> Contract -> OS -> AS -> (State, Contract, AS)
-            stepAllAux com st con os ac
-                | (nst == st) && (ncon == con) && List.null nac = (st, con, ac)
-                | otherwise = stepAllAux com nst ncon os (nac ++ ac)
-                where
-                    (nst, ncon, nac) = step com st con os
-
-            -- Defines if expiry time ee has come if current time is e
-            expired :: Timeout -> Timeout -> Bool
-            expired e ee = ee <= e
-
-            (newState, newContract, actions) = stepAll input state contract os
-
-            goodAction action = case action of
-                SuccessfulPay{} -> True
-                ExpiredPay{} -> False
-                FailedPay{} -> False
-                SuccessfulCommit{} -> True
-                CommitRedeemed{} -> True
-                ExpiredCommitRedeemed{} -> True
-                DuplicateRedeem{} -> False
-                ChoiceMade{} -> True
-
-            areAllActionsGood = List.all goodAction actions
-
-            validOutput = let
-                    (PendingTxOut value (Just (validatorHash, dataScriptHash)) DataTxOut: _) = txOutputs
-                    -- TODO check validatorHash, should be a constant
-                    -- evaluate dataScript and check its hash
-                in True
-
-            isValid = validInput && validOutput && areAllActionsGood
-        in if isValid then () else Builtins.error ()
+marloweSimpleValidator =  Validator result where
+    result = UTXO.fromPlcCode $(plutus [| \(redeemer :: Int) (pendingTx :: PendingTx ValidatorHash) (dataScript :: ()) ->
+            True
         |])
+
+
 
 createContract :: (
     MonadError WalletAPIError m,
@@ -393,13 +340,14 @@ createContract :: (
 createContract contract value = do
     _ <- if value <= 0 then otherError "Must contribute a positive value" else pure ()
 
-    let ds = DataScript $ UTXO.fromPlcCode $(plutus [|MarloweState emptyState contract|])
+    let ds = DataScript $ UTXO.fromPlcCode $(plutus [|()|])
+    -- let ds = unitData
 
     -- TODO: Remove duplicate definition of Value
     --       (Value = Integer in Haskell land but Value = Int in PLC land)
     let v' = UTXO.Value $ fromIntegral value
     (payment, change) <- createPaymentWithChange v'
-    let o = scriptTxOut v' marloweValidator ds
+    let o = scriptTxOut v' marloweSimpleValidator ds
 
     signAndSubmit payment [o, change]
 
