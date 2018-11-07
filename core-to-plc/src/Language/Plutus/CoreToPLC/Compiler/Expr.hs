@@ -5,7 +5,7 @@
 {-# LANGUAGE ViewPatterns      #-}
 
 -- | Functions for compiling GHC Core expressions into Plutus Core terms.
-module Language.Plutus.CoreToPLC.Compiler.Expr (convExpr, convExprWithDefs) where
+module Language.Plutus.CoreToPLC.Compiler.Expr (convExpr, convExprWithDefs, convDataConRef) where
 
 import           Language.Plutus.CoreToPLC.Compiler.Binders
 import           Language.Plutus.CoreToPLC.Compiler.Builtins
@@ -35,7 +35,6 @@ import           Control.Monad.State
 
 import qualified Data.ByteString.Lazy                           as BSL
 import qualified Data.List.NonEmpty                             as NE
-import qualified Data.Map                                       as Map
 
 import           Data.List                                      (elemIndex)
 
@@ -87,6 +86,20 @@ isPrimitiveWrapper i = case GHC.idDetails i of
 isPrimitiveDataCon :: GHC.DataCon -> Bool
 isPrimitiveDataCon dc = dc == GHC.intDataCon
 
+convDataConRef :: Converting m => GHC.DataCon -> m PLCTerm
+convDataConRef dc =
+    let
+        tc = GHC.dataConTyCon dc
+    in do
+        dcs <- getDataCons tc
+        constrs <- getConstructors tc
+
+        -- TODO: this is inelegant
+        index <- case elemIndex dc dcs of
+            Just i  -> pure i
+            Nothing -> throwPlain $ ConversionError "Data constructor not in the type constructor's list of constructors!"
+
+        pure $ constrs !! index
 
 {- Note [Recursive lets]
 We need to define these with a fixpoint. We can derive a fixpoint operator for values
@@ -115,7 +128,7 @@ into this:
 convExpr :: Converting m => GHC.CoreExpr -> m PLCTerm
 convExpr e = withContextM (sdToTxt $ "Converting expr:" GHC.<+> GHC.ppr e) $ do
     -- See Note [Scopes]
-    ConvertingContext {ccPrimTerms=prims, ccScopes=stack} <- ask
+    ConvertingContext {ccScopes=stack} <- ask
     let top = NE.head stack
     case e of
         -- See Note [Literals]
@@ -143,29 +156,20 @@ convExpr e = withContextM (sdToTxt $ "Converting expr:" GHC.<+> GHC.ppr e) $ do
             -- last arg is typeclass dictionary
             _ -> convNumMethod (GHC.getName n)
         -- void# - values of type void get represented as error, since they should be unreachable
-        GHC.Var n | n == GHC.voidPrimId || n == GHC.voidArgId -> liftQuote errorFunc
+        GHC.Var n | n == GHC.voidPrimId || n == GHC.voidArgId -> errorFunc
         -- locally bound vars
         GHC.Var (lookupName top . GHC.getName -> Just (PLC.VarDecl _ name _)) -> pure $ PLC.Var () name
         -- Special kinds of id
         GHC.Var (GHC.idDetails -> GHC.PrimOpId po) -> convPrimitiveOp po
-        GHC.Var (GHC.idDetails -> GHC.DataConWorkId dc) ->
-            let
-                tc = GHC.dataConTyCon dc
-            in do
-                dcs <- getDataCons tc
-                constrs <- getConstructors tc
-
-                -- TODO: this is inelegant
-                index <- case elemIndex dc dcs of
-                    Just i  -> pure i
-                    Nothing -> throwPlain $ ConversionError "Data constructor not in the type constructor's list of constructors!"
-
-                pure $ constrs !! index
-        GHC.Var (flip Map.lookup prims . GHC.getName -> Just term) -> liftQuote term
-        -- the term we get must be closed - we don't resolve most references
-        -- TODO: possibly relax this?
-        GHC.Var n@(GHC.idDetails -> GHC.VanillaId) -> throwSd FreeVariableError $ "Variable:" GHC.<+> GHC.ppr n GHC.$+$ (GHC.ppr $ GHC.idDetails n)
-        GHC.Var n -> throwSd UnsupportedError $ "Variable" GHC.<+> GHC.ppr n GHC.$+$ (GHC.ppr $ GHC.idDetails n)
+        GHC.Var (GHC.idDetails -> GHC.DataConWorkId dc) -> convDataConRef dc
+        GHC.Var n -> do
+            -- Defined names, including builtin names
+            maybeDef <- lookupTerm (GHC.getName n)
+            case maybeDef of
+                Just term -> pure term
+                -- the term we get must be closed - we don't resolve most references
+                -- TODO: possibly relax this?
+                Nothing -> throwSd FreeVariableError $ "Variable" GHC.<+> GHC.ppr n GHC.$+$ (GHC.ppr $ GHC.idDetails n)
         GHC.Lit lit -> PLC.Constant () <$> convLiteral lit
         -- arg can be a type here, in which case it's a type instantiation
         GHC.App l (GHC.Type t) -> PLC.TyInst () <$> convExpr l <*> convType t
@@ -265,6 +269,8 @@ convExpr e = withContextM (sdToTxt $ "Converting expr:" GHC.<+> GHC.ppr e) $ do
 
 convExprWithDefs :: Converting m => GHC.CoreExpr -> m PLCTerm
 convExprWithDefs e = do
+    defineBuiltinTypes
+    defineBuiltinTerms
     converted <- convExpr e
     ConvertingState{csTypeDefs=typeDs, csTermDefs=termDs} <- get
     wrapWithDefs typeDs termDs converted

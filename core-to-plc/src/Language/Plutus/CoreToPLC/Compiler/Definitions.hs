@@ -7,6 +7,7 @@ module Language.Plutus.CoreToPLC.Compiler.Definitions where
 
 import           Language.Plutus.CoreToPLC.Error
 import           Language.Plutus.CoreToPLC.PLCTypes
+import           Language.Plutus.CoreToPLC.Compiler.Types
 
 import qualified Language.PlutusCore                as PLC
 import qualified Language.PlutusCore.MkPlc          as PLC
@@ -14,34 +15,24 @@ import qualified Language.PlutusCore.MkPlc          as PLC
 import qualified GhcPlugins                         as GHC
 
 import           Control.Monad.Except
+import           Control.Monad.State
 
 import           Data.Foldable
 import qualified Data.Graph                         as Graph
 import qualified Data.Map                           as Map
 import           Data.Maybe                         (fromMaybe)
 
--- | The visibility of a definition. See Note [Abstract data types]
-data Visibility = Abstract | Visible
--- | A definition of type 'val' with variable type 'var'.
-data Def var val = Def {dVis::Visibility, dVar::var, dVal::val}
+import Lens.Micro
 
 isVisible :: Def var val -> Bool
 isVisible (Def vis _ _) = case vis of
     Abstract -> False
     Visible  -> True
 
--- | Either a simple type or a datatype with constructors and a matcher.
-data TypeRep = PlainType PLCType | DataType PLCType [TermDef] TermDef
-
 trTy :: TypeRep -> PLCType
 trTy = \case
     PlainType t -> t
     DataType t _ _ -> t
-
-type TypeDef = Def PLCTyVar TypeRep
-
-instance Show (Def PLCTyVar TypeRep) where
-    show Def{dVar=v} = show (PLC.tyVarDeclName v)
 
 tydTy :: TypeDef -> PLCType
 tydTy = \case
@@ -58,17 +49,30 @@ tydMatch = \case
     Def _ _ (DataType _ _ match) -> Just match
     _ -> Nothing
 
-type TermDef = Def PLCVar PLCTerm
-
-instance Show (Def PLCVar PLCTerm) where
-    show Def{dVar=v} = show (PLC.varDeclName v)
-
 tdTerm :: TermDef -> PLCTerm
 tdTerm = \case
     Def Abstract (PLC.VarDecl _ n _) _ -> PLC.Var () n
     Def Visible _ t -> t
 
-type DefMap key def = Map.Map key (def, [key])
+defineType :: Converting m => GHC.Name -> TypeDef -> [GHC.Name] -> m ()
+defineType name def deps = modify $ over typeDefs (Map.insert name (def, deps))
+
+lookupType :: Converting m => GHC.Name -> m (Maybe PLCType)
+lookupType name = do
+    defs <- gets csTypeDefs
+    case Map.lookup name defs of
+        Just (td, _) -> pure $ Just $ tydTy td
+        Nothing -> pure Nothing
+
+defineTerm :: Converting m => GHC.Name -> TermDef -> [GHC.Name] -> m ()
+defineTerm name def deps = modify $ over termDefs (Map.insert name (def, deps))
+
+lookupTerm :: Converting m => GHC.Name -> m (Maybe PLCTerm)
+lookupTerm name = do
+    defs <- gets csTermDefs
+    case Map.lookup name defs of
+        Just (td, _) -> pure $ Just $ tdTerm td
+        Nothing -> pure Nothing
 
 -- Processing definitions
 

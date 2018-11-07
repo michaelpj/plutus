@@ -8,6 +8,7 @@
 -- matchers, and pattern match alternatives.
 module Language.Plutus.CoreToPLC.Compiler.Type (
     convType,
+    convKind,
     getDataCons,
     getConstructors,
     getConstructorsInstantiated,
@@ -28,7 +29,6 @@ import           Language.Plutus.CoreToPLC.Compiler.Utils
 import           Language.Plutus.CoreToPLC.Error
 import           Language.Plutus.CoreToPLC.Laziness
 import           Language.Plutus.CoreToPLC.PLCTypes
-import           Language.Plutus.CoreToPLC.Utils
 
 import qualified GhcPlugins                                     as GHC
 import qualified Pair                                           as GHC
@@ -37,7 +37,6 @@ import qualified TysPrim                                        as GHC
 
 import qualified Language.PlutusCore                            as PLC
 import qualified Language.PlutusCore.MkPlc                      as PLC
-import           Language.PlutusCore.Quote
 
 import           Control.Monad.Reader
 import           Control.Monad.State
@@ -45,7 +44,6 @@ import           Control.Monad.State
 import           Data.Foldable
 import qualified Data.List.NonEmpty                             as NE
 import qualified Data.Map                                       as Map
-import           Lens.Micro
 
 import           Data.List                                      (elemIndex, reverse, sortBy)
 
@@ -69,14 +67,12 @@ convType t = withContextM (sdToTxt $ "Converting type:" GHC.<+> GHC.ppr t) $ do
 
 convTyConApp :: (Converting m) => GHC.TyCon -> [GHC.Type] -> m PLCType
 convTyConApp tc ts
-    -- this is Int
-    | tc == GHC.intTyCon = pure $ appSize haskellIntSize (PLC.TyBuiltin () PLC.TyInteger)
-    -- this is Int#
-    | tc == GHC.intPrimTyCon = pure $ appSize haskellIntSize (PLC.TyBuiltin () PLC.TyInteger)
+    -- this is Int#, convert as Int
+    | tc == GHC.intPrimTyCon = convTyCon GHC.intTyCon
     -- we don't support Integer
     | GHC.getName tc == GHC.integerTyConName = throwPlain $ UnsupportedError "Integer: use Int instead"
     -- this is Void#, see Note [Value restriction]
-    | tc == GHC.voidPrimTyCon = liftQuote errorTy
+    | tc == GHC.voidPrimTyCon = errorTy
     | otherwise = do
         tc' <- convTyCon tc
         args' <- mapM convType ts
@@ -84,68 +80,63 @@ convTyConApp tc ts
 
 convTyCon :: (Converting m) => GHC.TyCon -> m PLCType
 convTyCon tc = do
-    prims <- asks ccPrimTypes
     defs <- gets csTypeDefs
     let tcName = GHC.getName tc
-    -- could be a Plutus primitive type
-    case Map.lookup tcName prims of
-        Just ty -> liftQuote ty
-        Nothing -> case Map.lookup tcName defs of
-            Just (td, _) -> pure $ tydTy td
-            Nothing -> do
-                -- See Note [Abstract data types]
-                k <- convKind (GHC.tyConKind tc)
+    case Map.lookup tcName defs of
+        Just (td, _) -> pure $ tydTy td
+        Nothing -> do
+            -- See Note [Abstract data types]
+            k <- convKind (GHC.tyConKind tc)
 
-                dcs <- getDataCons tc
-                usedTcs <- getUsedTcs tc
-                let deps = fmap GHC.getName usedTcs ++ fmap GHC.getName dcs
+            dcs <- getDataCons tc
+            usedTcs <- getUsedTcs tc
+            let deps = fmap GHC.getName usedTcs ++ fmap GHC.getName dcs
 
-                ty <- do
-                    -- this is the name that should be used inside the definition of the type, which
-                    -- will be fixed over
-                    internalName <- convTyNameFresh tcName
+            ty <- do
+                -- this is the name that should be used inside the definition of the type, which
+                -- will be fixed over
+                internalName <- convTyNameFresh tcName
 
-                    -- TODO: it's a bit weird for this to have to have a RHS that we will never use
-                    let inProgressDef = Def Abstract (PLC.TyVarDecl () internalName k) (PlainType (PLC.TyVar () internalName))
-                    modify $ over typeDefs (Map.insert tcName (inProgressDef, deps))
-                    mkTyCon tc
+                -- TODO: it's a bit weird for this to have to have a RHS that we will never use
+                let inProgressDef = Def Abstract (PLC.TyVarDecl () internalName k) (PlainType (PLC.TyVar () internalName))
+                defineType tcName inProgressDef deps
+                mkTyCon tc
 
-                -- this is the name for the final type itself
-                finalName <- convTyNameFresh tcName
-                (constrs, match) <- do
-                    let visibleDef = Def Visible (PLC.TyVarDecl () finalName k) (PlainType ty)
-                    modify $ over typeDefs (Map.insert tcName (visibleDef, deps))
-                    -- make the constructor bodies with the type visible
-                    constrs <- forM dcs $ \dc -> do
-                        constr <- mkConstructor dc
-                        pure (dc, constr)
-                    match <- mkMatch tc
-                    pure (constrs, match)
+            -- this is the name for the final type itself
+            finalName <- convTyNameFresh tcName
+            (constrs, match) <- do
+                let visibleDef = Def Visible (PLC.TyVarDecl () finalName k) (PlainType ty)
+                defineType tcName visibleDef deps
+                -- make the constructor bodies with the type visible
+                constrs <- forM dcs $ \dc -> do
+                    constr <- mkConstructor dc
+                    pure (dc, constr)
+                match <- mkMatch tc
+                pure (constrs, match)
 
-                -- See Note [Booleans, unit and abstraction]
-                let finalVisibility = if tc == GHC.boolTyCon || tc == GHC.unitTyCon then Visible else Abstract
-                (constrDefs, matchDef) <- do
-                    -- make the constructor *types* with the type abstract
-                    let abstractDef = Def finalVisibility (PLC.TyVarDecl () finalName k) (PlainType ty)
-                    modify $ over typeDefs (Map.insert tcName (abstractDef, deps))
+            let finalVisibility = Abstract
+            (constrDefs, matchDef) <- do
+                -- make the constructor *types* with the type abstract
+                let abstractDef = Def finalVisibility (PLC.TyVarDecl () finalName k) (PlainType ty)
+                defineType tcName abstractDef deps
 
-                    constrDefs <- forM constrs $ \(dc, constr) -> do
-                        constrName <- convNameFresh (GHC.getName dc)
-                        constrTy <- mkConstructorType dc
-                        pure $ Def finalVisibility (PLC.VarDecl () constrName constrTy) constr
+                constrDefs <- forM constrs $ \(dc, constr) -> do
+                    constrName <- convNameFresh (GHC.getName dc)
+                    constrTy <- mkConstructorType dc
+                    pure $ Def finalVisibility (PLC.VarDecl () constrName constrTy) constr
 
-                    matchName <- safeFreshName $ (GHC.getOccString $ GHC.getName tc) ++ "_match"
-                    matchTy <- mkMatchTy tc
-                    let matchDef = Def finalVisibility (PLC.VarDecl () matchName matchTy) match
-                    pure (constrDefs, matchDef)
+                matchName <- safeFreshName $ (GHC.getOccString $ GHC.getName tc) ++ "_match"
+                matchTy <- mkMatchTy tc
+                let matchDef = Def finalVisibility (PLC.VarDecl () matchName matchTy) match
+                pure (constrDefs, matchDef)
 
-                do
-                    -- create the final def with the type abstract and the constructors present
-                    let def = Def finalVisibility (PLC.TyVarDecl () finalName k) (DataType ty constrDefs matchDef)
-                    modify $ over typeDefs (Map.insert tcName (def, deps))
-                    case finalVisibility of
-                        Abstract -> pure $ PLC.TyVar () finalName
-                        Visible  -> pure ty
+            do
+                -- create the final def with the type abstract and the constructors present
+                let def = Def finalVisibility (PLC.TyVarDecl () finalName k) (DataType ty constrDefs matchDef)
+                defineType tcName def deps
+                case finalVisibility of
+                    Abstract -> pure $ PLC.TyVar () finalName
+                    Visible  -> pure ty
 -- Newtypes
 
 -- | Wrapper for a pair of types with a direction of wrapping or unwrapping.
@@ -316,21 +307,6 @@ When constructing a datatype we therefore carefully construct its pieces in seve
     - With this in place we convert the constructor and destructor *types*.
 - Finally, we bind the datatype definition to the final name again, but with its final visibility
   and with all the constructors and destructors attached.
--}
-
-{- Note [Booleans, unit and abstraction]
-While we convert most datatypes as abstract (see Note [Abstract data types]), we do *not*
-do so for Booleans and Unit.
-
-This is because the Booleans and Unit appear in our builtins. Booleans are in the spec, and Unit
-appears because we need to expose error as `\_ -> error`. But these types will be non-abstract
-(i.e. will actually be the Scott-encoded values), and so in order for user code to interoperate
-with that we would have to either:
-1. Wrap all builtins that use such types to convert them into the abstract types.
-2. Leave the types as visible throughout.
-
-At the moment we take option 2 since Bool and Unit are fairly small types, but possibly we should
-consider option 1 later.
 -}
 
 {- Note [Case expressions and laziness]

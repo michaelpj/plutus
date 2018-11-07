@@ -29,14 +29,9 @@ mkConstant n = PLC.Constant () $ PLC.BuiltinName () n
 mkIntFun :: PLC.BuiltinName -> PLC.Term PLC.TyName PLC.Name ()
 mkIntFun name = instSize haskellIntSize (mkConstant name)
 
-mkIntRel :: PLC.BuiltinName -> PLC.Term PLC.TyName PLC.Name ()
-mkIntRel name = instSize haskellIntSize (mkConstant name)
-
-mkBsRel :: PLC.BuiltinName -> PLC.Term PLC.TyName PLC.Name ()
-mkBsRel name = instSize haskellBSSize (mkConstant name)
-
 haskellIntSize :: Natural
 haskellIntSize = 64
 
+-- This is mostly so they are compatible with the output of the SHA functions
 haskellBSSize :: Natural
-haskellBSSize = 64
+haskellBSSize = 256

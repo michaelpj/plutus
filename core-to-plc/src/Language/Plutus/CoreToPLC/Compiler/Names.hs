@@ -76,6 +76,12 @@ convTyVarFresh v = do
     t' <- convTyNameFresh $ GHC.getName v
     pure $ PLC.TyVarDecl () t' k'
 
+convTcTyVarFresh :: Converting m => GHC.TyCon -> m PLCTyVar
+convTcTyVarFresh tc = do
+    k' <- convKind $ GHC.tyConKind tc
+    t' <- convTyNameFresh $ GHC.getName tc
+    pure $ PLC.TyVarDecl () t' k'
+
 pushName :: GHC.Name -> PLCVar-> ScopeStack -> ScopeStack
 pushName ghcName n stack = let Scope ns tyns = NE.head stack in Scope (Map.insert ghcName n ns) tyns NE.<| stack
 

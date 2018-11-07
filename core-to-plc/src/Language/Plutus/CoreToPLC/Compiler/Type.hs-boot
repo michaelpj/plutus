@@ -8,3 +8,5 @@ import Language.Plutus.CoreToPLC.PLCTypes
 import qualified GhcPlugins                               as GHC
 
 convType :: Converting m => GHC.Type -> m PLCType
+
+getMatchInstantiated :: Converting m => GHC.Type -> m PLCTerm

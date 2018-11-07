@@ -1,10 +1,16 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- | Simulating laziness.
 module Language.Plutus.CoreToPLC.Laziness where
 
+import Language.Plutus.CoreToPLC.Compiler.Types
+import {-# SOURCE #-} Language.Plutus.CoreToPLC.Compiler.Type
+import {-# SOURCE #-} Language.Plutus.CoreToPLC.Compiler.Expr
+
 import qualified Language.PlutusCore                  as PLC
 import           Language.PlutusCore.Quote
-import qualified Language.PlutusCore.StdLib.Data.Unit as Unit
+
+import qualified GhcPlugins                                  as GHC
 
 {- Note [Object- vs meta-language combinators]
 Many of the things we define as *meta*-langugage combinators (i.e. operations on terms) could be defined
@@ -18,20 +24,20 @@ with the standard library because it makes the generated terms simpler without t
 a simplifier pass. Also, PLC isn't lazy, so combinators work less well.
 -}
 
-delay :: MonadQuote m => PLC.Term PLC.TyName PLC.Name () -> m (PLC.Term PLC.TyName PLC.Name ())
-delay body = PLC.LamAbs () <$> liftQuote (freshName () "thunk") <*> liftQuote Unit.getBuiltinUnit <*> pure body
+delay :: Converting m => PLC.Term PLC.TyName PLC.Name () -> m (PLC.Term PLC.TyName PLC.Name ())
+delay body = PLC.LamAbs () <$> liftQuote (freshName () "thunk") <*> convType GHC.unitTy <*> pure body
 
-delayType :: MonadQuote m => PLC.Type PLC.TyName () -> m (PLC.Type PLC.TyName ())
-delayType orig = PLC.TyFun () <$> liftQuote Unit.getBuiltinUnit <*> pure orig
+delayType :: Converting m => PLC.Type PLC.TyName () -> m (PLC.Type PLC.TyName ())
+delayType orig = PLC.TyFun () <$> convType GHC.unitTy <*> pure orig
 
-force :: MonadQuote m => PLC.Term PLC.TyName PLC.Name () -> m (PLC.Term PLC.TyName PLC.Name ())
-force thunk = PLC.Apply () thunk <$> liftQuote Unit.getBuiltinUnitval
+force :: Converting m => PLC.Term PLC.TyName PLC.Name () -> m (PLC.Term PLC.TyName PLC.Name ())
+force thunk = PLC.Apply () thunk <$> convExpr (GHC.Var GHC.unitDataConId)
 
-maybeDelay :: MonadQuote m => Bool -> PLC.Term PLC.TyName PLC.Name () -> m (PLC.Term PLC.TyName PLC.Name ())
+maybeDelay :: Converting m => Bool -> PLC.Term PLC.TyName PLC.Name () -> m (PLC.Term PLC.TyName PLC.Name ())
 maybeDelay yes t = if yes then delay t else pure t
 
-maybeDelayType :: MonadQuote m => Bool -> PLC.Type PLC.TyName () -> m (PLC.Type PLC.TyName ())
+maybeDelayType :: Converting m => Bool -> PLC.Type PLC.TyName () -> m (PLC.Type PLC.TyName ())
 maybeDelayType yes t = if yes then delayType t else pure t
 
-maybeForce :: MonadQuote m => Bool -> PLC.Term PLC.TyName PLC.Name () -> m (PLC.Term PLC.TyName PLC.Name ())
+maybeForce :: Converting m => Bool -> PLC.Term PLC.TyName PLC.Name () -> m (PLC.Term PLC.TyName PLC.Name ())
 maybeForce yes t = if yes then force t else pure t

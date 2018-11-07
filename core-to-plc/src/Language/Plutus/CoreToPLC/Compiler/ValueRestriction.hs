@@ -81,18 +81,18 @@ bit of a hack, though.
 -}
 
 -- See Note [Value restriction]
-mangleTyForall :: (MonadQuote m) => PLCType -> m PLCType
+mangleTyForall :: Converting m => PLCType -> m PLCType
 mangleTyForall = \case
     PLC.TyForall a t k body -> PLC.TyForall a t k <$> delayType body
     x -> pure x
 
 -- See Note [Value restriction]
-mangleTyAbs :: (MonadQuote m) => PLCTerm -> m PLCTerm
+mangleTyAbs :: Converting m => PLCTerm -> m PLCTerm
 mangleTyAbs = \case
     PLC.TyAbs a t k body -> PLC.TyAbs a t k <$> delay body
     x -> pure x
 
-checkTyAbsBody :: (Converting m) => PLCTerm -> m ()
+checkTyAbsBody :: Converting m => PLCTerm -> m ()
 checkTyAbsBody t = do
     ConvertingContext {ccOpts=opts} <- ask
     -- we sometimes need to turn this off, as checking for term values also checks for normalized types at the moment

@@ -1,37 +1,58 @@
-{-# LANGUAGE ConstraintKinds  #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE Rank2Types       #-}
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE Rank2Types        #-}
 
 module Language.Plutus.CoreToPLC.Compiler.Types where
 
-import           Language.Plutus.CoreToPLC.Compiler.Definitions
 import           Language.Plutus.CoreToPLC.Error
 import           Language.Plutus.CoreToPLC.PLCTypes
 
+import qualified Language.PlutusCore.MkPlc          as PLC
 import           Language.PlutusCore.Quote
 
-import qualified GhcPlugins                                     as GHC
+import qualified GhcPlugins                         as GHC
 
 import           Control.Monad.Except
 import           Control.Monad.Reader
 import           Control.Monad.State
 
-import qualified Data.List.NonEmpty                             as NE
-import qualified Data.Map                                       as Map
+import qualified Data.List.NonEmpty                 as NE
+import qualified Data.Map                           as Map
 import           Lens.Micro
 
-type PrimTerms = Map.Map GHC.Name (Quote PLCTerm)
-type PrimTypes = Map.Map GHC.Name (Quote PLCType)
+import qualified Language.Haskell.TH.Syntax         as TH
+
+type BuiltinNameInfo = Map.Map TH.Name GHC.TyThing
 
 newtype ConversionOptions = ConversionOptions { coCheckValueRestriction :: Bool }
 
 data ConvertingContext = ConvertingContext {
-    ccOpts      :: ConversionOptions,
-    ccFlags     :: GHC.DynFlags,
-    ccPrimTerms :: PrimTerms,
-    ccPrimTypes :: PrimTypes,
-    ccScopes    :: ScopeStack
+    ccOpts            :: ConversionOptions,
+    ccFlags           :: GHC.DynFlags,
+    ccBuiltinNameInfo :: BuiltinNameInfo,
+    ccScopes          :: ScopeStack
     }
+
+-- | The visibility of a definition. See Note [Abstract data types]
+data Visibility = Abstract | Visible
+-- | A definition of type 'val' with variable type 'var'.
+data Def var val = Def {dVis::Visibility, dVar::var, dVal::val}
+
+-- | Either a simple type or a datatype with constructors and a matcher.
+data TypeRep = PlainType PLCType | DataType PLCType [TermDef] TermDef
+
+type TypeDef = Def PLCTyVar TypeRep
+
+instance Show (Def PLCTyVar TypeRep) where
+    show Def{dVar=v} = show (PLC.tyVarDeclName v)
+
+type TermDef = Def PLCVar PLCTerm
+
+instance Show (Def PLCVar PLCTerm) where
+    show Def{dVar=v} = show (PLC.varDeclName v)
+
+type DefMap key def = Map.Map key (def, [key])
 
 data ConvertingState = ConvertingState {
     csTypeDefs :: DefMap GHC.Name TypeDef,
