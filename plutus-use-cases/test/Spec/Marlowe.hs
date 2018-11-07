@@ -43,11 +43,15 @@ marlowe = property $ do
     (result, st) <- forAll $ Gen.runTraceOn model $ do
         -- Init a contract
         let w = Wallet 1
-        blockchainActions >>= walletsNotifyBlock [w]
+            update = blockchainActions >>= walletsNotifyBlock [w]
+        update
         txs <- walletAction w (createContract Null 1)
-        blockchainActions >>= walletsNotifyBlock [w]
-        let txOutRef = snd . head . filter (isPayToScriptOut . fst) . txOutRefs $ head txs
-        Debug.traceM $ show txs
+        update
+        let (txOut, txOutRef) = head . filter (isPayToScriptOut . fst) . txOutRefs $ head txs
+        -- Debug.traceM $ show txOutRef
+        txs1 <- walletAction w (endContract Null txOutRef 1)
+        update
+        Debug.traceM $ show txs1
         -- walletAction w ()
         return ()
     Hedgehog.assert (True)

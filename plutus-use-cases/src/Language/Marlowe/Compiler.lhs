@@ -339,17 +339,20 @@ createContract :: (
     -> m ()
 createContract contract value = do
     _ <- if value <= 0 then otherError "Must contribute a positive value" else pure ()
-
     let ds = DataScript $ UTXO.fromPlcCode $(plutus [|()|])
-    -- let ds = unitData
-
-    -- TODO: Remove duplicate definition of Value
-    --       (Value = Integer in Haskell land but Value = Int in PLC land)
     let v' = UTXO.Value $ fromIntegral value
     (payment, change) <- createPaymentWithChange v'
     let o = scriptTxOut v' marloweSimpleValidator ds
 
     signAndSubmit payment [o, change]
+
+endContract :: (Monad m, WalletAPI m) => Contract -> TxOutRef' -> UTXO.Value -> m ()
+endContract contract ref val = do
+    oo <- payToPublicKey val
+    let scr = marloweSimpleValidator
+        i   = scriptTxIn ref scr UTXO.unitRedeemer
+    signAndSubmit (Set.singleton i) [oo]
+
 
 \end{code}
 \end{document}
