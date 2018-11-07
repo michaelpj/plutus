@@ -48,10 +48,10 @@ marlowe = property $ do
         txs <- walletAction w (createContract Null 1)
         update
         let (txOut, txOutRef) = head . filter (isPayToScriptOut . fst) . txOutRefs $ head txs
-        -- Debug.traceM $ show txOutRef
-        txs1 <- walletAction w (endContract Null txOutRef 1)
-        update
-        Debug.traceM $ show txs1
+        Debug.traceM $ show txOutRef
+        -- txs1 <- walletAction w (endContract Null txOutRef 1)
+        -- update
+        -- Debug.traceM $ show txs1
         -- walletAction w ()
         return ()
     Hedgehog.assert (True)

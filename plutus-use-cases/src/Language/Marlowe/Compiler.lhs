@@ -106,6 +106,7 @@ Answer: currently only via transaction
 
 This can be done in 2 ways.
 
+
 \subsection{Initialization by depositing Ada to a new contract}
 
 Just pay 1 Ada to a contract so that it becomes a part of UTXO.
@@ -124,6 +125,7 @@ squarednode/.style={rectangle, draw=orange!60, fill=orange!5, very thick, minimu
 \draw[->,thick] (commitcash.east) -- (txOut1.west);
 \draw[->,thick] (commitcash.south) -- (txOut2.west);
 \end{tikzpicture}
+
 
 \par{Considerations}
 Someone need to spend this 1 Ada, otherwise all Marlowe contracts will be in UTXO.
@@ -153,16 +155,20 @@ squarednode/.style={rectangle, draw=orange!60, fill=orange!5, very thick, minimu
 
 \section{Semantics}
 
-Contract execution is a chain of transactions, where contract state is passed through dataScript,
-and actions/inputs are passed as a redeemer script and TxIns/TxOuts
+Contract execution is a chain of transactions, where contract state is passed through \emph{dataScript},
+and actions/inputs are passed as a \emph{redeemer} script and TxIns/TxOuts
 
-validation script =  marlowe interpreter + contract
+Validation Script =  marlowe interpreter + possibly encoded address of a contract owner for initial deposit refund
+
+This would change script address for every contract owner. This could be a desired or not desired property. Discuss.
 
 redeemer script = action/input, i.e. CommitCash val timeout, Choice 1, OracleValue "oil" 20
 
 pendingTx
 
-dataScript = input/observation, e.g. CashCommit, Choice
+dataScript = Contract + State
+
+This implies that remaining Contract and its State are publicly visible. Discuss.
 
 
 \subsection{Null}
@@ -234,9 +240,13 @@ squarednode/.style={rectangle, draw=orange!60, fill=orange!5, very thick, minimu
 \draw[->,thick] (contract.south) -- (txOut2.west);
 \end{tikzpicture}
 
+
+
+\section{Types and Data Representation}
+
 \begin{code}
 
-type Timeout = Int
+type Timeout = Height
 type Cash = Value
 
 type Person      = PubKey
@@ -251,84 +261,92 @@ type Person      = PubKey
 
 newtype IdentCC = IdentCC Int
                deriving (Eq, Ord, Generic)
+instance LiftPlc IdentCC
+instance TypeablePlc IdentCC
+
 
 newtype IdentChoice = IdentChoice { unIdentChoice :: Int }
                deriving (Eq, Ord, Generic)
+instance LiftPlc IdentChoice
+instance TypeablePlc IdentChoice
 
 newtype IdentPay = IdentPay Int
                deriving (Eq, Ord, Generic)
+instance LiftPlc IdentPay
+instance TypeablePlc IdentPay
+
 
 -- A cash commitment is made by a person, for a particular amount and timeout.
 
 data CC = CC IdentCC Person Cash Timeout
                deriving (Eq, Ord, Generic)
+instance LiftPlc CC
+instance TypeablePlc CC
+
 
 -- A cash redemption is made by a person, for a particular amount.
 
 data RC = RC IdentCC Person Cash
                deriving (Eq, Ord, Generic)
+instance LiftPlc RC
+instance TypeablePlc RC
+
 
 data Input = Input {
-                cc  :: Set.Set CC,
-                rc  :: Set.Set RC,
-                rp  :: Map.Map (IdentPay, Person) Cash
+                cc  :: [CC],
+                rc  :: [RC]
+                -- rp  :: Map.Map (IdentPay, Person) Cash
             } deriving (Generic)
+instance LiftPlc Input
+instance TypeablePlc Input
+
 
 emptyInput :: Input
-emptyInput = Input Set.empty Set.empty Map.empty
-
+-- emptyInput = Input Set.empty Set.empty Map.empty
+emptyInput = Input [] []
 
 
 data State = State {
-                sc  :: Map.Map IdentCC CCStatus,
-                sch :: Map.Map (IdentChoice, Person) ConcreteChoice
+                stateCommitted  :: [(IdentCC, CCStatus)]
             } deriving (Eq, Ord, Generic)
+instance LiftPlc State
+instance TypeablePlc State
+
 
 emptyState :: State
-emptyState = State {sc = Map.empty, sch = Map.empty}
+emptyState = State {stateCommitted = []}
 
 
-data MarloweState = MarloweState {
+data MarloweData = MarloweData {
         marloweState :: State,
         marloweContract :: Contract
-    }
-
-data OS =  OS {  blockNumber  :: Int }
-                    deriving (Eq, Ord, Generic)
+    } deriving (Generic)
+instance LiftPlc MarloweData
+instance TypeablePlc MarloweData
 
 type ConcreteChoice = Int
 
-data Action =   SuccessfulPay IdentPay Person Person Cash |
-                ExpiredPay IdentPay Person Person Cash |
-                FailedPay IdentPay Person Person Cash |
-                SuccessfulCommit IdentCC Person Cash |
-                CommitRedeemed IdentCC Person Cash |
-                ExpiredCommitRedeemed IdentCC Person Cash |
-                DuplicateRedeem IdentCC Person |
-                ChoiceMade IdentChoice Person ConcreteChoice
-                    deriving (Eq,Ord)
+type CCStatus = (Person, CCRedeemStatus)
 
-type AS = [Action]
-
-
-type CCStatus = (Person,CCRedeemStatus)
 data CCRedeemStatus = NotRedeemed Cash Timeout | ManuallyRedeemed
-               deriving (Eq,Ord)
+               deriving (Eq, Ord, Generic)
+instance LiftPlc CCRedeemStatus
+instance TypeablePlc CCRedeemStatus
 
 
-instance LiftPlc IdentCC
-instance TypeablePlc IdentCC
--- instance LiftPlc Contract
--- instance LiftPlc MarloweState
--- instance TypeablePlc Contract
+instance LiftPlc Contract
+instance TypeablePlc Contract
 \end{code}
 
+
+
+\section{Marlowe Interpreter and Helpers}
+
 \begin{code}
-marloweSimpleValidator =  Validator result where
-    result = UTXO.fromPlcCode $(plutus [| \(redeemer :: Int) (pendingTx :: PendingTx ValidatorHash) (dataScript :: ()) ->
+marloweValidator =  Validator result where
+    result = UTXO.fromPlcCode $(plutus [| \(redeemer :: Int) (pendingTx :: PendingTx ValidatorHash) (dataScript :: MarloweData) ->
             True
         |])
-
 
 
 createContract :: (
@@ -339,17 +357,17 @@ createContract :: (
     -> m ()
 createContract contract value = do
     _ <- if value <= 0 then otherError "Must contribute a positive value" else pure ()
-    let ds = DataScript $ UTXO.fromPlcCode $(plutus [|()|])
+    let ds = DataScript $ UTXO.lifted (MarloweData { marloweContract = contract, marloweState = emptyState })
     let v' = UTXO.Value $ fromIntegral value
     (payment, change) <- createPaymentWithChange v'
-    let o = scriptTxOut v' marloweSimpleValidator ds
+    let o = scriptTxOut v' marloweValidator ds
 
     signAndSubmit payment [o, change]
 
 endContract :: (Monad m, WalletAPI m) => Contract -> TxOutRef' -> UTXO.Value -> m ()
 endContract contract ref val = do
     oo <- payToPublicKey val
-    let scr = marloweSimpleValidator
+    let scr = marloweValidator
         i   = scriptTxIn ref scr UTXO.unitRedeemer
     signAndSubmit (Set.singleton i) [oo]
 
