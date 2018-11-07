@@ -9,6 +9,11 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DefaultSignatures  #-}
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE StrictData    #-}
@@ -16,7 +21,10 @@
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 module Language.Marlowe.Compiler where
-
+import           Control.Applicative        (Applicative (..))
+import           Control.Monad              (Monad (..))
+import           Control.Monad.Error.Class  (MonadError (..))
+import           GHC.Generics               (Generic)
 import qualified Data.List                           as List
 import qualified Data.Set                           as Set
 import Data.Set                           (Set)
@@ -24,15 +32,19 @@ import qualified Data.Map.Strict                           as Map
 import Data.Map.Strict                           (Map)
 
 import qualified Language.Plutus.CoreToPLC.Builtins as Builtins
-import           Language.Plutus.Runtime            (PendingTx (..), PendingTxIn (..), PendingTxOut (..), PubKey (..), Value)
+import           Language.Plutus.Runtime
 import           Language.Plutus.TH                 (plutus)
+import           Wallet.API                 (EventTrigger (..), Range (..), WalletAPI (..), WalletAPIError, otherError,
+                                             pubKey, signAndSubmit)
+
 import           Wallet.UTXO                        (Address', DataScript (..), TxOutRef', Validator (..), scriptTxIn,
                                                         scriptTxOut, applyScript)
 import qualified Wallet.UTXO                        as UTXO
 
 import qualified Language.Plutus.Runtime.TH         as TH
-import           Prelude                            (Integer, Bool (..), Num (..), Show(..), Read(..), Ord (..), Eq (..),
-                    fromIntegral, succ, sum, ($), (<$>), (++), otherwise)
+import           Language.Plutus.Lift       (LiftPlc (..), TypeablePlc (..))
+import           Prelude                            (Int, Bool (..), Num (..), Show(..), Read(..), Ord (..), Eq (..),
+                    fromIntegral, succ, sum, ($), (<$>), (++), otherwise, Maybe(..))
 
 \end{code}
 
@@ -42,7 +54,7 @@ data Contract = Null
               | CommitCash IdentCC PubKey Value Timeout Timeout Contract Contract
               | Pay IdentPay Person Person Value Timeout Contract
               | Both Contract Contract
-                deriving (Eq)
+                deriving (Eq, Generic)
 \end{code}
 
 Assumptions
@@ -60,17 +72,21 @@ example = CommitCash (IdentCC 1) (PubKey 1) (Value 100) (Block 200) (Block 256)
 
 \section{Questions}
 
-Q: - Should we put together the first CommitCash with the Contract setup? Contract setup would still require some money.
+Q: Should we put together the first CommitCash with the Contract setup? Contract setup would still require some money.
 
-Q: - Should we be able to return excess money in the contract (money not accounted for). To whom?
+Q: Should we be able to return excess money in the contract (money not accounted for). To whom?
   We could use excess money to ensure a contract has money on it, and then return to the creator of the contract when it becomes Null.
 
-Q: - There is a risk someone will put a continuation of a Marlowe contract without getting the previous continuation as input.
+Q: There is a risk someone will put a continuation of a Marlowe contract without getting the previous continuation as input.
   Can we detect this and allow for refund?
 
-Q: - What happens on a FailedPay? Should we still pay what we can?
+Q: What happens on a FailedPay? Should we still pay what we can?
 
-Q: - What is signed in a transaction?
+Q: What is signed in a transaction?
+
+Q: How to distinguish different instances of contracts? Is it a thing?
+    Maybe we need to add a sort of identifier of a contract.
+
 
 
 \begin{itemize}
@@ -210,10 +226,8 @@ squarednode/.style={rectangle, draw=orange!60, fill=orange!5, very thick, minimu
 
 \begin{code}
 
-type Timeout = Integer
+type Timeout = Int
 type Cash = Value
-
-type Inputs = [CC]
 
 type Person      = PubKey
 
@@ -225,30 +239,30 @@ contractPlcCode = $(plutus [| CommitCash (IdentCC 1) (PubKey 1) 123 100 200 Null
 -- be generated automatically (and so uniquely); here we simply assume that
 -- they are unique.
 
-newtype IdentCC = IdentCC Integer
-               deriving (Eq,Ord)
+newtype IdentCC = IdentCC Int
+               deriving (Eq, Ord, Generic)
 
-newtype IdentChoice = IdentChoice { unIdentChoice :: Integer }
-               deriving (Eq,Ord)
+newtype IdentChoice = IdentChoice { unIdentChoice :: Int }
+               deriving (Eq, Ord, Generic)
 
-newtype IdentPay = IdentPay Integer
-               deriving (Eq,Ord)
+newtype IdentPay = IdentPay Int
+               deriving (Eq, Ord, Generic)
 
 -- A cash commitment is made by a person, for a particular amount and timeout.
 
 data CC = CC IdentCC Person Cash Timeout
-               deriving (Eq,Ord)
+               deriving (Eq, Ord, Generic)
 
 -- A cash redemption is made by a person, for a particular amount.
 
 data RC = RC IdentCC Person Cash
-               deriving (Eq,Ord)
+               deriving (Eq, Ord, Generic)
 
 data Input = Input {
                 cc  :: Set.Set CC,
                 rc  :: Set.Set RC,
                 rp  :: Map.Map (IdentPay, Person) Cash
-            }
+            } deriving (Generic)
 
 emptyInput :: Input
 emptyInput = Input Set.empty Set.empty Map.empty
@@ -258,18 +272,21 @@ emptyInput = Input Set.empty Set.empty Map.empty
 data State = State {
                 sc  :: Map.Map IdentCC CCStatus,
                 sch :: Map.Map (IdentChoice, Person) ConcreteChoice
-            } deriving (Eq,Ord)
+            } deriving (Eq, Ord, Generic)
+
+emptyState :: State
+emptyState = State {sc = Map.empty, sch = Map.empty}
+
 
 data MarloweState = MarloweState {
-        marloweInput :: Input,
         marloweState :: State,
         marloweContract :: Contract
     }
 
-data OS =  OS {  blockNumber  :: Integer }
-                    deriving (Eq,Ord)
+data OS =  OS {  blockNumber  :: Int }
+                    deriving (Eq, Ord, Generic)
 
-type ConcreteChoice = Integer
+type ConcreteChoice = Int
 
 data Action =   SuccessfulPay IdentPay Person Person Cash |
                 ExpiredPay IdentPay Person Person Cash |
@@ -289,31 +306,37 @@ data CCRedeemStatus = NotRedeemed Cash Timeout | ManuallyRedeemed
                deriving (Eq,Ord)
 
 
-marloweValidator :: UTXO.Script -> Validator
-marloweValidator contractPlcCode = Validator result where
-    result = applyScript inner contractPlcCode
-    -- result = inner
-    inner = UTXO.fromPlcCode $(plutus [| \contract redeemer (pendingTx :: PendingTx) dataScript ->
+instance LiftPlc IdentCC
+instance TypeablePlc IdentCC
+-- instance LiftPlc Contract
+-- instance LiftPlc MarloweState
+-- instance TypeablePlc Contract
+\end{code}
+
+\begin{code}
+marloweValidator :: Validator
+marloweValidator =  Validator result where
+    result = UTXO.fromPlcCode $(plutus [| \(redeemer :: CC) (pendingTx :: PendingTx ValidatorHash) (dataScript :: MarloweState) ->
         let
-            state = dataScript
-            inputCommand = redeemer
+            MarloweState state contract = dataScript
+
+            command = redeemer
 
             txInputs :: [PendingTxIn]
             txInputs = pendingTxInputs pendingTx
 
-            txOutputs     :: [PendingTxOut]
+            txOutputs :: [PendingTxOut]
             txOutputs = pendingTxOutputs pendingTx
 
             input :: Input
-            input = emptyInput
-
-            os = OS { blockNumber = fromIntegral blockHeight }
+            input = case command of
+                CC{} -> Input (Set.singleton command) Set.empty Map.empty
 
             blockHeight = pendingTxBlockHeight pendingTx
 
-            validInput = True
+            os = OS { blockNumber = fromIntegral blockHeight }
 
-            validOutput = True
+            validInput = True -- TODO check inputs
 
             infixr 3 &&
             (&&) :: Bool -> Bool -> Bool
@@ -321,6 +344,7 @@ marloweValidator contractPlcCode = Validator result where
 
             step :: Input -> State -> Contract -> OS -> (State,Contract,AS)
             step _ st Null _ = (st, Null, [])
+            step _ st _ _    = (st, Null, [])
 
             stepAll :: Input -> State -> Contract -> OS -> (State, Contract, AS)
             stepAll com st con os = stepAllAux com st con os []
@@ -347,10 +371,37 @@ marloweValidator contractPlcCode = Validator result where
                 ExpiredCommitRedeemed{} -> True
                 DuplicateRedeem{} -> False
                 ChoiceMade{} -> True
+
             areAllActionsGood = List.all goodAction actions
+
+            validOutput = let
+                    (PendingTxOut value (Just (validatorHash, dataScriptHash)) DataTxOut: _) = txOutputs
+                    -- TODO check validatorHash, should be a constant
+                    -- evaluate dataScript and check its hash
+                in True
 
             isValid = validInput && validOutput && areAllActionsGood
         in if isValid then () else Builtins.error ()
         |])
+
+createContract :: (
+    MonadError WalletAPIError m,
+    WalletAPI m)
+    => Contract
+    -> Value
+    -> m ()
+createContract contract value = do
+    _ <- if value <= 0 then otherError "Must contribute a positive value" else pure ()
+
+    let ds = DataScript $ UTXO.fromPlcCode $(plutus [|MarloweState emptyState contract|])
+
+    -- TODO: Remove duplicate definition of Value
+    --       (Value = Integer in Haskell land but Value = Int in PLC land)
+    let v' = UTXO.Value $ fromIntegral value
+    (payment, change) <- createPaymentWithChange v'
+    let o = scriptTxOut v' marloweValidator ds
+
+    signAndSubmit payment [o, change]
+
 \end{code}
 \end{document}

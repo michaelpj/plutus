@@ -34,11 +34,16 @@ tests = testGroup "Marlowe" [
         testProperty "Marlowe" marlowe
         ]
 
+-- | Funds available to wallets `Wallet 2` and `Wallet 3`
+startingBalance :: UTXO.Value
+startingBalance = 1000
+
 marlowe :: Property
 marlowe = property $ do
-    let model = Gen.generatorModel { Gen.gmInitialBalance = Map.singleton (PubKey 1) 500 }
+    let model = Gen.generatorModel { Gen.gmInitialBalance = Map.singleton (PubKey 1) 1000 }
     (result, st) <- forAll $ Gen.runTraceOn model $ do
-        -- Pay
+        -- Init a contract
+        let w = Wallet 1
         -- walletAction w (contribute c ds v)
         return ()
     Hedgehog.assert (True)

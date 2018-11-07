@@ -22,6 +22,6 @@ tests :: TestTree
 tests = localOption limit $ testGroup "use cases" [
     Spec.Crowdfunding.tests,
     Spec.Vesting.tests,
-    Spec.Future.tests
+    Spec.Future.tests,
     Spec.Marlowe.tests
     ]
