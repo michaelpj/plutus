@@ -51,12 +51,14 @@ import           Prelude                            (Int, Bool (..), Num (..), S
 
 \section{Marlowe}
 
+Apparently, Plutus doesn't support complex recursive data types yet.
+
+
 \begin{code}
 
 data Contract = Null
-              | CommitCash IdentCC PubKey Value Timeout Timeout Contract Contract
-              | Pay IdentPay Person Person Value Timeout Contract
-              | Both Contract Contract
+              | CommitCash IdentCC PubKey Value Timeout Timeout {- Contract Contract -}
+              | Pay IdentPay Person Person Value Timeout {- Contract -}
                 deriving (Eq, Generic)
 \end{code}
 
@@ -344,7 +346,7 @@ instance TypeablePlc Contract
 
 \begin{code}
 marloweValidator =  Validator result where
-    result = UTXO.fromPlcCode $(plutus [| \(redeemer :: Int) (pendingTx :: PendingTx ValidatorHash) (dataScript :: MarloweData) ->
+    result = UTXO.fromPlcCode $(plutus [| \(redeemer :: ()) MarloweData{..} (pendingTx :: PendingTx ValidatorHash) ->
             True
         |])
 
