@@ -56,13 +56,21 @@ Apparently, Plutus doesn't support complex recursive data types yet.
 
 \begin{code}
 
+
+
+
 data Contract = Null
-              | CommitCash IdentCC PubKey Value Timeout Timeout {- Contract Contract -}
-              | Pay IdentPay Person Person Value Timeout {- Contract -}
+              | CommitCash IdentCC PubKey Value Timeout Timeout
                 deriving (Eq, Generic)
+
+
+
+
+
+
 \end{code}
 
-Assumptions
+\section{Assumptions}
 
 \begin{itemize}
 \item Fees are payed by transaction issues. For simplicity, assume zero fees.
@@ -70,9 +78,15 @@ Assumptions
 \item Every contract is created by contract owner by issuing a transaction with the contract in TxOut
 \end{itemize}
 
+
+\sectoin{Examples}
+
 \begin{spec}
-example = CommitCash (IdentCC 1) (PubKey 1) (Value 100) (Block 200) (Block 256)
-            (Pay (IdentPay 1) (PubKey 1) (PubKey 2) (Value 100) (RedeemCC (IdentCC 1) Null))
+Alice = (PubKey 1)
+Bob   = (PubKey 2)
+value = (Value 100)
+example = CommitCash (IdentCC 1) Alice value (Block 200) (Block 256)
+            (Pay (IdentPay 1) Alice Bob value (Block 256) Null)
             Null
 \end{spec}
 
@@ -294,18 +308,9 @@ instance LiftPlc RC
 instance TypeablePlc RC
 
 
-data Input = Input {
-                cc  :: [CC],
-                rc  :: [RC]
-                -- rp  :: Map.Map (IdentPay, Person) Cash
-            } deriving (Generic)
+data Input = Commit CC deriving (Generic)
 instance LiftPlc Input
 instance TypeablePlc Input
-
-
-emptyInput :: Input
--- emptyInput = Input Set.empty Set.empty Map.empty
-emptyInput = Input [] []
 
 
 data State = State {
@@ -345,9 +350,23 @@ instance TypeablePlc Contract
 \section{Marlowe Interpreter and Helpers}
 
 \begin{code}
-marloweValidator =  Validator result where
-    result = UTXO.fromPlcCode $(plutus [| \(redeemer :: ()) MarloweData{..} (pendingTx :: PendingTx ValidatorHash) ->
-            True
+marloweValidator = Validator result where
+    result = UTXO.fromPlcCode $(plutus [| \ (input :: Input) (MarloweData{..} :: MarloweData) (p :: PendingTx ValidatorHash) ->
+        let isValid = case input of
+                -- Input ([CC (identCC::IdentCC) (p::Person) (v::Cash) (t::Timeout)]::[CC]) (_ :: [RC]) -> False
+                Commit (cc::CC) -> case cc of
+                    CC (identCC::IdentCC) (person::Person) (v::Cash) (t::Timeout) -> case p of
+                        PendingTx (ps::[PendingTxIn]) _ _ _ _ _ _ -> case ps of
+                            (pt1::PendingTxIn):(ps'::[PendingTxIn]) ->
+                                case ps' of
+                                    (pt2::PendingTxIn):(_::[PendingTxIn]) -> let
+                                            PendingTxIn _ _ v1 = pt1
+                                            PendingTxIn _ _ v2 = pt2
+                                        in v1 == v
+                                    (_::[PendingTxIn]) -> False
+                            (_::[PendingTxIn]) -> False
+
+        in isValid
         |])
 
 
@@ -359,12 +378,38 @@ createContract :: (
     -> m ()
 createContract contract value = do
     _ <- if value <= 0 then otherError "Must contribute a positive value" else pure ()
-    let ds = DataScript $ UTXO.lifted (MarloweData { marloweContract = contract, marloweState = emptyState })
+    let ds = DataScript $ UTXO.lifted MarloweData { marloweContract = contract, marloweState = emptyState }
     let v' = UTXO.Value $ fromIntegral value
     (payment, change) <- createPaymentWithChange v'
     let o = scriptTxOut v' marloweValidator ds
 
     signAndSubmit payment [o, change]
+
+
+commitCash :: (
+    MonadError WalletAPIError m,
+    WalletAPI m)
+    => Person
+    -> TxOutRef'
+    -> Value
+    -> Timeout
+    -> m ()
+commitCash person ref value timeout = do
+    _ <- if value <= 0 then otherError "Must commit a positive value" else pure ()
+
+    let v' = UTXO.Value $ fromIntegral value
+    let identCC = (IdentCC 1)
+    let i   = scriptTxIn ref marloweValidator (UTXO.Redeemer $ UTXO.lifted $ Commit (CC identCC person value timeout))
+
+    let ds = DataScript $ UTXO.lifted (MarloweData {
+                marloweContract = Null,
+                marloweState = State {stateCommitted=[(identCC, (person, NotRedeemed value timeout))]} })
+    (payment, change) <- createPaymentWithChange v'
+    let o = scriptTxOut v' marloweValidator ds
+
+    signAndSubmit (Set.insert i payment) [o, change]
+
+
 
 endContract :: (Monad m, WalletAPI m) => Contract -> TxOutRef' -> UTXO.Value -> m ()
 endContract contract ref val = do
