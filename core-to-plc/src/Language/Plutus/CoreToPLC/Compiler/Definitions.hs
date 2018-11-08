@@ -6,93 +6,95 @@
 module Language.Plutus.CoreToPLC.Compiler.Definitions where
 
 import           Language.Plutus.CoreToPLC.Error
-import           Language.Plutus.CoreToPLC.PLCTypes
+import           Language.Plutus.CoreToPLC.PIRTypes
 import           Language.Plutus.CoreToPLC.Compiler.Types
 
-import qualified Language.PlutusCore                as PLC
-import qualified Language.PlutusCore.MkPlc          as PLC
+import qualified Language.PlutusIR                as PIR
+import qualified Language.PlutusIR.MkPir          as PIR
 
 import qualified GhcPlugins                         as GHC
 
 import           Control.Monad.Except
 import           Control.Monad.State
 
-import           Data.Foldable
 import qualified Data.Graph                         as Graph
 import qualified Data.Map                           as Map
-import           Data.Maybe                         (fromMaybe)
+import qualified Data.Set                           as Set
 
 import Lens.Micro
 
-isVisible :: Def var val -> Bool
-isVisible (Def vis _ _) = case vis of
-    Abstract -> False
-    Visible  -> True
-
-trTy :: TypeRep -> PLCType
-trTy = \case
-    PlainType t -> t
-    DataType t _ _ -> t
-
-tydTy :: TypeDef -> PLCType
-tydTy = \case
-    Def Abstract (PLC.TyVarDecl _ n _) _ -> PLC.TyVar () n
-    Def Visible _ tr -> trTy tr
-
-tydConstrs :: TypeDef -> Maybe [TermDef]
-tydConstrs = \case
-    Def _ _ (DataType _ constrs _) -> Just constrs
-    _ -> Nothing
-
-tydMatch :: TypeDef -> Maybe TermDef
-tydMatch = \case
-    Def _ _ (DataType _ _ match) -> Just match
-    _ -> Nothing
-
-tdTerm :: TermDef -> PLCTerm
-tdTerm = \case
-    Def Abstract (PLC.VarDecl _ n _) _ -> PLC.Var () n
-    Def Visible _ t -> t
-
-defineType :: Converting m => GHC.Name -> TypeDef -> [GHC.Name] -> m ()
+defineType :: Converting m => GHC.Name -> PIRBinding -> [GHC.Name] -> m ()
 defineType name def deps = modify $ over typeDefs (Map.insert name (def, deps))
 
-lookupType :: Converting m => GHC.Name -> m (Maybe PLCType)
-lookupType name = do
-    defs <- gets csTypeDefs
+lookupTypeDef :: Converting m => GHC.Name -> m (Maybe PIRType)
+lookupTypeDef name = do
+    ConvertingState{csTypeDefs=defs, csAliases=as} <- get
     case Map.lookup name defs of
-        Just (td, _) -> pure $ Just $ tydTy td
+        Just (td, _) -> do
+            ty <- if Set.member name as then defRealTy td else defTy td
+            pure $ Just ty
         Nothing -> pure Nothing
 
-defineTerm :: Converting m => GHC.Name -> TermDef -> [GHC.Name] -> m ()
+defineTerm :: Converting m => GHC.Name -> PIRBinding -> [GHC.Name] -> m ()
 defineTerm name def deps = modify $ over termDefs (Map.insert name (def, deps))
 
-lookupTerm :: Converting m => GHC.Name -> m (Maybe PLCTerm)
-lookupTerm name = do
+recordAlias :: Converting m => GHC.Name -> m ()
+recordAlias name = modify $ over aliases (Set.insert name)
+
+lookupTermDef :: Converting m => GHC.Name -> m (Maybe PIRTerm)
+lookupTermDef name = do
     defs <- gets csTermDefs
     case Map.lookup name defs of
-        Just (td, _) -> pure $ Just $ tdTerm td
+        Just (td, _) -> Just <$> defTerm td
         Nothing -> pure Nothing
+
+defRealTy :: Converting m => PIRBinding -> m PIRType
+defRealTy = \case
+    PIR.TermBind () _ _ -> throwPlain $ ConversionError "Asked for real type from term binding"
+    PIR.TypeBind () _ ty -> pure ty
+    PIR.DatatypeBind () (PIR.Datatype () _ _ _ _) -> throwPlain $ ConversionError "Asked for real type from term binding"
+
+defTy :: Converting m => PIRBinding -> m PIRType
+defTy = \case
+    PIR.TermBind () _ _ -> throwPlain $ ConversionError "Asked for type from term binding"
+    PIR.TypeBind () n _ -> pure $ PIR.mkTyVar () n
+    PIR.DatatypeBind () (PIR.Datatype () n _ _ _) -> pure $ PIR.mkTyVar () n
+
+defConstrs :: Converting m => PIRBinding -> m (Maybe [PIRTerm])
+defConstrs = \case
+    PIR.TermBind () _ _ -> throwPlain $ ConversionError "Asked for constructors from term binding"
+    PIR.TypeBind () _ _ -> pure Nothing
+    PIR.DatatypeBind () (PIR.Datatype () _ _ _ constrs) -> pure $ Just $ fmap (PIR.mkVar ()) constrs
+
+defMatch :: Converting m => PIRBinding -> m (Maybe PIRTerm)
+defMatch = \case
+    PIR.TermBind () _ _ -> throwPlain $ ConversionError "Asked for matcher from term binding"
+    PIR.TypeBind () _ _ -> pure Nothing
+    PIR.DatatypeBind () (PIR.Datatype () _ _ destr _) -> pure $ Just $ PIR.Var () destr
+
+defTerm :: Converting m => PIRBinding -> m PIRTerm
+defTerm = \case
+    PIR.TermBind () n _ -> pure $ PIR.mkVar () n
+    PIR.TypeBind () _ _ -> throwPlain $ ConversionError "Asked for term from type binding"
+    PIR.DatatypeBind () _ -> throwPlain $ ConversionError "Asked for term from datatype binding"
 
 -- Processing definitions
 
-data TermOrTypeDef = TermDef TermDef | TypeDef TypeDef
-
 -- | Given the definitions in the program, create a topologically ordered list of the SCCs using the dependency information
-defSccs :: DefMap GHC.Name TypeDef -> DefMap GHC.Name TermDef -> [Graph.SCC TermOrTypeDef]
+defSccs :: DefMap GHC.Name PIRBinding -> DefMap GHC.Name PIRBinding -> [Graph.SCC PIRBinding]
 defSccs typeDefs termDefs =
     let
-        typeInputs = fmap (\(ghcName, (d, deps)) -> (TypeDef d, ghcName, deps)) (Map.assocs typeDefs)
-        termInputs = fmap (\(ghcName, (d, deps)) -> (TermDef d, ghcName, deps)) (Map.assocs termDefs)
+        typeInputs = fmap (\(ghcName, (d, deps)) -> (d, ghcName, deps)) (Map.assocs typeDefs)
+        termInputs = fmap (\(ghcName, (d, deps)) -> (d, ghcName, deps)) (Map.assocs termDefs)
     in
         Graph.stronglyConnComp (typeInputs ++ termInputs)
 
 wrapWithDefs
     :: (MonadError ConvError m)
-    => DefMap GHC.Name TypeDef
-    -> DefMap GHC.Name TermDef
-    -> PLC.Term PLC.TyName PLC.Name ()
-    -> m (PLC.Term PLC.TyName PLC.Name ())
+    => DefMap GHC.Name PIRBinding
+    -> DefMap GHC.Name PIRBinding
+    -> PIRTerm
+    -> m PIRTerm
 wrapWithDefs typeDefs termDefs body = do
     let sccs = defSccs typeDefs termDefs
     -- process from the inside out
@@ -100,31 +102,9 @@ wrapWithDefs typeDefs termDefs body = do
 
 wrapDefScc
     :: (MonadError ConvError m)
-    => PLC.Term PLC.TyName PLC.Name ()
-    -> Graph.SCC TermOrTypeDef
-    -> m (PLC.Term PLC.TyName PLC.Name ())
+    => PIRTerm
+    -> Graph.SCC PIRBinding
+    -> m PIRTerm
 wrapDefScc acc scc = case scc of
-    Graph.AcyclicSCC def            -> pure $ wrapDef acc def
-    -- self-recursive types are okay, but we don't handle recursive groups of definitions in general at the moment
-    Graph.CyclicSCC [def@TypeDef{}] -> pure $ wrapDef acc def
-    Graph.CyclicSCC _               -> throwPlain $ UnsupportedError "Mutually recursive definitions not currently supported"
-
--- | Wrap a term with a single definition.
-wrapDef :: PLC.Term PLC.TyName PLC.Name () -> TermOrTypeDef -> PLC.Term PLC.TyName PLC.Name ()
-wrapDef term def = case def of
-    TypeDef d ->
-        -- See Note [Abstract data types]
-        let
-            constructors = fromMaybe [] $ tydConstrs d
-            destructors = toList $ tydMatch d
-            -- we don't bother binding things that are not abstract since they will have
-            -- been inlined
-            abstractTys = filter (not . isVisible) [d]
-            abstractTerms = filter (not . isVisible) (constructors ++ destructors)
-            tyVars = fmap dVar abstractTys
-            tys = fmap (trTy . dVal) abstractTys
-            vars = fmap dVar abstractTerms
-            vals = fmap dVal abstractTerms
-        in
-            PLC.mkIterApp () (PLC.mkIterInst () (PLC.mkIterTyAbs () tyVars (PLC.mkIterLamAbs () vars term)) tys) vals
-    TermDef (Def _ d rhs) -> PLC.mkTermLet () (PLC.Def d rhs) term
+    Graph.AcyclicSCC def -> pure $ PIR.Let () PIR.NonRec [ def ] acc
+    Graph.CyclicSCC defs -> pure $ PIR.Let () PIR.Rec defs acc

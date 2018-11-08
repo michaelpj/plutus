@@ -1,521 +1,86 @@
 (program 1.0.0
   [
-    (lam
-      concatenate_86
-      (fun [(con bytestring) (con 256)] (fun [(con bytestring) (con 256)] [(con bytestring) (con 256)]))
+    [
       [
-        (lam
-          txhash_87
-          [(con bytestring) (con 256)]
-          [
+        {
+          (abs
+            Bool_78
+            (type)
             (lam
-              sha3_256_88
-              (fun [(con bytestring) (con 256)] [(con bytestring) (con 256)])
-              [
+              True_79
+              Bool_78
+              (lam
+                False_80
+                Bool_78
                 (lam
-                  sha2_256_89
-                  (fun [(con bytestring) (con 256)] [(con bytestring) (con 256)])
+                  Bool_match_81
+                  (fun Bool_78 (all out_Bool_82 (type) (fun out_Bool_82 (fun out_Bool_82 out_Bool_82))))
                   [
-                    [
-                      {
-                        (abs
-                          unit_90
-                          (type)
-                          (lam
-                            unit_91
-                            unit_90
-                            (lam
-                              p_match_92
-                              (fun unit_90 (all p_matchOut_93 (type) (fun p_matchOut_93 p_matchOut_93)))
-                              [
-                                (lam
-                                  error_94
-                                  (all a_95 (type) (fun unit_90 a_95))
-                                  [
-                                    (lam
-                                      takeByteString_96
-                                      (fun [(con integer) (con 64)] (fun [(con bytestring) (con 256)] [(con bytestring) (con 256)]))
-                                      [
-                                        (lam
-                                          subtractInteger_97
-                                          (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] [(con integer) (con 64)]))
-                                          [
-                                            (lam
-                                              remainderInteger_98
-                                              (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] [(con integer) (con 64)]))
-                                              [
-                                                (lam
-                                                  multiplyInteger_99
-                                                  (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] [(con integer) (con 64)]))
-                                                  [
-                                                    (lam
-                                                      dropByteString_100
-                                                      (fun [(con integer) (con 64)] (fun [(con bytestring) (con 256)] [(con bytestring) (con 256)]))
-                                                      [
-                                                        (lam
-                                                          divideInteger_101
-                                                          (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] [(con integer) (con 64)]))
-                                                          [
-                                                            (lam
-                                                              addInteger_102
-                                                              (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] [(con integer) (con 64)]))
-                                                              [
-                                                                [
-                                                                  [
-                                                                    {
-                                                                      (abs
-                                                                        Bool_103
-                                                                        (type)
-                                                                        (lam
-                                                                          True_104
-                                                                          Bool_103
-                                                                          (lam
-                                                                            False_105
-                                                                            Bool_103
-                                                                            (lam
-                                                                              Bool_match_106
-                                                                              (fun Bool_103 (all Bool_matchOut_107 (type) (fun Bool_matchOut_107 (fun Bool_matchOut_107 Bool_matchOut_107))))
-                                                                              [
-                                                                                (lam
-                                                                                  verifySignature_108
-                                                                                  (fun [(con bytestring) (con 256)] (fun [(con bytestring) (con 256)] (fun [(con bytestring) (con 256)] Bool_103)))
-                                                                                  [
-                                                                                    (lam
-                                                                                      lessThanInteger_109
-                                                                                      (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] Bool_103))
-                                                                                      [
-                                                                                        (lam
-                                                                                          lessThanEqInteger_110
-                                                                                          (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] Bool_103))
-                                                                                          [
-                                                                                            (lam
-                                                                                              greaterThanInteger_111
-                                                                                              (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] Bool_103))
-                                                                                              [
-                                                                                                (lam
-                                                                                                  greaterThanEqInteger_112
-                                                                                                  (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] Bool_103))
-                                                                                                  [
-                                                                                                    (lam
-                                                                                                      equalsInteger_113
-                                                                                                      (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] Bool_103))
-                                                                                                      [
-                                                                                                        (lam
-                                                                                                          equalsByteString_114
-                                                                                                          (fun [(con bytestring) (con 256)] (fun [(con bytestring) (con 256)] Bool_103))
-                                                                                                          (lam
-                                                                                                            ds_115
-                                                                                                            [(con integer) (con 64)]
-                                                                                                            (lam
-                                                                                                              ds_116
-                                                                                                              [(con integer) (con 64)]
-                                                                                                              [
-                                                                                                                (lam
-                                                                                                                  z_117
-                                                                                                                  [(con integer) (con 64)]
-                                                                                                                  [
-                                                                                                                    [
-                                                                                                                      equalsInteger_113
-                                                                                                                      ds_115
-                                                                                                                    ]
-                                                                                                                    z_117
-                                                                                                                  ]
-                                                                                                                )
-                                                                                                                ds_116
-                                                                                                              ]
-                                                                                                            )
-                                                                                                          )
-                                                                                                        )
-                                                                                                        (lam
-                                                                                                          arg_118
-                                                                                                          [(con bytestring) (con 256)]
-                                                                                                          (lam
-                                                                                                            arg_119
-                                                                                                            [(con bytestring) (con 256)]
-                                                                                                            [
-                                                                                                              (lam
-                                                                                                                b_120
-                                                                                                                (all a_121 (type) (fun a_121 (fun a_121 a_121)))
-                                                                                                                [
-                                                                                                                  [
-                                                                                                                    {
-                                                                                                                      b_120
-                                                                                                                      Bool_103
-                                                                                                                    }
-                                                                                                                    True_104
-                                                                                                                  ]
-                                                                                                                  False_105
-                                                                                                                ]
-                                                                                                              )
-                                                                                                              [
-                                                                                                                [
-                                                                                                                  {
-                                                                                                                    (con
-                                                                                                                      equalsByteString
-                                                                                                                    )
-                                                                                                                    (con 256)
-                                                                                                                  }
-                                                                                                                  arg_118
-                                                                                                                ]
-                                                                                                                arg_119
-                                                                                                              ]
-                                                                                                            ]
-                                                                                                          )
-                                                                                                        )
-                                                                                                      ]
-                                                                                                    )
-                                                                                                    (lam
-                                                                                                      arg_122
-                                                                                                      [(con integer) (con 64)]
-                                                                                                      (lam
-                                                                                                        arg_123
-                                                                                                        [(con integer) (con 64)]
-                                                                                                        [
-                                                                                                          (lam
-                                                                                                            b_124
-                                                                                                            (all a_125 (type) (fun a_125 (fun a_125 a_125)))
-                                                                                                            [
-                                                                                                              [
-                                                                                                                {
-                                                                                                                  b_124
-                                                                                                                  Bool_103
-                                                                                                                }
-                                                                                                                True_104
-                                                                                                              ]
-                                                                                                              False_105
-                                                                                                            ]
-                                                                                                          )
-                                                                                                          [
-                                                                                                            [
-                                                                                                              {
-                                                                                                                (con
-                                                                                                                  equalsInteger
-                                                                                                                )
-                                                                                                                (con 64)
-                                                                                                              }
-                                                                                                              arg_122
-                                                                                                            ]
-                                                                                                            arg_123
-                                                                                                          ]
-                                                                                                        ]
-                                                                                                      )
-                                                                                                    )
-                                                                                                  ]
-                                                                                                )
-                                                                                                (lam
-                                                                                                  arg_126
-                                                                                                  [(con integer) (con 64)]
-                                                                                                  (lam
-                                                                                                    arg_127
-                                                                                                    [(con integer) (con 64)]
-                                                                                                    [
-                                                                                                      (lam
-                                                                                                        b_128
-                                                                                                        (all a_129 (type) (fun a_129 (fun a_129 a_129)))
-                                                                                                        [
-                                                                                                          [
-                                                                                                            {
-                                                                                                              b_128
-                                                                                                              Bool_103
-                                                                                                            }
-                                                                                                            True_104
-                                                                                                          ]
-                                                                                                          False_105
-                                                                                                        ]
-                                                                                                      )
-                                                                                                      [
-                                                                                                        [
-                                                                                                          {
-                                                                                                            (con
-                                                                                                              greaterThanEqualsInteger
-                                                                                                            )
-                                                                                                            (con 64)
-                                                                                                          }
-                                                                                                          arg_126
-                                                                                                        ]
-                                                                                                        arg_127
-                                                                                                      ]
-                                                                                                    ]
-                                                                                                  )
-                                                                                                )
-                                                                                              ]
-                                                                                            )
-                                                                                            (lam
-                                                                                              arg_130
-                                                                                              [(con integer) (con 64)]
-                                                                                              (lam
-                                                                                                arg_131
-                                                                                                [(con integer) (con 64)]
-                                                                                                [
-                                                                                                  (lam
-                                                                                                    b_132
-                                                                                                    (all a_133 (type) (fun a_133 (fun a_133 a_133)))
-                                                                                                    [
-                                                                                                      [
-                                                                                                        {
-                                                                                                          b_132
-                                                                                                          Bool_103
-                                                                                                        }
-                                                                                                        True_104
-                                                                                                      ]
-                                                                                                      False_105
-                                                                                                    ]
-                                                                                                  )
-                                                                                                  [
-                                                                                                    [
-                                                                                                      {
-                                                                                                        (con
-                                                                                                          greaterThanInteger
-                                                                                                        )
-                                                                                                        (con 64)
-                                                                                                      }
-                                                                                                      arg_130
-                                                                                                    ]
-                                                                                                    arg_131
-                                                                                                  ]
-                                                                                                ]
-                                                                                              )
-                                                                                            )
-                                                                                          ]
-                                                                                        )
-                                                                                        (lam
-                                                                                          arg_134
-                                                                                          [(con integer) (con 64)]
-                                                                                          (lam
-                                                                                            arg_135
-                                                                                            [(con integer) (con 64)]
-                                                                                            [
-                                                                                              (lam
-                                                                                                b_136
-                                                                                                (all a_137 (type) (fun a_137 (fun a_137 a_137)))
-                                                                                                [
-                                                                                                  [
-                                                                                                    {
-                                                                                                      b_136
-                                                                                                      Bool_103
-                                                                                                    }
-                                                                                                    True_104
-                                                                                                  ]
-                                                                                                  False_105
-                                                                                                ]
-                                                                                              )
-                                                                                              [
-                                                                                                [
-                                                                                                  {
-                                                                                                    (con
-                                                                                                      lessThanEqualsInteger
-                                                                                                    )
-                                                                                                    (con 64)
-                                                                                                  }
-                                                                                                  arg_134
-                                                                                                ]
-                                                                                                arg_135
-                                                                                              ]
-                                                                                            ]
-                                                                                          )
-                                                                                        )
-                                                                                      ]
-                                                                                    )
-                                                                                    (lam
-                                                                                      arg_138
-                                                                                      [(con integer) (con 64)]
-                                                                                      (lam
-                                                                                        arg_139
-                                                                                        [(con integer) (con 64)]
-                                                                                        [
-                                                                                          (lam
-                                                                                            b_140
-                                                                                            (all a_141 (type) (fun a_141 (fun a_141 a_141)))
-                                                                                            [
-                                                                                              [
-                                                                                                {
-                                                                                                  b_140
-                                                                                                  Bool_103
-                                                                                                }
-                                                                                                True_104
-                                                                                              ]
-                                                                                              False_105
-                                                                                            ]
-                                                                                          )
-                                                                                          [
-                                                                                            [
-                                                                                              {
-                                                                                                (con
-                                                                                                  lessThanInteger
-                                                                                                )
-                                                                                                (con 64)
-                                                                                              }
-                                                                                              arg_138
-                                                                                            ]
-                                                                                            arg_139
-                                                                                          ]
-                                                                                        ]
-                                                                                      )
-                                                                                    )
-                                                                                  ]
-                                                                                )
-                                                                                (lam
-                                                                                  arg_142
-                                                                                  [(con bytestring) (con 256)]
-                                                                                  (lam
-                                                                                    arg_143
-                                                                                    [(con bytestring) (con 256)]
-                                                                                    (lam
-                                                                                      arg_144
-                                                                                      [(con bytestring) (con 256)]
-                                                                                      [
-                                                                                        (lam
-                                                                                          b_145
-                                                                                          (all a_146 (type) (fun a_146 (fun a_146 a_146)))
-                                                                                          [
-                                                                                            [
-                                                                                              {
-                                                                                                b_145
-                                                                                                Bool_103
-                                                                                              }
-                                                                                              True_104
-                                                                                            ]
-                                                                                            False_105
-                                                                                          ]
-                                                                                        )
-                                                                                        [
-                                                                                          [
-                                                                                            [
-                                                                                              {
-                                                                                                {
-                                                                                                  {
-                                                                                                    (con
-                                                                                                      verifySignature
-                                                                                                    )
-                                                                                                    (con 256)
-                                                                                                  }
-                                                                                                  (con 256)
-                                                                                                }
-                                                                                                (con 256)
-                                                                                              }
-                                                                                              arg_142
-                                                                                            ]
-                                                                                            arg_143
-                                                                                          ]
-                                                                                          arg_144
-                                                                                        ]
-                                                                                      ]
-                                                                                    )
-                                                                                  )
-                                                                                )
-                                                                              ]
-                                                                            )
-                                                                          )
-                                                                        )
-                                                                      )
-                                                                      (all Bool_matchOut_147 (type) (fun Bool_matchOut_147 (fun Bool_matchOut_147 Bool_matchOut_147)))
-                                                                    }
-                                                                    (abs
-                                                                      Bool_matchOut_148
-                                                                      (type)
-                                                                      (lam
-                                                                        True_149
-                                                                        Bool_matchOut_148
-                                                                        (lam
-                                                                          False_150
-                                                                          Bool_matchOut_148
-                                                                          True_149
-                                                                        )
-                                                                      )
-                                                                    )
-                                                                  ]
-                                                                  (abs
-                                                                    Bool_matchOut_151
-                                                                    (type)
-                                                                    (lam
-                                                                      True_152
-                                                                      Bool_matchOut_151
-                                                                      (lam
-                                                                        False_153
-                                                                        Bool_matchOut_151
-                                                                        False_153
-                                                                      )
-                                                                    )
-                                                                  )
-                                                                ]
-                                                                (lam
-                                                                  x_154
-                                                                  (all Bool_matchOut_155 (type) (fun Bool_matchOut_155 (fun Bool_matchOut_155 Bool_matchOut_155)))
-                                                                  x_154
-                                                                )
-                                                              ]
-                                                            )
-                                                            {
-                                                              (con addInteger)
-                                                              (con 64)
-                                                            }
-                                                          ]
-                                                        )
-                                                        {
-                                                          (con divideInteger)
-                                                          (con 64)
-                                                        }
-                                                      ]
-                                                    )
-                                                    {
-                                                      {
-                                                        (con dropByteString)
-                                                        (con 64)
-                                                      }
-                                                      (con 256)
-                                                    }
-                                                  ]
-                                                )
-                                                {
-                                                  (con multiplyInteger) (con 64)
-                                                }
-                                              ]
-                                            )
-                                            { (con remainderInteger) (con 64) }
-                                          ]
-                                        )
-                                        { (con subtractInteger) (con 64) }
-                                      ]
-                                    )
-                                    {
-                                      { (con takeByteString) (con 64) }
-                                      (con 256)
-                                    }
-                                  ]
-                                )
-                                (abs
-                                  e_156
-                                  (type)
-                                  (lam thunk_157 unit_90 (error e_156))
-                                )
-                              ]
-                            )
-                          )
-                        )
-                        (all p_matchOut_158 (type) (fun p_matchOut_158 p_matchOut_158))
-                      }
-                      (abs
-                        p_matchOut_159
-                        (type)
-                        (lam unit_160 p_matchOut_159 unit_160)
-                      )
-                    ]
                     (lam
-                      x_161
-                      (all p_matchOut_162 (type) (fun p_matchOut_162 p_matchOut_162))
-                      x_161
+                      equalsInteger_83
+                      (fun [(con integer) (con 64)] (fun [(con integer) (con 64)] Bool_78))
+                      (lam
+                        ds_84
+                        [(con integer) (con 64)]
+                        (lam
+                          ds_85
+                          [(con integer) (con 64)]
+                          [
+                            (lam
+                              z_86
+                              [(con integer) (con 64)]
+                              [ [ equalsInteger_83 ds_84 ] z_86 ]
+                            )
+                            ds_85
+                          ]
+                        )
+                      )
+                    )
+                    (lam
+                      arg_87
+                      [(con integer) (con 64)]
+                      (lam
+                        arg_88
+                        [(con integer) (con 64)]
+                        [
+                          (lam
+                            b_89
+                            (all a_90 (type) (fun a_90 (fun a_90 a_90)))
+                            [ [ { b_89 Bool_78 } True_79 ] False_80 ]
+                          )
+                          [ [ { (con equalsInteger) (con 64) } arg_87 ] arg_88 ]
+                        ]
+                      )
                     )
                   ]
                 )
-                { (con sha2_256) (con 256) }
-              ]
+              )
             )
-            { (con sha3_256) (con 256) }
-          ]
+          )
+          (all out_Bool_91 (type) (fun out_Bool_91 (fun out_Bool_91 out_Bool_91)))
+        }
+        (abs
+          out_Bool_92
+          (type)
+          (lam
+            case_True_93
+            out_Bool_92
+            (lam case_False_94 out_Bool_92 case_True_93)
+          )
         )
-        (con txhash)
       ]
+      (abs
+        out_Bool_95
+        (type)
+        (lam
+          case_True_96 out_Bool_95 (lam case_False_97 out_Bool_95 case_False_97)
+        )
+      )
+    ]
+    (lam
+      x_98
+      (all out_Bool_99 (type) (fun out_Bool_99 (fun out_Bool_99 out_Bool_99)))
+      x_98
     )
-    { (con concatenate) (con 256) }
   ]
 )

@@ -7,6 +7,7 @@ module Language.Plutus.CoreToPLC.Compiler.Types where
 
 import           Language.Plutus.CoreToPLC.Error
 import           Language.Plutus.CoreToPLC.PLCTypes
+import           Language.Plutus.CoreToPLC.PIRTypes
 
 import qualified Language.PlutusCore.MkPlc          as PLC
 import           Language.PlutusCore.Quote
@@ -19,6 +20,7 @@ import           Control.Monad.State
 
 import qualified Data.List.NonEmpty                 as NE
 import qualified Data.Map                           as Map
+import qualified Data.Set                           as Set
 import           Lens.Micro
 
 import qualified Language.Haskell.TH.Syntax         as TH
@@ -34,40 +36,28 @@ data ConvertingContext = ConvertingContext {
     ccScopes          :: ScopeStack
     }
 
--- | The visibility of a definition. See Note [Abstract data types]
-data Visibility = Abstract | Visible
--- | A definition of type 'val' with variable type 'var'.
-data Def var val = Def {dVis::Visibility, dVar::var, dVal::val}
-
--- | Either a simple type or a datatype with constructors and a matcher.
-data TypeRep = PlainType PLCType | DataType PLCType [TermDef] TermDef
-
-type TypeDef = Def PLCTyVar TypeRep
-
-instance Show (Def PLCTyVar TypeRep) where
-    show Def{dVar=v} = show (PLC.tyVarDeclName v)
-
-type TermDef = Def PLCVar PLCTerm
-
-instance Show (Def PLCVar PLCTerm) where
-    show Def{dVar=v} = show (PLC.varDeclName v)
-
 type DefMap key def = Map.Map key (def, [key])
 
 data ConvertingState = ConvertingState {
-    csTypeDefs :: DefMap GHC.Name TypeDef,
-    csTermDefs :: DefMap GHC.Name TermDef
+    csTypeDefs :: DefMap GHC.Name PIRBinding,
+    csTermDefs :: DefMap GHC.Name PIRBinding,
+    csAliases  :: Set.Set GHC.Name
     }
 
-typeDefs :: Lens' ConvertingState (DefMap GHC.Name TypeDef)
+typeDefs :: Lens' ConvertingState (DefMap GHC.Name PIRBinding)
 typeDefs = lens g s where
     g = csTypeDefs
     s cs tds = cs { csTypeDefs = tds }
 
-termDefs :: Lens' ConvertingState (DefMap GHC.Name TermDef)
+termDefs :: Lens' ConvertingState (DefMap GHC.Name PIRBinding)
 termDefs = lens g s where
     g = csTermDefs
     s cs tds = cs { csTermDefs = tds }
+
+aliases :: Lens' ConvertingState (Set.Set GHC.Name)
+aliases = lens g s where
+    g = csAliases
+    s cs tds = cs { csAliases = tds }
 
 -- See Note [Scopes]
 type Converting m = (Monad m, MonadError ConvError m, MonadQuote m, MonadReader ConvertingContext m, MonadState ConvertingState m)

@@ -6,7 +6,14 @@
 {-# LANGUAGE ViewPatterns      #-}
 
 -- | Functions for compiling Plutus Core builtins.
-module Language.Plutus.CoreToPLC.Compiler.Builtins where
+module Language.Plutus.CoreToPLC.Compiler.Builtins (
+    builtinNames
+    , defineBuiltinTypes
+    , defineBuiltinTerms
+    , lookupBuiltinTerm
+    , lookupBuiltinType
+    , errorTy
+    , errorFunc) where
 
 import qualified Language.Plutus.CoreToPLC.Builtins                  as Builtins
 import           Language.Plutus.CoreToPLC.Compiler.Definitions
@@ -17,11 +24,13 @@ import           Language.Plutus.CoreToPLC.Compiler.Types
 import           Language.Plutus.CoreToPLC.Compiler.Utils
 import           Language.Plutus.CoreToPLC.Compiler.ValueRestriction
 import           Language.Plutus.CoreToPLC.Error
-import           Language.Plutus.CoreToPLC.PLCTypes
+import           Language.Plutus.CoreToPLC.PIRTypes
 import           Language.Plutus.CoreToPLC.Utils
 
+import qualified Language.PlutusIR as PIR
+import qualified Language.PlutusIR.MkPir as PIR
+
 import qualified Language.PlutusCore                                 as PLC
-import qualified Language.PlutusCore.MkPlc                           as PLC
 import           Language.PlutusCore.Quote
 import qualified Language.PlutusCore.StdLib.Data.Bool                as Bool
 
@@ -34,8 +43,6 @@ import           Control.Monad.Reader
 
 import qualified Data.ByteString.Lazy                                as BSL
 import qualified Data.Map                                            as Map
-
--- Plutus primitives
 
 {- Note [Mapping builtins]
 We want the user to be able to call the Plutus builtins as normal Haskell functions.
@@ -81,6 +88,8 @@ builtinNames = [
     , 'Builtins.error
     ]
 
+-- | Get the 'GHC.TyThing' for a given 'TH.Name' which was stored in the builtin name info,
+-- failing if it is missing.
 getThing :: Converting m => TH.Name -> m GHC.TyThing
 getThing name = do
     ConvertingContext{ccBuiltinNameInfo=names} <- ask
@@ -88,17 +97,19 @@ getThing name = do
         Nothing    -> throwSd ConversionError $ "Missing builtin name:" GHC.<+> (GHC.text $ show name)
         Just thing -> pure thing
 
-defineBuiltinTerm :: Converting m => TH.Name -> PLCTerm -> [GHC.Name] -> m ()
+defineBuiltinTerm :: Converting m => TH.Name -> PIRTerm -> [GHC.Name] -> m ()
 defineBuiltinTerm name term deps = do
     ghcId <- GHC.tyThingId <$> getThing name
     var <- convVarFresh ghcId
-    defineTerm (GHC.getName ghcId) (Def Abstract var term) deps
+    defineTerm (GHC.getName ghcId) (PIR.TermBind () var term) deps
 
-defineBuiltinType :: Converting m => TH.Name -> Visibility -> PLCType -> [GHC.Name] -> m ()
-defineBuiltinType name vis ty deps = do
+defineBuiltinType :: Converting m => TH.Name -> PIRType -> [GHC.Name] -> m ()
+defineBuiltinType name ty deps = do
     tc <- GHC.tyThingTyCon <$> getThing name
     var <- convTcTyVarFresh tc
-    defineType (GHC.getName tc) (Def vis var (PlainType ty)) deps
+    defineType (GHC.getName tc) (PIR.TypeBind () var ty) deps
+    -- these are all aliases for now
+    recordAlias (GHC.getName tc)
 
 defineBuiltinTerms :: Converting m => m ()
 defineBuiltinTerms = do
@@ -178,102 +189,88 @@ defineBuiltinTypes :: Converting m => m ()
 defineBuiltinTypes = do
     do
         let ty = appSize haskellBSSize $ PLC.TyBuiltin () PLC.TyByteString
-        defineBuiltinType ''BSL.ByteString Visible ty []
+        defineBuiltinType ''BSL.ByteString ty []
     do
         let ty = appSize haskellIntSize (PLC.TyBuiltin () PLC.TyInteger)
-        defineBuiltinType ''Int Visible ty []
+        defineBuiltinType ''Int ty []
 
-lookupBuiltinTerm :: Converting m => TH.Name -> m PLCTerm
+lookupBuiltinTerm :: Converting m => TH.Name -> m PIRTerm
 lookupBuiltinTerm name = do
     ghcName <- GHC.getName <$> getThing name
-    maybeTerm <- lookupTerm ghcName
+    maybeTerm <- lookupTermDef ghcName
     case maybeTerm of
         Just t  -> pure t
         Nothing -> throwPlain $ ConversionError "Missing builtin definition"
 
-lookupBuiltinType :: Converting m => TH.Name -> m PLCType
+lookupBuiltinType :: Converting m => TH.Name -> m PIRType
 lookupBuiltinType name = do
     ghcName <- GHC.getName <$> getThing name
-    maybeType <- lookupType ghcName
+    maybeType <- lookupTypeDef ghcName
     case maybeType of
         Just t  -> pure t
         Nothing -> throwPlain $ ConversionError "Missing builtin definition"
 
 -- | The function 'error :: forall a . () -> a'.
-errorFunc :: Converting m => m PLCTerm
+errorFunc :: Converting m => m PIRTerm
 errorFunc = do
     n <- liftQuote $ freshTyName () "e"
     -- see Note [Value restriction]
-    mangleTyAbs $ PLC.TyAbs () n (PLC.Type ()) (PLC.Error () (PLC.TyVar () n))
+    mangleTyAbs $ PIR.TyAbs () n (PIR.Type ()) (PIR.Error () (PIR.TyVar () n))
 
 -- | The type 'forall a. () -> a'.
-errorTy :: Converting m => m PLCType
+errorTy :: Converting m => m PIRType
 errorTy = do
     tyname <- safeFreshTyName "a"
-    mangleTyForall $ PLC.TyForall () tyname (PLC.Type ()) (PLC.TyVar () tyname)
+    mangleTyForall $ PIR.TyForall () tyname (PIR.Type ()) (PIR.TyVar () tyname)
 
 -- | Convert a Scott-encoded Boolean into a Haskell Boolean.
-scottBoolToHaskellBool :: Converting m => m PLCTerm
+scottBoolToHaskellBool :: Converting m => m PIRTerm
 scottBoolToHaskellBool = do
     scottBoolTy <- liftQuote Bool.getBuiltinBool
     haskellBoolTy <- convType GHC.boolTy
 
     arg <- liftQuote $ freshName () "b"
-    let match = PLC.Var () arg
-    let instantiatedMatch = PLC.TyInst () match haskellBoolTy
+    let match = PIR.Var () arg
+    let instantiatedMatch = PIR.TyInst () match haskellBoolTy
 
     haskellTrue <- convDataConRef GHC.trueDataCon
     haskellFalse <- convDataConRef GHC.falseDataCon
     pure $
-        PLC.LamAbs () arg scottBoolTy $
-        PLC.mkIterApp () instantiatedMatch [ haskellTrue, haskellFalse ]
-
--- | Convert a Haskell Boolean into a Scott-encoded Boolean.
-haskellBoolToScottBool :: Converting m => m PLCTerm
-haskellBoolToScottBool = do
-    scottBoolTy <- liftQuote Bool.getBuiltinBool
-    haskellBoolTy <- convType GHC.boolTy
-
-    arg <- liftQuote $ freshName () "b"
-    match <- getMatchInstantiated GHC.boolTy
-    let instantiatedMatch = PLC.TyInst () match scottBoolTy
-
-    scottTrue <- liftQuote Bool.getBuiltinTrue
-    scottFalse <- liftQuote Bool.getBuiltinFalse
-    pure $
-        PLC.LamAbs () arg haskellBoolTy $
-        PLC.mkIterApp () instantiatedMatch [ scottTrue, scottFalse ]
+        PIR.LamAbs () arg scottBoolTy $
+        PIR.mkIterApp () instantiatedMatch [ haskellTrue, haskellFalse ]
 
 -- | Wrap an integer relation of arity @n@ that produces a Scott boolean.
-wrapIntRel :: Converting m => Int -> PLCTerm -> m PLCTerm
+wrapIntRel :: Converting m => Int -> PIRTerm -> m PIRTerm
 wrapIntRel arity term = do
     intTy <- lookupBuiltinType ''Int
     args <- replicateM arity $ do
         name <- liftQuote $ freshName () "arg"
-        pure $ PLC.VarDecl () name intTy
+        pure $ PIR.VarDecl () name intTy
 
+    -- TODO: bind the converter to a name too
     converter <- scottBoolToHaskellBool
 
     pure $
-        PLC.mkIterLamAbs () args $
-        PLC.Apply () converter (PLC.mkIterApp () term (fmap (PLC.mkVar ()) args))
+        PIR.mkIterLamAbs () args $
+        PIR.Apply () converter (PIR.mkIterApp () term (fmap (PIR.mkVar ()) args))
 
-mkIntRel :: Converting m => PLC.BuiltinName -> m PLCTerm
+mkIntRel :: Converting m => PLC.BuiltinName -> m PIRTerm
 mkIntRel name = wrapIntRel 2 $ instSize haskellIntSize (mkConstant name)
 
 -- | Wrap an bytestring relation of arity @n@ that produces a Scott boolean.
-wrapBsRel :: Converting m => Int -> PLCTerm -> m PLCTerm
+wrapBsRel :: Converting m => Int -> PIRTerm -> m PIRTerm
 wrapBsRel arity term = do
     bsTy <- lookupBuiltinType ''BSL.ByteString
     args <- replicateM arity $ do
         name <- liftQuote $ freshName () "arg"
-        pure $ PLC.VarDecl () name bsTy
+        pure $ PIR.VarDecl () name bsTy
 
+    -- TODO: bind the converter to a name too
     converter <- scottBoolToHaskellBool
 
     pure $
-        PLC.mkIterLamAbs () args $
-        PLC.Apply () converter (PLC.mkIterApp () term (fmap (PLC.mkVar ()) args))
+        PIR.mkIterLamAbs () args $
+        PIR.Apply () converter (PIR.mkIterApp () term (fmap (PIR.mkVar ()) args))
 
-mkBsRel :: Converting m => PLC.BuiltinName -> m PLCTerm
+mkBsRel :: Converting m => PLC.BuiltinName -> m PIRTerm
 mkBsRel name = wrapBsRel 2 $ instSize haskellBSSize (mkConstant name)

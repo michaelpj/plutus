@@ -196,7 +196,7 @@ convertExpr opts locStr origE resType = do
     -- We need to do this out here, since it has to run in CoreM
     nameInfo <- makePrimitiveNameInfo builtinNames
     let result = withContextM (sdToTxt $ "Converting expr at" GHC.<+> GHC.text locStr) $ do
-              (pirP::PIRProgram) <- PIR.Program () . PIR.removeDeadBindings . PIR.embedIntoIR <$> convExprWithDefs origE
+              (pirP::PIRProgram) <- PIR.Program () . PIR.removeDeadBindings <$> convExprWithDefs origE
               (plcP::PLCProgram) <- convertErrors (NoContext . PIRError) $ void <$> (flip runReaderT PIR.NoProvenance $ PIR.compileProgram pirP)
               when (poDoTypecheck opts) $ convertErrors (NoContext . PLCError) $ do
                   annotated <- PLC.annotateProgram plcP
@@ -208,7 +208,7 @@ convertExpr opts locStr origE resType = do
             ccBuiltinNameInfo=nameInfo,
             ccScopes=initialScopeStack
             }
-        initialState = ConvertingState Map.empty Map.empty
+        initialState = ConvertingState mempty mempty mempty
     case runConverting context initialState result of
         Left s ->
             let shown = show $ PP.pretty s in

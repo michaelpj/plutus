@@ -17,7 +17,7 @@ import           Language.Plutus.CoreToPLC.Compiler.Types
 import           Language.Plutus.CoreToPLC.Compiler.Utils
 import           Language.Plutus.CoreToPLC.Error
 import           Language.Plutus.CoreToPLC.Laziness
-import           Language.Plutus.CoreToPLC.PLCTypes
+import           Language.Plutus.CoreToPLC.PIRTypes
 import           Language.Plutus.CoreToPLC.Utils
 
 import qualified CoreUtils                                      as GHC
@@ -25,18 +25,19 @@ import qualified GhcPlugins                                     as GHC
 import qualified MkId                                           as GHC
 import qualified PrelNames                                      as GHC
 
+import qualified Language.PlutusIR                              as PIR
+import qualified Language.PlutusIR.MkPir                        as PIR
+import qualified Language.PlutusIR.Value                        as PIR
+
 import qualified Language.PlutusCore                            as PLC
-import qualified Language.PlutusCore.MkPlc                      as PLC
-import           Language.PlutusCore.Quote
-import qualified Language.PlutusCore.StdLib.Data.Function       as Function
 
 import           Control.Monad.Reader
 import           Control.Monad.State
 
 import qualified Data.ByteString.Lazy                           as BSL
-import qualified Data.List.NonEmpty                             as NE
-
 import           Data.List                                      (elemIndex)
+import qualified Data.List.NonEmpty                             as NE
+import           Data.Traversable
 
 {- Note [System FC and System FW]
 Haskell uses system FC, which includes type equalities and coercions.
@@ -86,7 +87,7 @@ isPrimitiveWrapper i = case GHC.idDetails i of
 isPrimitiveDataCon :: GHC.DataCon -> Bool
 isPrimitiveDataCon dc = dc == GHC.intDataCon
 
-convDataConRef :: Converting m => GHC.DataCon -> m PLCTerm
+convDataConRef :: Converting m => GHC.DataCon -> m PIRTerm
 convDataConRef dc =
     let
         tc = GHC.dataConTyCon dc
@@ -125,7 +126,7 @@ into this:
 
 -- Expressions
 
-convExpr :: Converting m => GHC.CoreExpr -> m PLCTerm
+convExpr :: Converting m => GHC.CoreExpr -> m PIRTerm
 convExpr e = withContextM (sdToTxt $ "Converting expr:" GHC.<+> GHC.ppr e) $ do
     -- See Note [Scopes]
     ConvertingContext {ccScopes=stack} <- ask
@@ -158,82 +159,58 @@ convExpr e = withContextM (sdToTxt $ "Converting expr:" GHC.<+> GHC.ppr e) $ do
         -- void# - values of type void get represented as error, since they should be unreachable
         GHC.Var n | n == GHC.voidPrimId || n == GHC.voidArgId -> errorFunc
         -- locally bound vars
-        GHC.Var (lookupName top . GHC.getName -> Just (PLC.VarDecl _ name _)) -> pure $ PLC.Var () name
+        GHC.Var (lookupName top . GHC.getName -> Just (PIR.VarDecl _ name _)) -> pure $ PIR.Var () name
         -- Special kinds of id
         GHC.Var (GHC.idDetails -> GHC.PrimOpId po) -> convPrimitiveOp po
         GHC.Var (GHC.idDetails -> GHC.DataConWorkId dc) -> convDataConRef dc
         GHC.Var n -> do
             -- Defined names, including builtin names
-            maybeDef <- lookupTerm (GHC.getName n)
+            maybeDef <- lookupTermDef (GHC.getName n)
             case maybeDef of
                 Just term -> pure term
                 -- the term we get must be closed - we don't resolve most references
                 -- TODO: possibly relax this?
                 Nothing -> throwSd FreeVariableError $ "Variable" GHC.<+> GHC.ppr n GHC.$+$ (GHC.ppr $ GHC.idDetails n)
-        GHC.Lit lit -> PLC.Constant () <$> convLiteral lit
+        GHC.Lit lit -> PIR.Constant () <$> convLiteral lit
         -- arg can be a type here, in which case it's a type instantiation
-        GHC.App l (GHC.Type t) -> PLC.TyInst () <$> convExpr l <*> convType t
+        GHC.App l (GHC.Type t) -> PIR.TyInst () <$> convExpr l <*> convType t
         -- otherwise it's a normal application
-        GHC.App l arg -> PLC.Apply () <$> convExpr l <*> convExpr arg
+        GHC.App l arg -> PIR.Apply () <$> convExpr l <*> convExpr arg
         -- if we're biding a type variable it's a type abstraction
         GHC.Lam b@(GHC.isTyVar -> True) body -> mkTyAbsScoped b $ convExpr body
         -- othewise it's a normal lambda
         GHC.Lam b body -> mkLamAbsScoped b $ convExpr body
         GHC.Let (GHC.NonRec b arg) body -> do
-            -- convert it as a lambda
-            a' <- convExpr arg
-            l' <- mkLamAbsScoped b $ convExpr body
-            pure $ PLC.Apply () l' a'
-        GHC.Let (GHC.Rec bs) body -> do
-            -- See note [Recursive lets]
-            -- TODO: we're technically using these twice, which is bad and maybe we need to duplicate
-            tys <- mapM convType (fmap (GHC.varType . fst) bs)
-            -- The pairs of types we'll need for fixN
-            asbs <- forM tys $ \case
-                PLC.TyFun () i o -> pure (i, o)
-                _ -> throwPlain $ ConversionError "Recursive values must be of function type. You may need to manually add unit arguments."
-
-            -- We need this so we can use the tuple of recursive functions in the end - it
-            -- expects an output type.
-            outTy <- convType (GHC.exprType body)
-
-            q <- safeFreshTyName "Q"
-            choose <- safeFreshName "choose"
-            let chooseTy = PLC.mkIterTyFun () tys (PLC.TyVar () q)
-
-            -- \f1 ... fn -> choose b1 ... bn
-            bsLam <- mkIterLamAbsScoped (fmap fst bs) $ do
-                rhss <- mapM convExpr (fmap snd bs)
-                pure $ PLC.mkIterApp () (PLC.Var() choose) rhss
-
-            -- abstract out Q and choose
-            let cLam = PLC.TyAbs () q (PLC.Type ()) $ PLC.LamAbs () choose chooseTy bsLam
-
-            -- fixN {A1 B1 ... An Bn}
-            instantiatedFix <- do
-                fixN <- liftQuote $ Function.getBuiltinFixN (length bs)
-                pure $ PLC.mkIterInst () fixN $ foldMap (\(a, b) -> [a, b]) asbs
-
-            let fixed = PLC.Apply () instantiatedFix cLam
-
-            -- the consumer of the recursive functions
-            bodyLam <- mkIterLamAbsScoped (fmap fst bs) (convExpr body)
-            pure $ PLC.Apply () (PLC.TyInst () fixed outTy) bodyLam
+            -- binding in scope for the body, but not the arg
+            arg' <- convExpr arg
+            withVarScoped b $ \v -> do
+                let binds = [ PIR.TermBind () v arg' ]
+                body' <- convExpr body
+                pure $ PIR.Let () PIR.NonRec binds body'
+        GHC.Let (GHC.Rec bs) body ->
+            withVarsScoped (fmap fst bs) $ \vars -> do
+                -- bindings in scope in both the body and the args
+                -- TODO: bit inelegant matching the vars back up
+                binds <- for (zip vars bs) $ \(v, (_, arg)) -> do
+                    arg' <- convExpr arg
+                    pure $ PIR.TermBind () v arg'
+                body' <- convExpr body
+                pure $ PIR.Let () PIR.Rec binds body'
         GHC.Case scrutinee b t alts -> do
             let scrutineeType = GHC.varType b
 
             -- See Note [Case expressions and laziness]
-            isValueAlt <- mapM (\(_, vars, body) -> if null vars then PLC.isTermValue <$> convExpr body else pure True) alts
+            isValueAlt <- mapM (\(_, vars, body) -> if null vars then PIR.isTermValue <$> convExpr body else pure True) alts
             let lazyCase = not $ and isValueAlt
 
             scrutinee' <- convExpr scrutinee
 
             match <- getMatchInstantiated scrutineeType
-            let matched = PLC.Apply () match scrutinee'
+            let matched = PIR.Apply () match scrutinee'
 
             -- See Note [Scott encoding of datatypes]
             -- we're going to delay the body, so the scrutinee needs to be instantiated the delayed type
-            instantiated <- PLC.TyInst () matched <$> (convType t >>= maybeDelayType lazyCase)
+            instantiated <- PIR.TyInst () matched <$> (convType t >>= maybeDelayType lazyCase)
 
             tc <- case GHC.splitTyConApp_maybe scrutineeType of
                 Just (tc, _) -> pure tc
@@ -244,7 +221,7 @@ convExpr e = withContextM (sdToTxt $ "Converting expr:" GHC.<+> GHC.ppr e) $ do
                 Just alt -> convAlt lazyCase dc alt
                 Nothing  -> throwPlain $ ConversionError "No case matched and no default case"
 
-            let applied = PLC.mkIterApp () instantiated branches
+            let applied = PIR.mkIterApp () instantiated branches
             -- See Note [Case expressions and laziness]
             maybeForce lazyCase applied
         -- ignore annotation
@@ -256,18 +233,18 @@ convExpr e = withContextM (sdToTxt $ "Converting expr:" GHC.<+> GHC.ppr e) $ do
                     match <- getMatchInstantiated outer
                     -- unwrap by doing a "trivial match" - instantiate to the inner type and apply the identity
                     inner' <- convType inner
-                    let instantiated = PLC.TyInst () (PLC.Apply () match body') inner'
+                    let instantiated = PIR.TyInst () (PIR.Apply () match body') inner'
                     name <- safeFreshName "inner"
-                    let identity = PLC.LamAbs () name inner' (PLC.Var () name)
-                    pure $ PLC.Apply () instantiated identity
+                    let identity = PIR.LamAbs () name inner' (PIR.Var () name)
+                    pure $ PIR.Apply () instantiated identity
                 Just (Wrap _ outer) -> do
                     constr <- head <$> getConstructorsInstantiated outer
-                    pure $ PLC.Apply () constr body'
+                    pure $ PIR.Apply () constr body'
                 _ -> throwSd UnsupportedError $ "Coercion" GHC.$+$ GHC.ppr coerce
         GHC.Type _ -> throwPlain $ ConversionError "Cannot convert types directly, only as arguments to applications"
         GHC.Coercion _ -> throwPlain $ ConversionError "Coercions should not be converted"
 
-convExprWithDefs :: Converting m => GHC.CoreExpr -> m PLCTerm
+convExprWithDefs :: Converting m => GHC.CoreExpr -> m PIRTerm
 convExprWithDefs e = do
     defineBuiltinTypes
     defineBuiltinTerms

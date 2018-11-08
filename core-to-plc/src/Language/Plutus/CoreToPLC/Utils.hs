@@ -3,7 +3,8 @@
 
 module Language.Plutus.CoreToPLC.Utils where
 
-import qualified Language.PlutusCore  as PLC
+import qualified Language.PlutusIR  as PIR
+import qualified Language.PlutusCore as PLC
 
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text            as T
@@ -17,16 +18,16 @@ strToBs = BSL.fromStrict . TE.encodeUtf8 . T.pack
 bsToStr :: BSL.ByteString -> String
 bsToStr = T.unpack . TE.decodeUtf8 . BSL.toStrict
 
-instSize :: Natural -> PLC.Term tyname name () -> PLC.Term tyname name ()
-instSize n t = PLC.TyInst () t (PLC.TyInt () n)
+instSize :: Natural -> PIR.Term tyname name () -> PIR.Term tyname name ()
+instSize n t = PIR.TyInst () t (PLC.TyInt () n)
 
-appSize :: Natural -> PLC.Type tyname () -> PLC.Type tyname ()
-appSize n t = PLC.TyApp () t (PLC.TyInt () n)
+appSize :: Natural -> PIR.Type tyname () -> PIR.Type tyname ()
+appSize n t = PIR.TyApp () t (PLC.TyInt () n)
 
-mkConstant :: PLC.BuiltinName -> PLC.Term tyname name ()
-mkConstant n = PLC.Constant () $ PLC.BuiltinName () n
+mkConstant :: PLC.BuiltinName -> PIR.Term tyname name ()
+mkConstant n = PIR.Constant () $ PLC.BuiltinName () n
 
-mkIntFun :: PLC.BuiltinName -> PLC.Term PLC.TyName PLC.Name ()
+mkIntFun :: PLC.BuiltinName -> PIR.Term PIR.TyName PIR.Name ()
 mkIntFun name = instSize haskellIntSize (mkConstant name)
 
 haskellIntSize :: Natural
