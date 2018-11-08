@@ -42,12 +42,16 @@ marlowe = property $ do
     let model = Gen.generatorModel { Gen.gmInitialBalance = Map.singleton (PubKey 1) 1000 }
     (result, st) <- forAll $ Gen.runTraceOn model $ do
         -- Init a contract
-        let w = Wallet 1
-            update = blockchainActions >>= walletsNotifyBlock [w]
+        let alice = Wallet 1
+            bob = Wallet 1
+            update = blockchainActions >>= walletsNotifyBlock [alice, bob]
         update
-        txs <- walletAction w (createContract Null 1)
+        txs <- walletAction alice (createContract Null 1)
+        let (_{- txOut -}, txOutRef) = head . filter (isPayToScriptOut . fst) . txOutRefs $ head txs
         update
-        let (txOut, txOutRef) = head . filter (isPayToScriptOut . fst) . txOutRefs $ head txs
+        txs <- walletAction alice (commitCash (PubKey 1) txOutRef 100 256)
+        let (_{- txOut -}, txOutRef) = head . filter (isPayToScriptOut . fst) . txOutRefs $ head txs
+
         Debug.traceM $ show txOutRef
         -- txs1 <- walletAction w (endContract Null txOutRef 1)
         -- update
