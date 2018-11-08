@@ -27,6 +27,7 @@ import           Language.PlutusCore.Quote
 
 import qualified Language.PlutusIR                           as PIR
 import qualified Language.PlutusIR.Compiler                  as PIR
+import qualified Language.PlutusIR.Optimizer.DeadCode                  as PIR
 
 import           Language.Haskell.TH.Syntax                  as TH
 
@@ -189,7 +190,7 @@ convertExpr opts locStr origE resType = do
     primTerms <- makePrimitiveMap builtinTermAssociations
     primTys <- makePrimitiveMap builtinTypeAssociations
     let result = withContextM (sdToTxt $ "Converting expr at" GHC.<+> GHC.text locStr) $ do
-              (pirP::PIRProgram) <- PIR.Program () . PIR.embedIntoIR <$> convExprWithDefs origE
+              (pirP::PIRProgram) <- PIR.Program () . PIR.removeDeadBindings . PIR.embedIntoIR <$> convExprWithDefs origE
               (plcP::PLCProgram) <- convertErrors (NoContext . PIRError) $ void <$> (flip runReaderT PIR.NoProvenance $ PIR.compileProgram pirP)
               when (poDoTypecheck opts) $ convertErrors (NoContext . PLCError) $ do
                   annotated <- PLC.annotateProgram plcP
