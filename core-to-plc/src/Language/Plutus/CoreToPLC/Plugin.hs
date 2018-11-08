@@ -212,7 +212,13 @@ convertExpr opts locStr origE resType = do
             then pure $ GHC.mkRuntimeErrorApp GHC.rUNTIME_ERROR_ID resType shown -- this will blow up at runtime
             else liftIO $ GHC.throwGhcExceptionIO (GHC.ProgramError shown) -- this will actually terminate compilation
         -- TODO: get the PIR into the PlcCode somehow (need serialization)
-        Right (_, plcP) -> do
+        Right (pirP, plcP) -> do
+            let pirPrinted = show $ PIR.prettyDef pirP
+            GHC.debugTraceMsg $
+                "Successfully converted GHC core expression:" GHC.$+$
+                GHC.ppr origE GHC.$+$
+                "Resulting PIR term is:" GHC.$+$
+                GHC.text pirPrinted
             let serialized = serialise plcP
             -- The GHC api only exposes a way to make literals for Words, not Word8s, so we need to convert them
             let (word8s :: [Word]) = fromIntegral <$> BSL.unpack serialized
