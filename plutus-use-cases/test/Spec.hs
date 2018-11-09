@@ -20,8 +20,8 @@ limit = HedgehogTestLimit (Just 30)
 
 tests :: TestTree
 tests = localOption limit $ testGroup "use cases" [
-    Spec.Crowdfunding.tests,
-    Spec.Vesting.tests,
-    Spec.Future.tests,
+    -- Spec.Crowdfunding.tests,
+    -- Spec.Vesting.tests,
+    -- Spec.Future.tests,
     Spec.Marlowe.tests
     ]

@@ -351,23 +351,47 @@ instance TypeablePlc Contract
 
 \begin{code}
 marloweValidator = Validator result where
-    result = UTXO.fromPlcCode $(plutus [| \ (input :: Input) (MarloweData{..} :: MarloweData) (p :: PendingTx ValidatorHash) ->
-        let isValid = True
-{-         let isValid = case input of
-                -- Input ([CC (identCC::IdentCC) (p::Person) (v::Cash) (t::Timeout)]::[CC]) (_ :: [RC]) -> False
-                Commit (cc::CC) -> case cc of
-                    CC (identCC::IdentCC) (person::Person) (v::Cash) (t::Timeout) -> case p of
-                        PendingTx (ps::[PendingTxIn]) _ _ _ _ _ _ -> case ps of
-                            (pt1::PendingTxIn):(ps'::[PendingTxIn]) ->
-                                case ps' of
-                                    (pt2::PendingTxIn):(_::[PendingTxIn]) -> let
-                                            PendingTxIn _ _ v1 = pt1
-                                            PendingTxIn _ _ v2 = pt2
-                                        in v1 == v
-                                    (_::[PendingTxIn]) -> False
-                            (_::[PendingTxIn]) -> False
+    result = UTXO.fromPlcCode $(plutus [| \ (input :: Input) (MarloweData{..} :: MarloweData) (p :: PendingTx ValidatorHash) -> let
+        -- let isValid = True
 
-        in isValid -}
+        eqPk :: PubKey -> PubKey -> Bool
+        eqPk = $(TH.eqPubKey)
+
+        infixr 3 &&
+        (&&) :: Bool -> Bool -> Bool
+        (&&) = $(TH.and)
+
+        infixr 3 ||
+        (||) :: Bool -> Bool -> Bool
+        (||) = $(TH.or)
+
+        orderTxIns :: PendingTxIn -> PendingTxIn -> (PendingTxIn, PendingTxIn)
+        orderTxIns t1 t2 = case (t1::PendingTxIn, t2::PendingTxIn) of
+            (PendingTxIn _ (a:: Maybe (ValidatorHash, RedeemerHash)) _, PendingTxIn _ (b:: Maybe (ValidatorHash, RedeemerHash)) _)  -> case (a, b) of
+                ((Just (_::(ValidatorHash, RedeemerHash))):: Maybe (ValidatorHash, RedeemerHash), Nothing :: Maybe (ValidatorHash, RedeemerHash)) -> (t1::PendingTxIn, t2::PendingTxIn)
+                (Nothing::Maybe (ValidatorHash, RedeemerHash), (Just (_::(ValidatorHash, RedeemerHash))):: Maybe (ValidatorHash, RedeemerHash)) -> (t2::PendingTxIn, t1::PendingTxIn)
+                (_::(Maybe (ValidatorHash, RedeemerHash), Maybe (ValidatorHash, RedeemerHash))) -> (Builtins.error () ::(PendingTxIn, PendingTxIn))
+
+
+
+        isValid = case input of
+            -- Input ([CC (identCC::IdentCC) (p::Person) (v::Cash) (t::Timeout)]::[CC]) (_ :: [RC]) -> False
+            Commit (CC (identCC::IdentCC) (person::Person) (v::Cash) (t::Timeout)) -> case p of
+                PendingTx (ins::[PendingTxIn]) (outs::[PendingTxOut]) _ _ _ _ _ -> case (ins, outs) of
+                    ((in1::PendingTxIn):(ins'::[PendingTxIn]) , (out1::PendingTxOut):(outs'::[PendingTxOut])) ->
+                        case (ins', outs') of
+                            ((in2::PendingTxIn):(_::[PendingTxIn]) , (out2::PendingTxOut):(_::[PendingTxOut])) ->
+                                case orderTxIns in1 in2 of
+                                    (PendingTxIn _ _ scriptValue, PendingTxIn _ _ commitValue) -> let
+                                        PendingTxOut ov1 _ _ = out1
+                                        PendingTxOut ov2 _ _ = out2
+                                        in commitValue == 12
+                                    _ -> False
+                            (_::[PendingTxIn], _::[PendingTxOut]) -> False
+                    (_::[PendingTxIn], _::[PendingTxOut]) -> False
+            SpendDeposit -> True
+
+        -- in isValid
         in if isValid then () else Builtins.error ()
         |])
 
