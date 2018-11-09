@@ -38,13 +38,13 @@ import           Language.Plutus.TH                 (plutus)
 import           Wallet.API                 (EventTrigger (..), Range (..), WalletAPI (..), WalletAPIError, otherError,
                                              pubKey, signAndSubmit)
 
-import           Wallet.UTXO                        (Address', DataScript (..), TxOutRef', Validator (..), scriptTxIn,
-                                                        scriptTxOut, applyScript, emptyValidator, unitData)
+import           Wallet.UTXO                        (Address', DataScript (..), TxOutRef', TxOut', TxOut(..), Validator (..), scriptTxIn,
+                                                        scriptTxOut, applyScript, emptyValidator, unitData, txOutValue)
 import qualified Wallet.UTXO                        as UTXO
 
 import qualified Language.Plutus.Runtime.TH         as TH
 import           Language.Plutus.Lift       (LiftPlc (..), TypeablePlc (..))
-import           Prelude                            (Int, Bool (..), Num (..), Show(..), Read(..), Ord (..), Eq (..),
+import           Prelude                            (Int, Integer, Bool (..), Num (..), Show(..), Read(..), Ord (..), Eq (..),
                     fromIntegral, succ, sum, ($), (<$>), (++), otherwise, Maybe(..))
 
 \end{code}
@@ -308,7 +308,7 @@ instance LiftPlc RC
 instance TypeablePlc RC
 
 
-data Input = Commit CC deriving (Generic)
+data Input = Commit CC | SpendDeposit deriving (Generic)
 instance LiftPlc Input
 instance TypeablePlc Input
 
@@ -352,7 +352,8 @@ instance TypeablePlc Contract
 \begin{code}
 marloweValidator = Validator result where
     result = UTXO.fromPlcCode $(plutus [| \ (input :: Input) (MarloweData{..} :: MarloweData) (p :: PendingTx ValidatorHash) ->
-        let isValid = case input of
+        let isValid = True
+{-         let isValid = case input of
                 -- Input ([CC (identCC::IdentCC) (p::Person) (v::Cash) (t::Timeout)]::[CC]) (_ :: [RC]) -> False
                 Commit (cc::CC) -> case cc of
                     CC (identCC::IdentCC) (person::Person) (v::Cash) (t::Timeout) -> case p of
@@ -366,7 +367,8 @@ marloweValidator = Validator result where
                                     (_::[PendingTxIn]) -> False
                             (_::[PendingTxIn]) -> False
 
-        in isValid
+        in isValid -}
+        in if isValid then () else Builtins.error ()
         |])
 
 
@@ -390,32 +392,30 @@ commitCash :: (
     MonadError WalletAPIError m,
     WalletAPI m)
     => Person
-    -> TxOutRef'
-    -> Value
+    -> (TxOut', TxOutRef')
+    -> Integer
     -> Timeout
     -> m ()
-commitCash person ref value timeout = do
+commitCash person (TxOut _ (UTXO.Value contractValue) _, ref) value timeout = do
     _ <- if value <= 0 then otherError "Must commit a positive value" else pure ()
-
-    let v' = UTXO.Value $ fromIntegral value
     let identCC = (IdentCC 1)
-    let i   = scriptTxIn ref marloweValidator (UTXO.Redeemer $ UTXO.lifted $ Commit (CC identCC person value timeout))
+    let i   = scriptTxIn ref marloweValidator (UTXO.Redeemer $ UTXO.lifted $ Commit (CC identCC person (fromIntegral value) timeout))
 
     let ds = DataScript $ UTXO.lifted (MarloweData {
                 marloweContract = Null,
-                marloweState = State {stateCommitted=[(identCC, (person, NotRedeemed value timeout))]} })
-    (payment, change) <- createPaymentWithChange v'
-    let o = scriptTxOut v' marloweValidator ds
+                marloweState = State {stateCommitted=[(identCC, (person, NotRedeemed (fromIntegral value) timeout))]} })
+    (payment, change) <- createPaymentWithChange (UTXO.Value value)
+    let o = scriptTxOut (UTXO.Value $ value + contractValue) marloweValidator ds
 
     signAndSubmit (Set.insert i payment) [o, change]
 
 
 
-endContract :: (Monad m, WalletAPI m) => Contract -> TxOutRef' -> UTXO.Value -> m ()
-endContract contract ref val = do
+endContract :: (Monad m, WalletAPI m) => Contract -> (TxOut', TxOutRef') -> m ()
+endContract contract (TxOut _ val _, ref) = do
     oo <- payToPublicKey val
     let scr = marloweValidator
-        i   = scriptTxIn ref scr UTXO.unitRedeemer
+        i   = scriptTxIn ref scr $ UTXO.Redeemer $ UTXO.lifted $ SpendDeposit
     signAndSubmit (Set.singleton i) [oo]
 
 

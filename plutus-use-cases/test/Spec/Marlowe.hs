@@ -39,24 +39,30 @@ startingBalance = 1000
 
 marlowe :: Property
 marlowe = property $ do
-    let model = Gen.generatorModel { Gen.gmInitialBalance = Map.singleton (PubKey 1) 1000 }
+    let model = Gen.generatorModel { Gen.gmInitialBalance = Map.fromList [ (PubKey 1, 1000), (PubKey 2, 777) ] }
     (result, st) <- forAll $ Gen.runTraceOn model $ do
         -- Init a contract
         let alice = Wallet 1
-            bob = Wallet 1
+            bob = Wallet 2
             update = blockchainActions >>= walletsNotifyBlock [alice, bob]
         update
-        txs <- walletAction alice (createContract Null 1)
-        let (_{- txOut -}, txOutRef) = head . filter (isPayToScriptOut . fst) . txOutRefs $ head txs
+        [tx] <- walletAction alice (createContract Null 12)
+        let txOut = head . filter (isPayToScriptOut . fst) . txOutRefs $ tx
         update
-        txs <- walletAction alice (commitCash (PubKey 1) txOutRef 100 256)
-        let (_{- txOut -}, txOutRef) = head . filter (isPayToScriptOut . fst) . txOutRefs $ head txs
-
-        Debug.traceM $ show txOutRef
-        -- txs1 <- walletAction w (endContract Null txOutRef 1)
-        -- update
+        assertIsValidated tx
+        [tx] <- walletAction bob (commitCash (PubKey 2) txOut 100 256)
+        let txOut = head . filter (isPayToScriptOut . fst) . txOutRefs $ tx
+        update
+        assertIsValidated tx
+        Debug.traceM $ show txOut
+        [tx] <- walletAction alice (endContract Null txOut)
+        update
+        assertIsValidated tx
+        assertOwnFundsEq alice 1100
+        assertOwnFundsEq bob 677
         -- Debug.traceM $ show txs1
         -- walletAction w ()
         return ()
-    Hedgehog.assert (True)
+    Hedgehog.assert (isRight result)
+    Hedgehog.assert ([] == emTxPool st)
 
