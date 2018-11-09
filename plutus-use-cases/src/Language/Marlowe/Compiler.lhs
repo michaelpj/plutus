@@ -366,32 +366,34 @@ marloweValidator = Validator result where
         (||) = $(TH.or)
 
         orderTxIns :: PendingTxIn -> PendingTxIn -> (PendingTxIn, PendingTxIn)
-        orderTxIns t1 t2 = case (t1::PendingTxIn, t2::PendingTxIn) of
-            (PendingTxIn _ (a:: Maybe (ValidatorHash, RedeemerHash)) _, PendingTxIn _ (b:: Maybe (ValidatorHash, RedeemerHash)) _)  -> case (a, b) of
-                ((Just (_::(ValidatorHash, RedeemerHash))):: Maybe (ValidatorHash, RedeemerHash), Nothing :: Maybe (ValidatorHash, RedeemerHash)) -> (t1::PendingTxIn, t2::PendingTxIn)
-                (Nothing::Maybe (ValidatorHash, RedeemerHash), (Just (_::(ValidatorHash, RedeemerHash))):: Maybe (ValidatorHash, RedeemerHash)) -> (t2::PendingTxIn, t1::PendingTxIn)
-                (_::(Maybe (ValidatorHash, RedeemerHash), Maybe (ValidatorHash, RedeemerHash))) -> (Builtins.error () ::(PendingTxIn, PendingTxIn))
+        orderTxIns t1 t2 = case t1 of
+            PendingTxIn _ (Just _ :: Maybe (ValidatorHash, RedeemerHash)) _ -> (t1, t2)
+            _ -> (t2, t1)
 
+        isValid = case marloweContract of
+            CommitCash (IdentCC expectedIdentCC) pubKey value startTimeout endTimeout -> case input of
+                Commit (CC (IdentCC idCC) (person::Person) (v::Cash) (t::Timeout)) -> case p of
+                    PendingTx (ins::[PendingTxIn]) (outs::[PendingTxOut]) _ _ blockNumber _ _ -> case (ins, outs) of
+                        ((in1::PendingTxIn):(ins'::[PendingTxIn]) , (out1::PendingTxOut):(outs'::[PendingTxOut])) ->
+                            case (ins', outs') of
+                                ((in2::PendingTxIn):(_::[PendingTxIn]) , (out2::PendingTxOut):(_::[PendingTxOut])) ->
+                                    case orderTxIns in1 in2 of
+                                        (PendingTxIn _ _ scriptValue, PendingTxIn _ _ commitValue) -> let
+                                            PendingTxOut committed _ _ = out1
+                                            in  blockNumber <= startTimeout
+                                                blockNumber <= endTimeout
+                                                && committed == v + scriptValue
+                                                && expectedIdentCC == idCC
+                                                && pubKey `eqPk` person
+                                                && endTimeout == t
+                                        _ -> False
+                                (_::[PendingTxIn], _::[PendingTxOut]) -> False
+                        (_::[PendingTxIn], _::[PendingTxOut]) -> False
+                SpendDeposit -> False
+            Null -> case input of
+                SpendDeposit -> True
+                _ -> False
 
-
-        isValid = case input of
-            -- Input ([CC (identCC::IdentCC) (p::Person) (v::Cash) (t::Timeout)]::[CC]) (_ :: [RC]) -> False
-            Commit (CC (identCC::IdentCC) (person::Person) (v::Cash) (t::Timeout)) -> case p of
-                PendingTx (ins::[PendingTxIn]) (outs::[PendingTxOut]) _ _ _ _ _ -> case (ins, outs) of
-                    ((in1::PendingTxIn):(ins'::[PendingTxIn]) , (out1::PendingTxOut):(outs'::[PendingTxOut])) ->
-                        case (ins', outs') of
-                            ((in2::PendingTxIn):(_::[PendingTxIn]) , (out2::PendingTxOut):(_::[PendingTxOut])) ->
-                                case orderTxIns in1 in2 of
-                                    (PendingTxIn _ _ scriptValue, PendingTxIn _ _ commitValue) -> let
-                                        PendingTxOut ov1 _ _ = out1
-                                        PendingTxOut ov2 _ _ = out2
-                                        in commitValue == 12
-                                    _ -> False
-                            (_::[PendingTxIn], _::[PendingTxOut]) -> False
-                    (_::[PendingTxIn], _::[PendingTxOut]) -> False
-            SpendDeposit -> True
-
-        -- in isValid
         in if isValid then () else Builtins.error ()
         |])
 
@@ -435,8 +437,8 @@ commitCash person (TxOut _ (UTXO.Value contractValue) _, ref) value timeout = do
 
 
 
-endContract :: (Monad m, WalletAPI m) => Contract -> (TxOut', TxOutRef') -> m ()
-endContract contract (TxOut _ val _, ref) = do
+endContract :: (Monad m, WalletAPI m) => (TxOut', TxOutRef') -> m ()
+endContract (TxOut _ val _, ref) = do
     oo <- payToPublicKey val
     let scr = marloweValidator
         i   = scriptTxIn ref scr $ UTXO.Redeemer $ UTXO.lifted $ SpendDeposit
