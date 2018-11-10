@@ -3,8 +3,7 @@ let
 in
 { system ? builtins.currentSystem
 , config ? {}
-, iohkPkgs ? import ../. { inherit config system; }
-, pkgs ? iohkPkgs.pkgs
+, pkgs ? (import ../. { inherit config system; }).pkgs
 , nixpkgsPath ? localLib.fetchNixpkgs
 
 # Update this if you need a package version recently uploaded to hackage.
@@ -15,7 +14,7 @@ in
 with pkgs;
 
 let
-  deps = [ nixStable coreutils git findutils cabal2nix glibcLocales stack cabal-install iohkPkgs.stack2nix ];
+  deps = [ nixStable coreutils git findutils cabal2nix glibcLocales stack cabal-install stack2nix ];
 in
   writeScript "generate.sh" ''
     #!${stdenv.shell}

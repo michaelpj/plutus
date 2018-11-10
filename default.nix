@@ -95,7 +95,6 @@ let
       };
     };
     plutus-core-spec = pkgs.callPackage ./plutus-core-spec {};
-    inherit (pkgs) stack2nix;
   });
 
 in
