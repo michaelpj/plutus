@@ -378,15 +378,23 @@ marloweValidator = Validator result where
                             case (ins', outs') of
                                 ((in2::PendingTxIn):(_::[PendingTxIn]) , (out2::PendingTxOut):(_::[PendingTxOut])) ->
                                     case orderTxIns in1 in2 of
-                                        (PendingTxIn _ _ scriptValue, PendingTxIn _ _ commitValue) -> let
-                                            PendingTxOut committed _ _ = out1
-                                            in  blockNumber <= startTimeout
-                                                blockNumber <= endTimeout
-                                                && committed == v + scriptValue
-                                                && expectedIdentCC == idCC
-                                                && pubKey `eqPk` person
-                                                && endTimeout == t
-                                        _ -> False
+                                        (PendingTxIn _ _ scriptValue, PendingTxIn _ _ commitValue) -> case out1 of
+                                            PendingTxOut committed (Just (validatorHash, dataHash)) DataTxOut -> let
+                                                    continuationContract = Null
+      {-                                               expectedDataHash = let
+                                                        expState = State {stateCommitted = [(expectedIdentCC, (person, NotRedeemed v t)]}
+                                                        expData = MarloweData {
+                                                              marloweContract = continuationContract,
+                                                              marloweState = expState }
+                                                        in  -}
+
+                                                in  blockNumber <= startTimeout
+                                                    && blockNumber <= endTimeout
+                                                    && committed == v + scriptValue
+                                                    && expectedIdentCC == idCC
+                                                    && pubKey `eqPk` person
+                                                    && endTimeout == t
+                                            _ -> False
                                 (_::[PendingTxIn], _::[PendingTxOut]) -> False
                         (_::[PendingTxIn], _::[PendingTxOut]) -> False
                 SpendDeposit -> False
