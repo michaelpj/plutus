@@ -3,59 +3,59 @@
     [
       {
         (abs
-          bad_name_4
+          bad_name_81
           (fun (type) (fun (type) (type)))
           (lam
-            bad_name_14
-            (all a_15 (type) (all b_16 (type) (fun a_15 (fun b_16 [[bad_name_4 a_15] b_16]))))
+            bad_name_82
+            (all a_83 (type) (all b_84 (type) (fun a_83 (fun b_84 [[bad_name_81 a_83] b_84]))))
             (lam
-              p_match_17
-              (all a_18 (type) (all b_19 (type) (fun [[bad_name_4 a_18] b_19] (all p_matchOut_20 (type) (fun (fun a_18 (fun b_19 p_matchOut_20)) p_matchOut_20)))))
+              p_match_85
+              (all a_86 (type) (all b_87 (type) (fun [[bad_name_81 a_86] b_87] [[(lam a_88 (type) (lam b_89 (type) (all out_bad_name_90 (type) (fun (fun a_88 (fun b_89 out_bad_name_90)) out_bad_name_90)))) a_86] b_87])))
               (lam
-                ds_21
-                [[bad_name_4 [(con integer) (con 64)]] [(con integer) (con 64)]]
+                ds_91
+                [[bad_name_81 [(con integer) (con 64)]] [(con integer) (con 64)]]
                 [
                   {
                     [
                       {
-                        { p_match_17 [(con integer) (con 64)] }
+                        { p_match_85 [(con integer) (con 64)] }
                         [(con integer) (con 64)]
                       }
-                      ds_21
+                      ds_91
                     ]
                     [(con integer) (con 64)]
                   }
                   (lam
-                    a_22
+                    a_92
                     [(con integer) (con 64)]
-                    (lam b_23 [(con integer) (con 64)] a_22)
+                    (lam b_93 [(con integer) (con 64)] a_92)
                   )
                 ]
               )
             )
           )
         )
-        (lam a_1 (type) (lam b_2 (type) (all p_matchOut_3 (type) (fun (fun a_1 (fun b_2 p_matchOut_3)) p_matchOut_3))))
+        (lam a_94 (type) (lam b_95 (type) (all out_bad_name_96 (type) (fun (fun a_94 (fun b_95 out_bad_name_96)) out_bad_name_96))))
       }
       (abs
-        a_5
+        a_97
         (type)
         (abs
-          b_6
+          b_98
           (type)
           (lam
-            p_arg0_9
-            a_5
+            arg_0_99
+            a_97
             (lam
-              p_arg1_10
-              b_6
+              arg_1_100
+              b_98
               (abs
-                p_matchOut_7
+                out_bad_name_101
                 (type)
                 (lam
-                  bad_name_8
-                  (fun a_5 (fun b_6 p_matchOut_7))
-                  [ [ bad_name_8 p_arg0_9 ] p_arg1_10 ]
+                  case_bad_name_102
+                  (fun a_97 (fun b_98 out_bad_name_101))
+                  [ [ case_bad_name_102 arg_0_99 ] arg_1_100 ]
                 )
               )
             )
@@ -64,15 +64,15 @@
       )
     ]
     (abs
-      a_11
+      a_103
       (type)
       (abs
-        b_12
+        b_104
         (type)
         (lam
-          x_13
-          [[(lam a_1 (type) (lam b_2 (type) (all p_matchOut_3 (type) (fun (fun a_1 (fun b_2 p_matchOut_3)) p_matchOut_3)))) a_11] b_12]
-          x_13
+          x_105
+          [[(lam a_106 (type) (lam b_107 (type) (all out_bad_name_108 (type) (fun (fun a_106 (fun b_107 out_bad_name_108)) out_bad_name_108)))) a_103] b_104]
+          x_105
         )
       )
     )

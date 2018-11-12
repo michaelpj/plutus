@@ -17,6 +17,8 @@ cabal-dev
 .cabal-sandbox/
 cabal.sandbox.config
 cabal.config
+pkgs/.cabal
+pkgs/.stack
 TAGS
 .DS_Store
 *~
@@ -31,3 +33,4 @@ result*
 *.log
 *.pdf
 *.gz
+*.synctex(busy)

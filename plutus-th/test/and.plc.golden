@@ -1,38 +1,91 @@
 (program 1.0.0
   [
-    (lam
-      ds_14
-      (all Bool_matchOut_1 (type) (fun Bool_matchOut_1 (fun Bool_matchOut_1 Bool_matchOut_1)))
-      [
-        [
-          {
-            [
-              (lam
-                x_9
-                (all Bool_matchOut_1 (type) (fun Bool_matchOut_1 (fun Bool_matchOut_1 Bool_matchOut_1)))
-                x_9
-              )
-              ds_14
-            ]
-            (all Bool_matchOut_1 (type) (fun Bool_matchOut_1 (fun Bool_matchOut_1 Bool_matchOut_1)))
-          }
-          (abs
-            Bool_matchOut_3
-            (type)
-            (lam True_4 Bool_matchOut_3 (lam False_5 Bool_matchOut_3 True_4))
-          )
-        ]
+    [
+      {
         (abs
-          Bool_matchOut_6
+          unit_82
           (type)
-          (lam True_7 Bool_matchOut_6 (lam False_8 Bool_matchOut_6 False_8))
+          (lam
+            unit_83
+            unit_82
+            (lam
+              p_match_84
+              (fun unit_82 (all out_unit_85 (type) (fun out_unit_85 out_unit_85)))
+              [
+                [
+                  [
+                    {
+                      (abs
+                        Bool_86
+                        (type)
+                        (lam
+                          True_87
+                          Bool_86
+                          (lam
+                            False_88
+                            Bool_86
+                            (lam
+                              Bool_match_89
+                              (fun Bool_86 (all out_Bool_90 (type) (fun out_Bool_90 (fun out_Bool_90 out_Bool_90))))
+                              [
+                                (lam
+                                  ds_91
+                                  Bool_86
+                                  [
+                                    [
+                                      [
+                                        {
+                                          [ Bool_match_89 ds_91 ]
+                                          (fun unit_82 Bool_86)
+                                        }
+                                        (lam thunk_92 unit_82 True_87)
+                                      ]
+                                      (lam thunk_93 unit_82 False_88)
+                                    ]
+                                    unit_83
+                                  ]
+                                )
+                                False_88
+                              ]
+                            )
+                          )
+                        )
+                      )
+                      (all out_Bool_94 (type) (fun out_Bool_94 (fun out_Bool_94 out_Bool_94)))
+                    }
+                    (abs
+                      out_Bool_95
+                      (type)
+                      (lam
+                        case_True_96
+                        out_Bool_95
+                        (lam case_False_97 out_Bool_95 case_True_96)
+                      )
+                    )
+                  ]
+                  (abs
+                    out_Bool_98
+                    (type)
+                    (lam
+                      case_True_99
+                      out_Bool_98
+                      (lam case_False_100 out_Bool_98 case_False_100)
+                    )
+                  )
+                ]
+                (lam
+                  x_101
+                  (all out_Bool_102 (type) (fun out_Bool_102 (fun out_Bool_102 out_Bool_102)))
+                  x_101
+                )
+              ]
+            )
+          )
         )
-      ]
-    )
-    (abs
-      Bool_matchOut_6
-      (type)
-      (lam True_7 Bool_matchOut_6 (lam False_8 Bool_matchOut_6 False_8))
-    )
+        (all out_unit_103 (type) (fun out_unit_103 out_unit_103))
+      }
+      (abs out_unit_104 (type) (lam case_unit_105 out_unit_104 case_unit_105))
+    ]
+    (lam x_106 (all out_unit_107 (type) (fun out_unit_107 out_unit_107)) x_106)
   ]
 )
