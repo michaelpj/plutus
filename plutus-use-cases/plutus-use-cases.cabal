@@ -45,7 +45,6 @@ library
     Language.Plutus.Coordination.Contracts.Swap
     Language.Plutus.Runtime
     Language.Plutus.Runtime.TH
-    Language.Marlowe.Semantics
     Language.Marlowe.Compiler
   ghc-options:
     -Wall -Wnoncanonical-monad-instances
