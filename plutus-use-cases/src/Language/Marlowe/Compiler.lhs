@@ -144,7 +144,7 @@ squarednode/.style={rectangle, draw=orange!60, fill=orange!5, very thick, minimu
 
 
 \par{Considerations}
-Someone need to spend this 1 Ada, otherwise all Marlowe contracts will be in UTXO.
+Someone need to spend this 1 Ada/Lovelace, otherwise all Marlowe contracts will be in UTXO.
 We can allow anyone to spend this value, so it'll become a part of a block reward. ???
 
 
@@ -389,21 +389,24 @@ marloweValidator = Validator result where
                                                               marloweContract = continuationContract,
                                                               marloweState = expState }
                                                         in  -}
-
-                                                res = blockNumber <= startTimeout
+                                                isValid = blockNumber <= startTimeout
                                                     && blockNumber <= endTimeout
                                                     && committed == v + scriptValue
                                                     && expectedIdentCC == idCC
                                                     && pubKey `eqPk` person
                                                     && endTimeout == t
-                                                in (State [] , Null1, res)
-                                            _ -> (State [] , Null1, False)
-                                (_::[PendingTxIn], _::[PendingTxOut]) -> (State [] , Null1, False)
-                        (_::[PendingTxIn], _::[PendingTxOut]) -> (State [] , Null1, False)
-                SpendDeposit -> (State [] , Null1, False)
+                                                in if isValid then let
+                                                    cns = (person, NotRedeemed commitValue endTimeout)
+                                                    updatedState = case state of { State stateCommitted -> State ((IdentCC idCC, cns) : stateCommitted) }
+                                                    in (updatedState, c1, True)
+                                                else (state, c2, False)
+                                            _ -> (state, Null1, False)
+                                (_::[PendingTxIn], _::[PendingTxOut]) -> (state , Null1, False)
+                        (_::[PendingTxIn], _::[PendingTxOut]) -> (state , Null1, False)
+                SpendDeposit -> (state, Null1, False)
             Null -> case input of
-                SpendDeposit -> (State [] , Null1, True)
-                _ -> (State [] , Null1, False)
+                SpendDeposit -> (state, Null1, True)
+                _ -> (state, Null1, False)
 
         (newState::State, newContract::C1, isValid::Bool) = step input marloweState marloweContract
 
