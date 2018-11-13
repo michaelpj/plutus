@@ -16,7 +16,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE StrictData    #-}
+-- {-# LANGUAGE StrictData    #-} -- doesn't work yet with current Plutus Compiler
 {-# LANGUAGE TemplateHaskell   #-}
 {-# OPTIONS -fplugin=Language.Plutus.CoreToPLC.Plugin -fplugin-opt Language.Plutus.CoreToPLC.Plugin:dont-typecheck #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
@@ -57,10 +57,10 @@ Apparently, Plutus doesn't support complex recursive data types yet.
 \begin{code}
 
 
-
+data C1 = Null1 | Pay Person Person Value Timeout deriving (Eq, Generic)
 
 data Contract = Null
-              | CommitCash IdentCC PubKey Value Timeout Timeout
+              | CommitCash IdentCC PubKey Value Timeout Timeout C1 C1
                 deriving (Eq, Generic)
 
 
@@ -340,7 +340,8 @@ data CCRedeemStatus = NotRedeemed Cash Timeout | ManuallyRedeemed
 instance LiftPlc CCRedeemStatus
 instance TypeablePlc CCRedeemStatus
 
-
+instance LiftPlc C1
+instance TypeablePlc C1
 instance LiftPlc Contract
 instance TypeablePlc Contract
 \end{code}
@@ -370,8 +371,9 @@ marloweValidator = Validator result where
             PendingTxIn _ (Just _ :: Maybe (ValidatorHash, RedeemerHash)) _ -> (t1, t2)
             _ -> (t2, t1)
 
-        isValid = case marloweContract of
-            CommitCash (IdentCC expectedIdentCC) pubKey value startTimeout endTimeout -> case input of
+        step :: Input -> State -> Contract -> (State, C1 , Bool)
+        step input state contract = case marloweContract of
+            CommitCash (IdentCC expectedIdentCC) pubKey value startTimeout endTimeout c1 c2 -> case input of
                 Commit (CC (IdentCC idCC) (person::Person) (v::Cash) (t::Timeout)) -> case p of
                     PendingTx (ins::[PendingTxIn]) (outs::[PendingTxOut]) _ _ blockNumber _ _ -> case (ins, outs) of
                         ((in1::PendingTxIn):(ins'::[PendingTxIn]) , (out1::PendingTxOut):(outs'::[PendingTxOut])) ->
@@ -380,7 +382,7 @@ marloweValidator = Validator result where
                                     case orderTxIns in1 in2 of
                                         (PendingTxIn _ _ scriptValue, PendingTxIn _ _ commitValue) -> case out1 of
                                             PendingTxOut committed (Just (validatorHash, dataHash)) DataTxOut -> let
-                                                    continuationContract = Null
+                                                continuationContract = Null
       {-                                               expectedDataHash = let
                                                         expState = State {stateCommitted = [(expectedIdentCC, (person, NotRedeemed v t)]}
                                                         expData = MarloweData {
@@ -388,19 +390,22 @@ marloweValidator = Validator result where
                                                               marloweState = expState }
                                                         in  -}
 
-                                                in  blockNumber <= startTimeout
+                                                res = blockNumber <= startTimeout
                                                     && blockNumber <= endTimeout
                                                     && committed == v + scriptValue
                                                     && expectedIdentCC == idCC
                                                     && pubKey `eqPk` person
                                                     && endTimeout == t
-                                            _ -> False
-                                (_::[PendingTxIn], _::[PendingTxOut]) -> False
-                        (_::[PendingTxIn], _::[PendingTxOut]) -> False
-                SpendDeposit -> False
+                                                in (State [] , Null1, res)
+                                            _ -> (State [] , Null1, False)
+                                (_::[PendingTxIn], _::[PendingTxOut]) -> (State [] , Null1, False)
+                        (_::[PendingTxIn], _::[PendingTxOut]) -> (State [] , Null1, False)
+                SpendDeposit -> (State [] , Null1, False)
             Null -> case input of
-                SpendDeposit -> True
-                _ -> False
+                SpendDeposit -> (State [] , Null1, True)
+                _ -> (State [] , Null1, False)
+
+        (newState::State, newContract::C1, isValid::Bool) = step input marloweState marloweContract
 
         in if isValid then () else Builtins.error ()
         |])
