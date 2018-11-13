@@ -371,38 +371,38 @@ marloweValidator = Validator result where
             PendingTxIn _ (Just _ :: Maybe (ValidatorHash, RedeemerHash)) _ -> (t1, t2)
             _ -> (t2, t1)
 
+        extract2x2 :: PendingTx ValidatorHash -> a -> ((Height, PendingTxIn, PendingTxIn, PendingTxOut, PendingTxOut) -> a) -> a
+        extract2x2 p def f = case p of
+            PendingTx (ins::[PendingTxIn]) (outs::[PendingTxOut]) _ _ blockNumber _ _ -> case (ins, outs) of
+                ((in1::PendingTxIn):(ins'::[PendingTxIn]) , (out1::PendingTxOut):(outs'::[PendingTxOut])) ->
+                    case (ins', outs') of
+                        ((in2::PendingTxIn):(_::[PendingTxIn]) , (out2::PendingTxOut):(_::[PendingTxOut])) ->
+                            case orderTxIns in1 in2 of
+                                (i1, i2) -> f (blockNumber, i1, i2, out1, out2)
+                        _ -> def
+                _ -> def
+
+
         step :: Input -> State -> Contract -> (State, C1 , Bool)
         step input state contract = case marloweContract of
             CommitCash (IdentCC expectedIdentCC) pubKey value startTimeout endTimeout c1 c2 -> case input of
-                Commit (CC (IdentCC idCC) (person::Person) (v::Cash) (t::Timeout)) -> case p of
-                    PendingTx (ins::[PendingTxIn]) (outs::[PendingTxOut]) _ _ blockNumber _ _ -> case (ins, outs) of
-                        ((in1::PendingTxIn):(ins'::[PendingTxIn]) , (out1::PendingTxOut):(outs'::[PendingTxOut])) ->
-                            case (ins', outs') of
-                                ((in2::PendingTxIn):(_::[PendingTxIn]) , (out2::PendingTxOut):(_::[PendingTxOut])) ->
-                                    case orderTxIns in1 in2 of
-                                        (PendingTxIn _ _ scriptValue, PendingTxIn _ _ commitValue) -> case out1 of
-                                            PendingTxOut committed (Just (validatorHash, dataHash)) DataTxOut -> let
-                                                continuationContract = Null
-      {-                                               expectedDataHash = let
-                                                        expState = State {stateCommitted = [(expectedIdentCC, (person, NotRedeemed v t)]}
-                                                        expData = MarloweData {
-                                                              marloweContract = continuationContract,
-                                                              marloweState = expState }
-                                                        in  -}
-                                                isValid = blockNumber <= startTimeout
-                                                    && blockNumber <= endTimeout
-                                                    && committed == v + scriptValue
-                                                    && expectedIdentCC == idCC
-                                                    && pubKey `eqPk` person
-                                                    && endTimeout == t
-                                                in if isValid then let
-                                                    cns = (person, NotRedeemed commitValue endTimeout)
-                                                    updatedState = case state of { State stateCommitted -> State ((IdentCC idCC, cns) : stateCommitted) }
-                                                    in (updatedState, c1, True)
-                                                else (state, c2, False)
-                                            _ -> (state, Null1, False)
-                                (_::[PendingTxIn], _::[PendingTxOut]) -> (state , Null1, False)
-                        (_::[PendingTxIn], _::[PendingTxOut]) -> (state , Null1, False)
+                Commit (CC (IdentCC idCC) (person::Person) (v::Cash) (t::Timeout)) ->
+                    extract2x2 p (state, Null1, False) (\(blockNumber, PendingTxIn _ _ scriptValue, PendingTxIn _ _ commitValue, out1, out2) ->
+                        case out1 of
+                            PendingTxOut committed (Just (validatorHash, dataHash)) DataTxOut -> let
+                                isValid = blockNumber <= startTimeout
+                                    && blockNumber <= endTimeout
+                                    && committed == v + scriptValue
+                                    && expectedIdentCC == idCC
+                                    && pubKey `eqPk` person
+                                    && endTimeout == t
+                                    -- TODO check hashes
+                                in  if isValid then let
+                                        cns = (person, NotRedeemed commitValue endTimeout)
+                                        updatedState = case state of { State stateCommitted -> State ((IdentCC idCC, cns) : stateCommitted) }
+                                        in (updatedState, c1, True)
+                                    else (state, c2, False)
+                            _ -> (state, Null1, False))
                 SpendDeposit -> (state, Null1, False)
             Null -> case input of
                 SpendDeposit -> (state, Null1, True)
