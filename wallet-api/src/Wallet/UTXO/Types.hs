@@ -11,7 +11,6 @@
 {-# LANGUAGE TemplateHaskell    #-}
 {-# LANGUAGE TupleSections      #-}
 {-# LANGUAGE ViewPatterns       #-}
-{-# OPTIONS -fplugin=Language.Plutus.CoreToPLC.Plugin -fplugin-opt Language.Plutus.CoreToPLC.Plugin:dont-typecheck #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Wallet.UTXO.Types(
     -- * Basic types

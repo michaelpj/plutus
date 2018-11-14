@@ -3,7 +3,6 @@
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
-{-# OPTIONS -fplugin=Language.Plutus.CoreToPLC.Plugin -fplugin-opt Language.Plutus.CoreToPLC.Plugin:dont-typecheck #-}
 module Language.Plutus.Coordination.Contracts.Swap(
     Swap(..),
     swapValidator
