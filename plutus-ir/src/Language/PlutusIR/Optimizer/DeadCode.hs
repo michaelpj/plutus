@@ -109,7 +109,7 @@ processTerm term = case term of
     Builtin x bi -> pure $ Builtin x bi
     TyInst x t ty -> TyInst x <$> processTerm t <*> processTy ty
     Error x ty -> Error x <$> processTy ty
-    Wrap x n ty t -> Wrap x n <$> processTy ty <*> processTerm t
+    IWrap x ty1 ty2 t -> IWrap x <$> processTy ty1 <*> processTy ty2 <*> processTerm t
     Unwrap x t -> Unwrap x <$> processTerm t
 
 processVarDecl
@@ -141,7 +141,7 @@ processTy ty = case ty of
         modify (addUsage n)
         pure $ TyVar x n
     TyFun x t1 t2 -> TyFun x <$> processTy t1 <*> processTy t2
-    TyFix x n t -> TyFix x n <$> processTy t
+    TyIFix x n t -> TyIFix x n <$> processTy t
     TyForall x tn k t -> TyForall x tn k <$> processTy t
     TyBuiltin x b -> pure $ TyBuiltin x b
     TyInt x n -> pure $ TyInt x n
