@@ -204,7 +204,7 @@ defaultVersion a = Version a 1 0 0
 
 -- | The default amount of gas to run the typechecker with.
 defaultTypecheckerGas :: Natural
-defaultTypecheckerGas = 1000
+defaultTypecheckerGas = 10000
 
 -- | Take one PLC program and apply it to another.
 applyProgram :: Program tyname name () -> Program tyname name () -> Program tyname name ()
