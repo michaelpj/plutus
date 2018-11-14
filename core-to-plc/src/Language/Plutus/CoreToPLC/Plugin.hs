@@ -24,7 +24,6 @@ import qualified GhcPlugins                                  as GHC
 import qualified Panic                                       as GHC
 
 import qualified Language.PlutusCore                         as PLC
-import           Language.PlutusCore.Quote
 
 import qualified Language.PlutusIR                           as PIR
 import qualified Language.PlutusIR.Compiler                  as PIR
@@ -203,7 +202,7 @@ convertExpr opts locStr origE resType = do
               (plcP::PLCProgram) <- void <$> (flip runReaderT PIR.NoProvenance $ PIR.compileProgram pirP)
               when (poDoTypecheck opts) $ do
                   annotated <- PLC.annotateProgram plcP
-                  void $ PLC.typecheckProgram (PLC.TypeCheckCfg 1000 $ PLC.TypeConfig True mempty) annotated
+                  void $ PLC.typecheckProgram (PLC.TypeCheckCfg PLC.defaultTypecheckerGas $ PLC.TypeConfig True mempty) annotated
               pure (pirP, plcP)
         context = ConvertingContext {
             ccOpts=ConversionOptions { coCheckValueRestriction=poDoTypecheck opts },
