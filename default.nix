@@ -54,7 +54,7 @@ in
 , enablePhaseMetrics ? true
 
 # Overrides all nix derivations to add haddock hydra output.
-, enableHaddockHydra ? false
+, enableHaddockHydra ? true
 
 # Disables optimization in the build for all local packages.
 , fasterBuild ? false
