@@ -36,7 +36,7 @@ import qualified Language.Plutus.CoreToPLC.Builtins as Builtins
 import           Language.Plutus.Runtime
 import           Language.Plutus.TH                 (plutus)
 import           Wallet.API                 (EventTrigger (..), Range (..), WalletAPI (..), WalletAPIError, otherError,
-                                             pubKey, signAndSubmit)
+                                             pubKey, signAndSubmit, payToPubKey, ownPubKeyTxOut)
 
 import           Wallet.UTXO                        (Address', DataScript (..), TxOutRef', TxOut', TxOut(..), Validator (..), scriptTxIn,
                                                         scriptTxOut, applyScript, emptyValidator, unitData, txOutValue)
@@ -57,12 +57,12 @@ Apparently, Plutus doesn't support complex recursive data types yet.
 \begin{code}
 
 
-data C1 = Null1 | Pay Person Person Value Timeout deriving (Eq, Generic)
+-- data C1 = Null1 | Pay Person Person Value Timeout deriving (Eq, Generic)
 
 data Contract = Null
-              | CommitCash IdentCC PubKey Value Timeout Timeout C1 C1
+              | CommitCash IdentCC PubKey Value Timeout Timeout Contract
                 deriving (Eq, Generic)
-
+type C1 = Contract
 
 
 
@@ -340,8 +340,8 @@ data CCRedeemStatus = NotRedeemed Cash Timeout | ManuallyRedeemed
 instance LiftPlc CCRedeemStatus
 instance TypeablePlc CCRedeemStatus
 
-instance LiftPlc C1
-instance TypeablePlc C1
+-- instance LiftPlc C1
+-- instance TypeablePlc C1
 instance LiftPlc Contract
 instance TypeablePlc Contract
 \end{code}
@@ -385,9 +385,9 @@ marloweValidator = Validator result where
 
         step :: Input -> State -> Contract -> (State, C1 , Bool)
         step input state contract = case marloweContract of
-            CommitCash (IdentCC expectedIdentCC) pubKey value startTimeout endTimeout c1 c2 -> case input of
+            CommitCash (IdentCC expectedIdentCC) pubKey value startTimeout endTimeout c1 -> case input of
                 Commit (CC (IdentCC idCC) (person::Person) (v::Cash) (t::Timeout)) ->
-                    extract2x2 p (state, Null1, False) (\(blockNumber, PendingTxIn _ _ scriptValue, PendingTxIn _ _ commitValue, out1, out2) ->
+                    extract2x2 p (state, Null, False) (\(blockNumber, PendingTxIn _ _ scriptValue, PendingTxIn _ _ commitValue, out1, out2) ->
                         case out1 of
                             PendingTxOut committed (Just (validatorHash, dataHash)) DataTxOut -> let
                                 isValid = blockNumber <= startTimeout
@@ -401,12 +401,12 @@ marloweValidator = Validator result where
                                         cns = (person, NotRedeemed commitValue endTimeout)
                                         updatedState = case state of { State stateCommitted -> State ((IdentCC idCC, cns) : stateCommitted) }
                                         in (updatedState, c1, True)
-                                    else (state, c2, False)
-                            _ -> (state, Null1, False))
-                SpendDeposit -> (state, Null1, False)
+                                    else (state, c1, False)
+                            _ -> (state, Null, False))
+                SpendDeposit -> (state, Null, False)
             Null -> case input of
-                SpendDeposit -> (state, Null1, True)
-                _ -> (state, Null1, False)
+                SpendDeposit -> (state, Null, True)
+                _ -> (state, Null, False)
 
         (newState::State, newContract::C1, isValid::Bool) = step input marloweState marloweContract
 
@@ -455,7 +455,7 @@ commitCash person (TxOut _ (UTXO.Value contractValue) _, ref) value timeout = do
 
 endContract :: (Monad m, WalletAPI m) => (TxOut', TxOutRef') -> m ()
 endContract (TxOut _ val _, ref) = do
-    oo <- payToPublicKey val
+    oo <- ownPubKeyTxOut val
     let scr = marloweValidator
         i   = scriptTxIn ref scr $ UTXO.Redeemer $ UTXO.lifted $ SpendDeposit
     signAndSubmit (Set.singleton i) [oo]

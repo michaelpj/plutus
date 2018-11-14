@@ -46,7 +46,7 @@ marlowe = property $ do
             bob = Wallet 2
             update = blockchainActions >>= walletsNotifyBlock [alice, bob]
         update
-        [tx] <- walletAction alice (createContract (CommitCash (IdentCC 1) (PubKey 2) 100 128 256 Null1 Null1) 12)
+        [tx] <- walletAction alice (createContract (CommitCash (IdentCC 1) (PubKey 2) 100 128 256 Null) 12)
         let txOut = head . filter (isPayToScriptOut . fst) . txOutRefs $ tx
         update
         assertIsValidated tx

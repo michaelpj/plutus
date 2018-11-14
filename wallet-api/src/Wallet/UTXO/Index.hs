@@ -39,6 +39,7 @@ import qualified Wallet.UTXO.Runtime  as Runtime
 import           Wallet.UTXO.Types    (Blockchain, DataScript, PubKey, Signature, Tx (..), TxIn (..), TxIn', TxOut (..),
                                        TxOut', TxOutRef', ValidationData (..), Value, lifted, updateUtxo, validValuesTx)
 import qualified Wallet.UTXO.Types    as UTXO
+import qualified Debug.Trace as Trace
 
 -- | Context for validating transactions. We need access to the unspent
 --   transaction outputs of the blockchain, and we can throw `ValidationError`s
@@ -97,8 +98,8 @@ lookupRef :: ValidationMonad m => TxOutRef' -> m (TxOut', [Signature])
 lookupRef t = liftEither  . lookup t =<< ask
 
 -- | Run a `Validation` on a `UtxoIndex`
-runValidation :: Validation a -> UtxoIndex -> Either ValidationError a
-runValidation l = runReaderT (_runValidation l)
+runValidation :: (Show a) => Validation a -> UtxoIndex -> Either ValidationError a
+runValidation l = Trace.traceShowId . runReaderT (_runValidation l)
 
 -- | Determine the unspent value that a [[TxOutRef']] refers to
 lkpValue :: ValidationMonad m => TxOutRef' -> m Value
