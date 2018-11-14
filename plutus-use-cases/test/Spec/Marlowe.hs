@@ -54,6 +54,10 @@ marlowe = property $ do
         let txOut = head . filter (isPayToScriptOut . fst) . txOutRefs $ tx
         update
         assertIsValidated tx
+        [tx] <- walletAction alice (receivePayment txOut 100 256)
+        let txOut = head . filter (isPayToScriptOut . fst) . txOutRefs $ tx
+        update
+        assertIsValidated tx
         -- Debug.traceM $ show txOut
         [tx] <- walletAction alice (endContract txOut)
         update
