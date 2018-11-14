@@ -16996,7 +16996,7 @@ license = stdenv.lib.licenses.mit;
 , containers
 , ghc
 , language-plutus-core
-, microlens
+, lens
 , mmorph
 , mtl
 , plutus-ir
@@ -17022,7 +17022,7 @@ cborg
 containers
 ghc
 language-plutus-core
-microlens
+lens
 mmorph
 mtl
 plutus-ir
@@ -43161,8 +43161,7 @@ license = stdenv.lib.licenses.bsd3;
 , filepath
 , happy
 , hedgehog
-, microlens
-, microlens-th
+, lens
 , mmorph
 , mtl
 , prettyprinter
@@ -43198,8 +43197,7 @@ dependent-map
 dependent-sum
 filepath
 hedgehog
-microlens
-microlens-th
+lens
 mmorph
 mtl
 prettyprinter
@@ -55723,7 +55721,7 @@ license = stdenv.lib.licenses.bsd3;
 , bytestring
 , containers
 , language-plutus-core
-, microlens
+, lens
 , mmorph
 , mtl
 , prettyprinter
@@ -55744,7 +55742,7 @@ base
 bytestring
 containers
 language-plutus-core
-microlens
+lens
 mmorph
 mtl
 prettyprinter
@@ -55755,6 +55753,7 @@ testHaskellDepends = [
 base
 bytestring
 language-plutus-core
+lens
 mmorph
 mtl
 prettyprinter
@@ -77596,6 +77595,7 @@ license = stdenv.lib.licenses.mit;
 , containers
 , core-to-plc
 , cryptonite
+, deriving-compat
 , errors
 , free
 , ghc
@@ -77604,6 +77604,7 @@ license = stdenv.lib.licenses.mit;
 , language-plutus-core
 , memory
 , microlens
+, microlens-ghc
 , mmorph
 , monad-stm
 , mtl
@@ -77611,6 +77612,7 @@ license = stdenv.lib.licenses.mit;
 , operational
 , plutus-th
 , prettyprinter
+, recursion-schemes
 , serialise
 , servant
 , servant-client
@@ -77643,6 +77645,7 @@ cborg
 containers
 core-to-plc
 cryptonite
+deriving-compat
 errors
 free
 ghc
@@ -77651,6 +77654,7 @@ hedgehog
 language-plutus-core
 memory
 microlens
+microlens-ghc
 mmorph
 monad-stm
 mtl
@@ -77658,6 +77662,7 @@ natural-transformation
 operational
 plutus-th
 prettyprinter
+recursion-schemes
 serialise
 servant
 servant-client
