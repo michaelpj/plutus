@@ -3,27 +3,27 @@
     [
       {
         (abs
-          a_6
+          a_25
           (type)
           (lam
-            x_7
-            a_6
+            x_26
+            a_25
             (lam
-              xs_8
-              [(fix list_1 (lam a_0 (type) (all r_2 (type) (fun r_2 (fun (fun a_0 (fun [list_1 a_0] r_2)) r_2))))) a_6]
-              (wrap
-                list_4
-                [(lam a_3 (type) (all r_5 (type) (fun r_5 (fun (fun a_3 (fun [list_4 a_3] r_5)) r_5)))) a_6]
+              xs_27
+              [[[(lam withSpine_28 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_29 (fun (fun (type) (type)) (fun (type) (type))) [withSpine_28 (lam spine_30 (fun (fun (type) (type)) (type)) (fix [[(lam withSpine_31 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_32 (fun (fun (type) (type)) (fun (type) (type))) (lam b_33 (fun (fun (fun (type) (type)) (type)) (type)) (lam p_34 (fun (fun (type) (type)) (type)) [p_34 [pat_32 [withSpine_31 b_33]]])))) withSpine_28] pat_29] spine_30))])) (lam k_35 (fun (fun (fun (type) (type)) (type)) (type)) (lam a_36 (type) [k_35 (lam r_37 (fun (type) (type)) [r_37 a_36])]))] (lam list_38 (fun (type) (type)) (lam a_39 (type) (all r_40 (type) (fun r_40 (fun (fun a_39 (fun [list_38 a_39] r_40)) r_40)))))] a_25]
+              (iwrap
+                [[(lam withSpine_41 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_42 (fun (fun (type) (type)) (fun (type) (type))) (lam b_43 (fun (fun (fun (type) (type)) (type)) (type)) (lam p_44 (fun (fun (type) (type)) (type)) [p_44 [pat_42 [withSpine_41 b_43]]])))) (lam k_45 (fun (fun (fun (type) (type)) (type)) (type)) (lam a_46 (type) [k_45 (lam r_47 (fun (type) (type)) [r_47 a_46])]))] (lam list_48 (fun (type) (type)) (lam a_49 (type) (all r_50 (type) (fun r_50 (fun (fun a_49 (fun [list_48 a_49] r_50)) r_50)))))]
+                (lam r_51 (fun (type) (type)) [r_51 a_25])
                 (abs
-                  r_9
+                  r_52
                   (type)
                   (lam
-                    z_10
-                    r_9
+                    z_53
+                    r_52
                     (lam
-                      f_11
-                      (fun a_6 (fun [list_4 a_6] r_9))
-                      [ [ f_11 x_7 ] xs_8 ]
+                      f_54
+                      (fun a_25 (fun [[[(lam withSpine_55 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_56 (fun (fun (type) (type)) (fun (type) (type))) [withSpine_55 (lam spine_57 (fun (fun (type) (type)) (type)) (fix [[(lam withSpine_58 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_59 (fun (fun (type) (type)) (fun (type) (type))) (lam b_60 (fun (fun (fun (type) (type)) (type)) (type)) (lam p_61 (fun (fun (type) (type)) (type)) [p_61 [pat_59 [withSpine_58 b_60]]])))) withSpine_55] pat_56] spine_57))])) (lam k_62 (fun (fun (fun (type) (type)) (type)) (type)) (lam a_63 (type) [k_62 (lam r_64 (fun (type) (type)) [r_64 a_63])]))] (lam list_65 (fun (type) (type)) (lam a_66 (type) (all r_67 (type) (fun r_67 (fun (fun a_66 (fun [list_65 a_66] r_67)) r_67)))))] a_25] r_52))
+                      [ [ f_54 x_26 ] xs_27 ]
                     )
                   )
                 )
@@ -37,15 +37,23 @@
     ]
     {
       (abs
-        a_15
+        a_91
         (type)
-        (wrap
-          list_13
-          [(lam a_12 (type) (all r_14 (type) (fun r_14 (fun (fun a_12 (fun [list_13 a_12] r_14)) r_14)))) a_15]
+        (iwrap
+          [[(lam withSpine_92 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_93 (fun (fun (type) (type)) (fun (type) (type))) (lam b_94 (fun (fun (fun (type) (type)) (type)) (type)) (lam p_95 (fun (fun (type) (type)) (type)) [p_95 [pat_93 [withSpine_92 b_94]]])))) (lam k_96 (fun (fun (fun (type) (type)) (type)) (type)) (lam a_97 (type) [k_96 (lam r_98 (fun (type) (type)) [r_98 a_97])]))] (lam list_99 (fun (type) (type)) (lam a_100 (type) (all r_101 (type) (fun r_101 (fun (fun a_100 (fun [list_99 a_100] r_101)) r_101)))))]
+          (lam r_102 (fun (type) (type)) [r_102 a_91])
           (abs
-            r_16
+            r_103
             (type)
-            (lam z_17 r_16 (lam f_18 (fun a_15 (fun [list_13 a_15] r_16)) z_17))
+            (lam
+              z_104
+              r_103
+              (lam
+                f_105
+                (fun a_91 (fun [[[(lam withSpine_106 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_107 (fun (fun (type) (type)) (fun (type) (type))) [withSpine_106 (lam spine_108 (fun (fun (type) (type)) (type)) (fix [[(lam withSpine_109 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_110 (fun (fun (type) (type)) (fun (type) (type))) (lam b_111 (fun (fun (fun (type) (type)) (type)) (type)) (lam p_112 (fun (fun (type) (type)) (type)) [p_112 [pat_110 [withSpine_109 b_111]]])))) withSpine_106] pat_107] spine_108))])) (lam k_113 (fun (fun (fun (type) (type)) (type)) (type)) (lam a_114 (type) [k_113 (lam r_115 (fun (type) (type)) [r_115 a_114])]))] (lam list_116 (fun (type) (type)) (lam a_117 (type) (all r_118 (type) (fun r_118 (fun (fun a_117 (fun [list_116 a_117] r_118)) r_118)))))] a_91] r_103))
+                z_104
+              )
+            )
           )
         )
       )

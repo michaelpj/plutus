@@ -15,6 +15,8 @@ import           Language.Plutus.CoreToPLC.Utils
 
 import           Language.PlutusCore
 import           Language.PlutusCore.MkPlc
+import qualified Language.PlutusCore.StdLib.Data.List as List
+import qualified Language.PlutusCore.StdLib.Type as Types
 
 import           Control.Monad
 
@@ -63,95 +65,24 @@ instance (TypeablePlc a, TypeablePlc b, LiftPlc a, LiftPlc b) => LiftPlc (a, b)
 instance (TypeablePlc a) => TypeablePlc (Maybe a)
 instance (TypeablePlc a, LiftPlc a) => LiftPlc (Maybe a)
 
-{- Note [Stlib lists]
-We should use the stdlib list, but currently that uses lambdas-outside-fixpoints,
-whereas the plugin uses fixpoints-outside-lambdas. See CGP-381.
--}
-
 instance TypeablePlc a => TypeablePlc [a] where
     typeRep = do
         argType <- typeRep @a
-        list <- liftQuote getBuiltinList
+        Types.RecursiveType list _ <- liftQuote List.getBuiltinList
         pure $ TyApp () list argType
 
 instance (TypeablePlc a, LiftPlc a) => LiftPlc [a] where
     lift [] = do
-        nil <- liftQuote getBuiltinNil
+        nil <- liftQuote List.getBuiltinNil
         argType <- typeRep @a
         pure $ TyInst () nil argType
 
     lift (x:xs) = do
-        cons <- liftQuote getBuiltinCons
+        cons <- liftQuote List.getBuiltinCons
         argType <- typeRep @a
         h <- lift x
         t <- lift xs
         pure $ mkIterApp () (TyInst () cons argType) [h, t]
-
--- Tweaked copies of the stdlib functions, see note [Stdlib lists].
-
--- | @List@ as a type.
---
--- > \(a :: *). fix \(list :: *) -> all (r :: *). r -> (a -> list -> r) -> r
-getBuiltinList :: Quote (Type TyName ())
-getBuiltinList = do
-    a    <- freshTyName () "a"
-    list <- freshTyName () "list"
-    r    <- freshTyName () "r"
-    return
-        . TyFix () list
-        . TyLam () a (Type ())
-        . TyForall () r (Type ())
-        . TyFun () (TyVar () r)
-        . TyFun () (TyFun () (TyVar () a) . TyFun () (TyApp () (TyVar () list) (TyVar () a)) $ TyVar () r)
-        $ TyVar () r
-
--- |  '[]' as a term.
---
--- >  /\(a :: *) -> wrap /\(r :: *) -> \(z : r) (f : a -> list a -> r) -> z
-getBuiltinNil :: Quote (Term TyName Name ())
-getBuiltinNil = do
-    (TyFix () list listF) <- getBuiltinList
-    a <- freshTyName () "a"
-    r <- freshTyName () "r"
-    z <- freshName () "z"
-    f <- freshName () "f"
-    return
-        . TyAbs () a (Type ())
-        . Wrap () list (TyApp () listF (TyVar () a))
-        . TyAbs () r (Type ())
-        . LamAbs () z (TyVar () r)
-        . LamAbs () f (TyFun () (TyVar () a) . TyFun () (TyApp () (TyVar () list) (TyVar () a)) $ TyVar () r)
-        $ Var () z
-
--- |  '(:)' as a term.
---
--- > /\(a :: *) -> \(x : a) (xs : list a) ->
--- >     wrap /\(r :: *) -> \(z : r) (f : a -> list a -> r) -> f x xs
---
--- @listA@ appears twice in types in the term,
--- so this is not really a definition with unique names.
-getBuiltinCons :: Quote (Term TyName Name ())
-getBuiltinCons = do
-    list1 <- getBuiltinList
-    (TyFix () list listF) <- getBuiltinList
-    a  <- freshTyName () "a"
-    x  <- freshName () "x"
-    xs <- freshName () "xs"
-    r  <- freshTyName () "r"
-    z  <- freshName () "z"
-    f  <- freshName () "f"
-    return
-        . TyAbs () a (Type ())
-        . LamAbs () x (TyVar () a)
-        . LamAbs () xs (TyApp () list1 (TyVar () a))
-        . Wrap () list (TyApp () listF (TyVar () a))
-        . TyAbs () r (Type ())
-        . LamAbs () z (TyVar () r)
-        . LamAbs () f (TyFun () (TyVar () a) . TyFun () (TyApp () (TyVar () list) (TyVar () a)) $ TyVar () r)
-        $ mkIterApp () (Var () f)
-          [ Var () x
-          , Var () xs
-          ]
 
 -- Generic classes
 

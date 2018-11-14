@@ -10,7 +10,7 @@
             (all a_80 (type) (all b_81 (type) (fun a_80 (fun b_81 [[bad_name_78 a_80] b_81]))))
             (lam
               p_match_82
-              (all a_83 (type) (all b_84 (type) (fun [[bad_name_78 a_83] b_84] [[(lam a_85 (type) (lam b_86 (type) (all out_bad_name_87 (type) (fun (fun a_85 (fun b_86 out_bad_name_87)) out_bad_name_87)))) a_83] b_84])))
+              (all a_83 (type) (all b_84 (type) (fun [[bad_name_78 a_83] b_84] (all out_bad_name_85 (type) (fun (fun a_83 (fun b_84 out_bad_name_85)) out_bad_name_85)))))
               [
                 [
                   {
@@ -24,27 +24,27 @@
             )
           )
         )
-        (lam a_88 (type) (lam b_89 (type) (all out_bad_name_90 (type) (fun (fun a_88 (fun b_89 out_bad_name_90)) out_bad_name_90))))
+        (lam a_86 (type) (lam b_87 (type) (all out_bad_name_88 (type) (fun (fun a_86 (fun b_87 out_bad_name_88)) out_bad_name_88))))
       }
       (abs
-        a_91
+        a_89
         (type)
         (abs
-          b_92
+          b_90
           (type)
           (lam
-            arg_0_93
-            a_91
+            arg_0_91
+            a_89
             (lam
-              arg_1_94
-              b_92
+              arg_1_92
+              b_90
               (abs
-                out_bad_name_95
+                out_bad_name_93
                 (type)
                 (lam
-                  case_bad_name_96
-                  (fun a_91 (fun b_92 out_bad_name_95))
-                  [ [ case_bad_name_96 arg_0_93 ] arg_1_94 ]
+                  case_bad_name_94
+                  (fun a_89 (fun b_90 out_bad_name_93))
+                  [ [ case_bad_name_94 arg_0_91 ] arg_1_92 ]
                 )
               )
             )
@@ -53,15 +53,15 @@
       )
     ]
     (abs
-      a_97
+      a_95
       (type)
       (abs
-        b_98
+        b_96
         (type)
         (lam
-          x_99
-          [[(lam a_100 (type) (lam b_101 (type) (all out_bad_name_102 (type) (fun (fun a_100 (fun b_101 out_bad_name_102)) out_bad_name_102)))) a_97] b_98]
-          x_99
+          x_97
+          [[(lam a_98 (type) (lam b_99 (type) (all out_bad_name_100 (type) (fun (fun a_98 (fun b_99 out_bad_name_100)) out_bad_name_100)))) a_95] b_96]
+          x_97
         )
       )
     )

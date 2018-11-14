@@ -4,32 +4,32 @@
       [
         {
           (abs
-            list_86
+            list_102
             (fun (type) (type))
             (lam
-              list_87
-              (all a_88 (type) [list_86 a_88])
+              list_103
+              (all a_104 (type) [list_102 a_104])
               (lam
-                cons_89
-                (all a_90 (type) (fun a_90 (fun [list_86 a_90] [list_86 a_90])))
+                cons_105
+                (all a_106 (type) (fun a_106 (fun [list_102 a_106] [list_102 a_106])))
                 (lam
-                  p_match_91
-                  (all a_92 (type) (fun [list_86 a_92] [(lam a_93 (type) (all out_list_94 (type) (fun out_list_94 (fun (fun a_93 (fun [list_86 a_93] out_list_94)) out_list_94)))) a_92]))
+                  p_match_107
+                  (all a_108 (type) (fun [list_102 a_108] (all out_list_109 (type) (fun out_list_109 (fun (fun a_108 (fun [list_102 a_108] out_list_109)) out_list_109)))))
                   (lam
-                    ds_95
-                    [list_86 [(con integer) (con 64)]]
+                    ds_110
+                    [list_102 [(con integer) (con 64)]]
                     [
                       [
                         {
-                          [ { p_match_91 [(con integer) (con 64)] } ds_95 ]
+                          [ { p_match_107 [(con integer) (con 64)] } ds_110 ]
                           [(con integer) (con 64)]
                         }
                         (con 64 ! 0)
                       ]
                       (lam
-                        x_96
+                        x_111
                         [(con integer) (con 64)]
-                        (lam ds_97 [list_86 [(con integer) (con 64)]] x_96)
+                        (lam ds_112 [list_102 [(con integer) (con 64)]] x_111)
                       )
                     ]
                   )
@@ -37,24 +37,24 @@
               )
             )
           )
-          (fix list_98 (lam a_99 (type) (all out_list_100 (type) (fun out_list_100 (fun (fun a_99 (fun [list_98 a_99] out_list_100)) out_list_100)))))
+          [[(lam withSpine_113 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_114 (fun (fun (type) (type)) (fun (type) (type))) [withSpine_113 (lam spine_115 (fun (fun (type) (type)) (type)) (fix [[(lam withSpine_116 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_117 (fun (fun (type) (type)) (fun (type) (type))) (lam b_118 (fun (fun (fun (type) (type)) (type)) (type)) (lam p_119 (fun (fun (type) (type)) (type)) [p_119 [pat_117 [withSpine_116 b_118]]])))) withSpine_113] pat_114] spine_115))])) (lam k_120 (fun (fun (fun (type) (type)) (type)) (type)) (lam a_121 (type) [k_120 (lam r_122 (fun (type) (type)) [r_122 a_121])]))] (lam list_123 (fun (type) (type)) (lam a_124 (type) (all out_list_125 (type) (fun out_list_125 (fun (fun a_124 (fun [list_123 a_124] out_list_125)) out_list_125)))))]
         }
         (abs
-          a_101
+          a_126
           (type)
-          (wrap
-            list_102
-            (lam a_103 (type) (all out_list_104 (type) (fun out_list_104 (fun (fun a_103 (fun [list_102 a_103] out_list_104)) out_list_104))))
+          (iwrap
+            [[(lam withSpine_127 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_128 (fun (fun (type) (type)) (fun (type) (type))) (lam b_129 (fun (fun (fun (type) (type)) (type)) (type)) (lam p_130 (fun (fun (type) (type)) (type)) [p_130 [pat_128 [withSpine_127 b_129]]])))) (lam k_131 (fun (fun (fun (type) (type)) (type)) (type)) (lam a_132 (type) [k_131 (lam r_133 (fun (type) (type)) [r_133 a_132])]))] (lam list_134 (fun (type) (type)) (lam a_135 (type) (all out_list_136 (type) (fun out_list_136 (fun (fun a_135 (fun [list_134 a_135] out_list_136)) out_list_136)))))]
+            (lam r_137 (fun (type) (type)) [r_137 a_126])
             (abs
-              out_list_105
+              out_list_138
               (type)
               (lam
-                case_list_106
-                out_list_105
+                case_list_139
+                out_list_138
                 (lam
-                  case_cons_107
-                  (fun a_101 (fun [list_102 a_101] out_list_105))
-                  case_list_106
+                  case_cons_140
+                  (fun a_126 (fun [[[(lam withSpine_141 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_142 (fun (fun (type) (type)) (fun (type) (type))) [withSpine_141 (lam spine_143 (fun (fun (type) (type)) (type)) (fix [[(lam withSpine_144 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_145 (fun (fun (type) (type)) (fun (type) (type))) (lam b_146 (fun (fun (fun (type) (type)) (type)) (type)) (lam p_147 (fun (fun (type) (type)) (type)) [p_147 [pat_145 [withSpine_144 b_146]]])))) withSpine_141] pat_142] spine_143))])) (lam k_148 (fun (fun (fun (type) (type)) (type)) (type)) (lam a_149 (type) [k_148 (lam r_150 (fun (type) (type)) [r_150 a_149])]))] (lam list_151 (fun (type) (type)) (lam a_152 (type) (all out_list_153 (type) (fun out_list_153 (fun (fun a_152 (fun [list_151 a_152] out_list_153)) out_list_153)))))] a_126] out_list_138))
+                  case_list_139
                 )
               )
             )
@@ -62,27 +62,27 @@
         )
       ]
       (abs
-        a_108
+        a_154
         (type)
         (lam
-          arg_0_109
-          a_108
+          arg_0_155
+          a_154
           (lam
-            arg_1_110
-            [(fix list_111 (lam a_112 (type) (all out_list_113 (type) (fun out_list_113 (fun (fun a_112 (fun [list_111 a_112] out_list_113)) out_list_113))))) a_108]
-            (wrap
-              list_114
-              (lam a_115 (type) (all out_list_116 (type) (fun out_list_116 (fun (fun a_115 (fun [list_114 a_115] out_list_116)) out_list_116))))
+            arg_1_156
+            [[[(lam withSpine_157 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_158 (fun (fun (type) (type)) (fun (type) (type))) [withSpine_157 (lam spine_159 (fun (fun (type) (type)) (type)) (fix [[(lam withSpine_160 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_161 (fun (fun (type) (type)) (fun (type) (type))) (lam b_162 (fun (fun (fun (type) (type)) (type)) (type)) (lam p_163 (fun (fun (type) (type)) (type)) [p_163 [pat_161 [withSpine_160 b_162]]])))) withSpine_157] pat_158] spine_159))])) (lam k_164 (fun (fun (fun (type) (type)) (type)) (type)) (lam a_165 (type) [k_164 (lam r_166 (fun (type) (type)) [r_166 a_165])]))] (lam list_167 (fun (type) (type)) (lam a_168 (type) (all out_list_169 (type) (fun out_list_169 (fun (fun a_168 (fun [list_167 a_168] out_list_169)) out_list_169)))))] a_154]
+            (iwrap
+              [[(lam withSpine_170 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_171 (fun (fun (type) (type)) (fun (type) (type))) (lam b_172 (fun (fun (fun (type) (type)) (type)) (type)) (lam p_173 (fun (fun (type) (type)) (type)) [p_173 [pat_171 [withSpine_170 b_172]]])))) (lam k_174 (fun (fun (fun (type) (type)) (type)) (type)) (lam a_175 (type) [k_174 (lam r_176 (fun (type) (type)) [r_176 a_175])]))] (lam list_177 (fun (type) (type)) (lam a_178 (type) (all out_list_179 (type) (fun out_list_179 (fun (fun a_178 (fun [list_177 a_178] out_list_179)) out_list_179)))))]
+              (lam r_180 (fun (type) (type)) [r_180 a_154])
               (abs
-                out_list_117
+                out_list_181
                 (type)
                 (lam
-                  case_list_118
-                  out_list_117
+                  case_list_182
+                  out_list_181
                   (lam
-                    case_cons_119
-                    (fun a_108 (fun [list_114 a_108] out_list_117))
-                    [ [ case_cons_119 arg_0_109 ] arg_1_110 ]
+                    case_cons_183
+                    (fun a_154 (fun [[[(lam withSpine_184 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_185 (fun (fun (type) (type)) (fun (type) (type))) [withSpine_184 (lam spine_186 (fun (fun (type) (type)) (type)) (fix [[(lam withSpine_187 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_188 (fun (fun (type) (type)) (fun (type) (type))) (lam b_189 (fun (fun (fun (type) (type)) (type)) (type)) (lam p_190 (fun (fun (type) (type)) (type)) [p_190 [pat_188 [withSpine_187 b_189]]])))) withSpine_184] pat_185] spine_186))])) (lam k_191 (fun (fun (fun (type) (type)) (type)) (type)) (lam a_192 (type) [k_191 (lam r_193 (fun (type) (type)) [r_193 a_192])]))] (lam list_194 (fun (type) (type)) (lam a_195 (type) (all out_list_196 (type) (fun out_list_196 (fun (fun a_195 (fun [list_194 a_195] out_list_196)) out_list_196)))))] a_154] out_list_181))
+                    [ [ case_cons_183 arg_0_155 ] arg_1_156 ]
                   )
                 )
               )
@@ -92,12 +92,12 @@
       )
     ]
     (abs
-      a_120
+      a_197
       (type)
       (lam
-        x_121
-        [(fix list_122 (lam a_123 (type) (all out_list_124 (type) (fun out_list_124 (fun (fun a_123 (fun [list_122 a_123] out_list_124)) out_list_124))))) a_120]
-        (unwrap x_121)
+        x_198
+        [[[(lam withSpine_199 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_200 (fun (fun (type) (type)) (fun (type) (type))) [withSpine_199 (lam spine_201 (fun (fun (type) (type)) (type)) (fix [[(lam withSpine_202 (fun (fun (fun (fun (type) (type)) (type)) (type)) (fun (type) (type))) (lam pat_203 (fun (fun (type) (type)) (fun (type) (type))) (lam b_204 (fun (fun (fun (type) (type)) (type)) (type)) (lam p_205 (fun (fun (type) (type)) (type)) [p_205 [pat_203 [withSpine_202 b_204]]])))) withSpine_199] pat_200] spine_201))])) (lam k_206 (fun (fun (fun (type) (type)) (type)) (type)) (lam a_207 (type) [k_206 (lam r_208 (fun (type) (type)) [r_208 a_207])]))] (lam list_209 (fun (type) (type)) (lam a_210 (type) (all out_list_211 (type) (fun out_list_211 (fun (fun a_210 (fun [list_209 a_210] out_list_211)) out_list_211)))))] a_197]
+        (unwrap x_198)
       )
     )
   ]
