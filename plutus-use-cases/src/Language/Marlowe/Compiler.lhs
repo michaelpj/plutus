@@ -57,12 +57,11 @@ Apparently, Plutus doesn't support complex recursive data types yet.
 \begin{code}
 
 
--- data C1 = Null1 | Pay Person Person Value Timeout deriving (Eq, Generic)
-
 data Contract = Null
-              | CommitCash IdentCC PubKey Value Timeout Timeout Contract
+              | CommitCash IdentCC PubKey Value Timeout Timeout
+              | Pay Person Person Value Timeout
                 deriving (Eq, Generic)
-type C1 = Contract
+
 
 
 
@@ -340,8 +339,6 @@ data CCRedeemStatus = NotRedeemed Cash Timeout | ManuallyRedeemed
 instance LiftPlc CCRedeemStatus
 instance TypeablePlc CCRedeemStatus
 
--- instance LiftPlc C1
--- instance TypeablePlc C1
 instance LiftPlc Contract
 instance TypeablePlc Contract
 \end{code}
@@ -383,11 +380,11 @@ marloweValidator = Validator result where
                 _ -> def
 
 
-        step :: Input -> State -> Contract -> (State, C1 , Bool)
-        step input state contract = case marloweContract of
-            CommitCash (IdentCC expectedIdentCC) pubKey value startTimeout endTimeout c1 -> case input of
+        step :: Input -> State -> Contract -> (State, Contract , Bool)
+        step input state contract = case contract of
+            CommitCash (IdentCC expectedIdentCC) pubKey value startTimeout endTimeout -> case input of
                 Commit (CC (IdentCC idCC) (person::Person) (v::Cash) (t::Timeout)) ->
-                    extract2x2 p (state, Null, False) (\(blockNumber, PendingTxIn _ _ scriptValue, PendingTxIn _ _ commitValue, out1, out2) ->
+                    extract2x2 p (state, contract, False) (\(blockNumber, PendingTxIn _ _ scriptValue, PendingTxIn _ _ commitValue, out1, out2) ->
                         case out1 of
                             PendingTxOut committed (Just (validatorHash, dataHash)) DataTxOut -> let
                                 isValid = blockNumber <= startTimeout
@@ -399,18 +396,20 @@ marloweValidator = Validator result where
                                     -- TODO check hashes
                                 in  if isValid then let
                                         cns = (person, NotRedeemed commitValue endTimeout)
+                                        con1 = Pay (PubKey 1) (PubKey 2) 100 256
                                         updatedState = case state of { State stateCommitted -> State ((IdentCC idCC, cns) : stateCommitted) }
-                                        in (updatedState, c1, True)
-                                    else (state, c1, False)
+                                        in (updatedState, con1, True)
+                                    else (state, Null {- Should be con2 -}, False)
                             _ -> (state, Null, False))
                 SpendDeposit -> (state, Null, False)
             Null -> case input of
                 SpendDeposit -> (state, Null, True)
                 _ -> (state, Null, False)
 
-        (newState::State, newContract::C1, isValid::Bool) = step input marloweState marloweContract
+        (newState::State, newContract::Contract, isValid::Bool) = step input marloweState marloweContract
+        isContinuationValid = True -- check newState/newContract
 
-        in if isValid then () else Builtins.error ()
+        in if isValid && isContinuationValid then () else Builtins.error ()
         |])
 
 
