@@ -449,7 +449,7 @@ marloweValidator = Validator result where
 
                     findAndRemove :: [(IdentCC, CCStatus)] -> [(IdentCC, CCStatus)] -> (Bool, State) -> (Bool, State)
                     findAndRemove ls resultCommits result = case ls of
-                        ((IdentCC i), (party, NotRedeemed val _)) : ls | i == identCC && change == scriptValue - val ->
+                        (IdentCC i, (party, NotRedeemed val _)) : ls | i == identCC && change == scriptValue - val ->
                             findAndRemove ls resultCommits (True, state)
                         e@(i, (party, NotRedeemed val _)) : ls -> findAndRemove ls (e : resultCommits) result
                         [] -> let
@@ -457,6 +457,29 @@ marloweValidator = Validator result where
                             in (isValid, State (reverse resultCommits))
 
                     (isValid, updatedState) = findAndRemove committed [] (False, state)
+
+                    in if isValid then let
+                        con1 = Null
+                        in (updatedState, con1, True)
+                    else Builtins.error ()
+                _ -> let
+                    PendingTx [in1@ (PendingTxIn _ _ scriptValue)]
+                        [PendingTxOut change (Just (validatorHash, dataHash)) DataTxOut, out2]
+                        _ _ blockNumber [receiverSignature] thisScriptHash = p
+
+                    State committed = marloweState
+
+                    findAndRemoveExpired :: [(IdentCC, CCStatus)] -> [(IdentCC, CCStatus)] -> (Bool, State) -> (Bool, State)
+                    findAndRemoveExpired ls resultCommits result = case ls of
+                        (IdentCC i, (party, NotRedeemed val expire)) : ls |
+                            i == identCC && change == scriptValue - val && blockNumber >= expire ->
+                                findAndRemoveExpired ls resultCommits (True, state)
+                        e@(i, (party, NotRedeemed val _)) : ls -> findAndRemoveExpired ls (e : resultCommits) result
+                        [] -> let
+                            (isValid, State commits) = result
+                            in (isValid, State (reverse resultCommits))
+
+                    (isValid, updatedState) = findAndRemoveExpired committed [] (False, state)
 
                     in if isValid then let
                         con1 = Null
@@ -530,6 +553,24 @@ receivePayment (TxOut _ (UTXO.Value contractValue) _, ref) value timeout = do
 
     signAndSubmit (Set.singleton i) [o, oo]
 
+redeem :: (
+    MonadError WalletAPIError m,
+    WalletAPI m)
+    => (TxOut', TxOutRef')
+    -> IdentCC
+    -> Integer
+    -> m ()
+redeem (TxOut _ (UTXO.Value contractValue) _, ref) identCC value = do
+    _ <- if value <= 0 then otherError "Must commit a positive value" else pure ()
+    let i   = scriptTxIn ref marloweValidator (UTXO.Redeemer $ UTXO.lifted $ Redeem identCC)
+
+    let ds = DataScript $ UTXO.lifted (MarloweData {
+                marloweContract = Null,
+                marloweState = State {stateCommitted=[]} })
+    let o = scriptTxOut (UTXO.Value $ contractValue - value) marloweValidator ds
+    oo <- ownPubKeyTxOut (UTXO.Value value)
+
+    signAndSubmit (Set.singleton i) [o, oo]
 
 
 
