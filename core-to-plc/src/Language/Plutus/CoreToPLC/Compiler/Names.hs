@@ -5,8 +5,6 @@
 -- | Functions for compiling GHC names into Plutus Core names.
 module Language.Plutus.CoreToPLC.Compiler.Names where
 
-import           PlutusPrelude                            (strToBs)
-
 import           Language.Plutus.CoreToPLC.Compiler.Kind
 import {-# SOURCE #-} Language.Plutus.CoreToPLC.Compiler.Type
 import           Language.Plutus.CoreToPLC.Compiler.Types
@@ -14,11 +12,12 @@ import           Language.Plutus.CoreToPLC.PLCTypes
 
 import qualified GhcPlugins                               as GHC
 
+import           Language.PlutusIR.Compiler.Names
+
 import qualified Language.PlutusCore                      as PLC
 import qualified Language.PlutusCore.MkPlc                as PLC
 import           Language.PlutusCore.Quote
 
-import           Data.Char
 import           Data.List
 import qualified Data.List.NonEmpty                       as NE
 import qualified Data.Map                                 as Map
@@ -26,36 +25,8 @@ import qualified Data.Map                                 as Map
 lookupName :: Scope -> GHC.Name -> Maybe PLCVar
 lookupName (Scope ns _) n = Map.lookup n ns
 
-{- Note [PLC names]
-We convert names from Haskell names quite frequently here, but PLC admits a much
-smaller set of valid identifiers. We compromise by mangling the identifier, but
-in the long run it would be nice to have a more principled encoding so we can
-support unicode identifiers as well.
--}
-
-safeFreshName :: MonadQuote m => String -> m (PLC.Name ())
-safeFreshName s
-    -- some special cases
-    | s == ":" = safeFreshName "cons"
-    | s == "[]" = safeFreshName "list"
-    | s == "()" = safeFreshName "unit"
-    | otherwise =
-          let
-              -- See Note [PLC names]
-              -- first strip out disallowed characters
-              stripped = filter (\c -> isLetter c || isDigit c || c == '_' || c == '`') s
-              -- now fix up some other bits
-              fixed = case stripped of
-                -- empty name, just put something to mark that
-                []      -> "bad_name"
-                -- can't start with these
-                ('`':_) -> "p" ++ stripped
-                ('_':_) -> "p" ++ stripped
-                n       -> n
-          in liftQuote $ freshName () $ strToBs fixed
-
 convNameFresh :: MonadQuote m => GHC.Name -> m (PLC.Name ())
-convNameFresh n = safeFreshName $ GHC.getOccString n
+convNameFresh n = safeFreshName () $ GHC.getOccString n
 
 convVarFresh :: Converting m => GHC.Var -> m PLCVar
 convVarFresh v = do
@@ -67,7 +38,7 @@ lookupTyName :: Scope -> GHC.Name -> Maybe PLCTyVar
 lookupTyName (Scope _ tyns) n = Map.lookup n tyns
 
 safeFreshTyName :: MonadQuote m => String -> m (PLC.TyName ())
-safeFreshTyName s = PLC.TyName <$> safeFreshName s
+safeFreshTyName s = PLC.TyName <$> safeFreshName () s
 
 convTyNameFresh :: MonadQuote m => GHC.Name -> m (PLC.TyName ())
 convTyNameFresh n = PLC.TyName <$> convNameFresh n

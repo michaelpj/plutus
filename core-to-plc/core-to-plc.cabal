@@ -36,7 +36,6 @@ library
         Language.Plutus.CoreToPLC.Utils
         Language.Plutus.CoreToPLC.Compiler.Binders
         Language.Plutus.CoreToPLC.Compiler.Builtins
-        Language.Plutus.CoreToPLC.Compiler.Definitions
         Language.Plutus.CoreToPLC.Compiler.Laziness
         Language.Plutus.CoreToPLC.Compiler.Expr
         Language.Plutus.CoreToPLC.Compiler.Names
