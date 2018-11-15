@@ -373,24 +373,16 @@ marloweValidator = Validator result where
 
         extract1x2 :: PendingTx ValidatorHash -> a -> ((Height, PendingTxIn, PendingTxOut, PendingTxOut) -> a) -> a
         extract1x2 p def f = case p of
-            PendingTx (ins::[PendingTxIn]) (outs::[PendingTxOut]) _ _ blockNumber _ _ -> case (ins, outs) of
-                ((in1::PendingTxIn):(ins'::[PendingTxIn]) , (out1::PendingTxOut):(outs'::[PendingTxOut])) ->
-                    case outs' of
-                        ((out2::PendingTxOut):(_::[PendingTxOut])) -> f (blockNumber, in1, out1, out2)
-                        _ -> def
-                _ -> def
+            PendingTx (in1 : _) (out1 : out2 : _) _ _ blockNumber _ _ -> f (blockNumber, in1, out1, out2)
+            _ -> def
 
 
         extract2x2 :: PendingTx ValidatorHash -> a -> ((Height, PendingTxIn, PendingTxIn, PendingTxOut, PendingTxOut) -> a) -> a
         extract2x2 p def f = case p of
-            PendingTx (ins::[PendingTxIn]) (outs::[PendingTxOut]) _ _ blockNumber _ _ -> case (ins, outs) of
-                ((in1::PendingTxIn):(ins'::[PendingTxIn]) , (out1::PendingTxOut):(outs'::[PendingTxOut])) ->
-                    case (ins', outs') of
-                        ((in2::PendingTxIn):(_::[PendingTxIn]) , (out2::PendingTxOut):(_::[PendingTxOut])) ->
-                            case orderTxIns in1 in2 of
-                                (i1, i2) -> f (blockNumber, i1, i2, out1, out2)
-                        _ -> def
-                _ -> def
+            PendingTx (in1 : in2 : _) (out1 : out2: _) _ _ blockNumber _ _ ->
+                case orderTxIns in1 in2 of
+                    (i1, i2) -> f (blockNumber, i1, i2, out1, out2)
+            _ -> def
 
 
         step :: Input -> State -> Contract -> (State, Contract , Bool)
