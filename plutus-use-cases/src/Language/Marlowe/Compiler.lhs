@@ -291,22 +291,6 @@ instance LiftPlc IdentPay
 instance TypeablePlc IdentPay
 
 
--- A cash commitment is made by a person, for a particular amount and timeout.
-
-data CC = CC IdentCC Person Cash Timeout
-               deriving (Eq, Ord, Generic)
-instance LiftPlc CC
-instance TypeablePlc CC
-
-
--- A cash redemption is made by a person, for a particular amount.
-
-data RC = RC IdentCC Person Cash
-               deriving (Eq, Ord, Generic)
-instance LiftPlc RC
-instance TypeablePlc RC
-
-
 data Input = Commit IdentCC
            | PaymentRequest IdentPay
            | SpendDeposit
