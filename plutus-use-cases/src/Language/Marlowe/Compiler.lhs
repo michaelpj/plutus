@@ -384,7 +384,7 @@ marloweValidator = Validator result where
                     PendingTx [in1, in2]
                         [PendingTxOut committed (Just (validatorHash, dataHash)) DataTxOut, out2]
                         _ _ blockNumber [committerSignature] thisScriptHash = p
-                    (PendingTxIn _ _ scriptValue, PendingTxIn _ _ commitValue) = orderTxIns in1 in2
+                    (PendingTxIn _ _ scriptValue, commitTxIn@ (PendingTxIn _ _ commitValue)) = orderTxIns in1 in2
                     isValid = blockNumber <= startTimeout
                         && blockNumber <= endTimeout
                         && v > 0
@@ -392,6 +392,8 @@ marloweValidator = Validator result where
                         && expectedIdentCC == idCC
                         && pubKey `eqPk` person
                         && endTimeout == t
+                        && signedBy commitTxIn pubKey
+                        && validatorHash `eqValidator` thisScriptHash
                         -- TODO check hashes
                     in  if isValid then let
                             cns = (person, NotRedeemed commitValue endTimeout)
