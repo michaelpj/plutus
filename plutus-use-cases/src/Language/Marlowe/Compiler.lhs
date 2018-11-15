@@ -377,7 +377,7 @@ marloweValidator = Validator result where
             PendingTxIn _ (Just _ :: Maybe (ValidatorHash, RedeemerHash)) _ -> (t1, t2)
             _ -> (t2, t1)
 
-        step :: Input -> State -> Contract -> (State, Contract , Bool)
+        step :: Input -> State -> Contract -> (State, Contract)
         step input state contract = case contract of
             CommitCash (IdentCC expectedIdentCC) pubKey value startTimeout endTimeout -> case input of
                 Commit (CC (IdentCC idCC) (person::Person) (v::Cash) (t::Timeout)) -> let
@@ -397,9 +397,8 @@ marloweValidator = Validator result where
                             cns = (person, NotRedeemed commitValue endTimeout)
                             con1 = Pay (IdentPay 1) (PubKey 1) (PubKey 2) 100 256
                             updatedState = case state of { State stateCommitted -> State ((IdentCC idCC, cns) : stateCommitted) }
-                            in (updatedState, con1, True)
-                        else (state, Null {- Should be con2 -}, False)
-                _ -> (state, Null, False)
+                            in (updatedState, con1)
+                        else Builtins.error ()
             Pay (IdentPay contractIdentPay) (from::Person) (to::Person) (payValue::Cash) (timeout::Timeout) -> case input of
                 PaymentRequest (IdentPay pid) -> let
                     PendingTx [in1@ (PendingTxIn _ _ scriptValue)]
@@ -415,18 +414,16 @@ marloweValidator = Validator result where
                     in  if isValid then let
                             con1 = Null
                             updatedState = state
-                            in (updatedState, con1, True)
-                        else (state, Null {- Should be con -}, False)
-                _ -> (state, Null, False)
+                            in (updatedState, con1)
+                        else Builtins.error ()
 
             Null -> case input of
-                SpendDeposit -> (state, Null, True)
-                _ -> (state, Null, False)
+                SpendDeposit -> (state, Null)
 
-        (newState::State, newContract::Contract, isValid::Bool) = step input marloweState marloweContract
-        isContinuationValid = True -- check newState/newContract
+        (newState::State, newContract::Contract) = step input marloweState marloweContract
+        isValid = True -- check newState/newContract
 
-        in if isValid && isContinuationValid then () else Builtins.error ()
+        in if isValid then () else Builtins.error ()
         |])
 
 
