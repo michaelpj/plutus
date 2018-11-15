@@ -317,6 +317,7 @@ instance TypeablePlc Input
 
 data State = State {
                 stateCommitted  :: [(IdentCC, CCStatus)]
+                -- ^ commits MUST be sorted by expiration time, ascending
             } deriving (Eq, Ord, Generic)
 instance LiftPlc State
 instance TypeablePlc State
@@ -397,6 +398,7 @@ marloweValidator = Validator result where
                     in  if isValid then let
                             cns = (pubKey, NotRedeemed commitValue endTimeout)
                             con1 = Pay (IdentPay 1) (PubKey 1) (PubKey 2) 100 256
+                            -- TODO insert respecting sort, commits MUST be sorted by expiration time
                             updatedState = case state of { State stateCommitted -> State ((IdentCC idCC, cns) : stateCommitted) }
                             in (updatedState, con1)
                         else Builtins.error ()
@@ -426,7 +428,19 @@ marloweValidator = Validator result where
                         -- TODO check inputs/outputs
                     in  if isValid then let
                             con1 = Null
-                            updatedState = state
+
+                            -- Discounts the Cash from an initial segment of the list of pairs.
+
+                            discountFromPairList :: Cash -> [(IdentCC, CCStatus)] -> [(IdentCC, CCStatus)]
+                            discountFromPairList v ((ident, (p, NotRedeemed ve e)):t)
+                                | v <= ve = [(ident, (p, NotRedeemed (ve - v) e))]
+                                | ve < v = (ident, (p, NotRedeemed 0 e)) : discountFromPairList (v - ve) t
+                            discountFromPairList _ (_:t) = t
+                            discountFromPairList v []
+                                | v == 0 = []
+                                | otherwise = Builtins.error ()
+
+                            updatedState = State { stateCommitted = discountFromPairList payValue (stateCommitted marloweState) }
                             in (updatedState, con1)
                         else Builtins.error ()
 
