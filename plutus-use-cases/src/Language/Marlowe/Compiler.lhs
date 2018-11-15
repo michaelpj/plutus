@@ -377,36 +377,28 @@ marloweValidator = Validator result where
             PendingTxIn _ (Just _ :: Maybe (ValidatorHash, RedeemerHash)) _ -> (t1, t2)
             _ -> (t2, t1)
 
-        extract2x2 :: PendingTx ValidatorHash -> a -> ((Height, PendingTxIn, PendingTxIn, PendingTxOut, PendingTxOut) -> a) -> a
-        extract2x2 p def f = case p of
-            PendingTx (in1 : in2 : _) (out1 : out2: _) _ _ blockNumber _ _ ->
-                case orderTxIns in1 in2 of
-                    (i1, i2) -> f (blockNumber, i1, i2, out1, out2)
-            _ -> def
-
-
         step :: Input -> State -> Contract -> (State, Contract , Bool)
         step input state contract = case contract of
             CommitCash (IdentCC expectedIdentCC) pubKey value startTimeout endTimeout -> case input of
-                Commit (CC (IdentCC idCC) (person::Person) (v::Cash) (t::Timeout)) ->
-                    extract2x2 p (state, contract, False) (\(blockNumber, PendingTxIn _ _ scriptValue, PendingTxIn _ _ commitValue, out1, out2) ->
-                        case out1 of
-                            PendingTxOut committed (Just (validatorHash, dataHash)) DataTxOut -> let
-                                isValid = blockNumber <= startTimeout
-                                    && blockNumber <= endTimeout
-                                    && v > 0
-                                    && committed == v + scriptValue
-                                    && expectedIdentCC == idCC
-                                    && pubKey `eqPk` person
-                                    && endTimeout == t
-                                    -- TODO check hashes
-                                in  if isValid then let
-                                        cns = (person, NotRedeemed commitValue endTimeout)
-                                        con1 = Pay (IdentPay 1) (PubKey 1) (PubKey 2) 100 256
-                                        updatedState = case state of { State stateCommitted -> State ((IdentCC idCC, cns) : stateCommitted) }
-                                        in (updatedState, con1, True)
-                                    else (state, Null {- Should be con2 -}, False)
-                            _ -> (state, Null, False))
+                Commit (CC (IdentCC idCC) (person::Person) (v::Cash) (t::Timeout)) -> let
+                    PendingTx [in1, in2]
+                        [PendingTxOut committed (Just (validatorHash, dataHash)) DataTxOut, out2]
+                        _ _ blockNumber [committerSignature] thisScriptHash = p
+                    (PendingTxIn _ _ scriptValue, PendingTxIn _ _ commitValue) = orderTxIns in1 in2
+                    isValid = blockNumber <= startTimeout
+                        && blockNumber <= endTimeout
+                        && v > 0
+                        && committed == v + scriptValue
+                        && expectedIdentCC == idCC
+                        && pubKey `eqPk` person
+                        && endTimeout == t
+                        -- TODO check hashes
+                    in  if isValid then let
+                            cns = (person, NotRedeemed commitValue endTimeout)
+                            con1 = Pay (IdentPay 1) (PubKey 1) (PubKey 2) 100 256
+                            updatedState = case state of { State stateCommitted -> State ((IdentCC idCC, cns) : stateCommitted) }
+                            in (updatedState, con1, True)
+                        else (state, Null {- Should be con2 -}, False)
                 _ -> (state, Null, False)
             Pay (IdentPay contractIdentPay) (from::Person) (to::Person) (payValue::Cash) (timeout::Timeout) -> case input of
                 PaymentRequest (IdentPay pid) -> let
