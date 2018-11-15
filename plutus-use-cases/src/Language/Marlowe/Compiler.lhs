@@ -439,26 +439,29 @@ marloweValidator = Validator result where
                             in (updatedState, con1, True)
                         else Builtins.error ()
 
-{-             Redeem identCC -> case contract of
+            Redeem (IdentCC identCC) -> case contract of
                 RedeemCC expectedIdentCC -> let
                     PendingTx [in1@ (PendingTxIn _ _ scriptValue)]
                         [PendingTxOut change (Just (validatorHash, dataHash)) DataTxOut, out2]
                         _ _ blockNumber [receiverSignature] thisScriptHash = p
 
+                    State committed = marloweState
+
+                    findAndRemove :: [(IdentCC, CCStatus)] -> [(IdentCC, CCStatus)] -> (Bool, State) -> (Bool, State)
                     findAndRemove ls resultCommits result = case ls of
-                        (i, (party, NotRedeemed val _)) : ls | i == identCC && change == scriptValue - val ->
+                        ((IdentCC i), (party, NotRedeemed val _)) : ls | i == identCC && change == scriptValue - val ->
                             findAndRemove ls resultCommits (True, state)
                         e@(i, (party, NotRedeemed val _)) : ls -> findAndRemove ls (e : resultCommits) result
                         [] -> let
                             (isValid, State commits) = result
                             in (isValid, State (reverse resultCommits))
 
-                    (isValid, updatedState) = findAndRemove (stateCommitted marloweState) [] (False, state)
+                    (isValid, updatedState) = findAndRemove committed [] (False, state)
 
                     in if isValid then let
                         con1 = Null
                         in (updatedState, con1, True)
-                    else Builtins.error () -}
+                    else Builtins.error ()
 
             SpendDeposit -> case contract of
                 Null -> (state, Null, True)
