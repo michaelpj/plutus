@@ -307,7 +307,7 @@ instance LiftPlc RC
 instance TypeablePlc RC
 
 
-data Input = Commit CC
+data Input = Commit IdentCC
            | PaymentRequest IdentPay
            | SpendDeposit
            deriving (Generic)
@@ -337,7 +337,7 @@ type ConcreteChoice = Int
 
 type CCStatus = (Person, CCRedeemStatus)
 
-data CCRedeemStatus = NotRedeemed Cash Timeout | ManuallyRedeemed
+data CCRedeemStatus = NotRedeemed Cash Timeout
                deriving (Eq, Ord, Generic)
 instance LiftPlc CCRedeemStatus
 instance TypeablePlc CCRedeemStatus
@@ -380,23 +380,22 @@ marloweValidator = Validator result where
         step :: Input -> State -> Contract -> (State, Contract)
         step input state contract = case contract of
             CommitCash (IdentCC expectedIdentCC) pubKey value startTimeout endTimeout -> case input of
-                Commit (CC (IdentCC idCC) (person::Person) (v::Cash) (t::Timeout)) -> let
+                Commit (IdentCC idCC) -> let
                     PendingTx [in1, in2]
                         [PendingTxOut committed (Just (validatorHash, dataHash)) DataTxOut, out2]
                         _ _ blockNumber [committerSignature] thisScriptHash = p
                     (PendingTxIn _ _ scriptValue, commitTxIn@ (PendingTxIn _ _ commitValue)) = orderTxIns in1 in2
                     isValid = blockNumber <= startTimeout
                         && blockNumber <= endTimeout
-                        && v > 0
-                        && committed == v + scriptValue
+                        && startTimeout < endTimeout -- I think it should be strongly bigger, otherwise I don't see the point
+                        && value > 0
+                        && committed == value + scriptValue
                         && expectedIdentCC == idCC
-                        && pubKey `eqPk` person
-                        && endTimeout == t
                         && signedBy commitTxIn pubKey
                         && validatorHash `eqValidator` thisScriptHash
                         -- TODO check hashes
                     in  if isValid then let
-                            cns = (person, NotRedeemed commitValue endTimeout)
+                            cns = (pubKey, NotRedeemed commitValue endTimeout)
                             con1 = Pay (IdentPay 1) (PubKey 1) (PubKey 2) 100 256
                             updatedState = case state of { State stateCommitted -> State ((IdentCC idCC, cns) : stateCommitted) }
                             in (updatedState, con1)
@@ -406,12 +405,24 @@ marloweValidator = Validator result where
                     PendingTx [in1@ (PendingTxIn _ _ scriptValue)]
                         [PendingTxOut change (Just (validatorHash, dataHash)) DataTxOut, out2]
                         _ _ blockNumber [receiverSignature] thisScriptHash = p
+
+                    calcAvailable :: Person -> Value -> [(IdentCC, CCStatus)] -> Value
+                    calcAvailable from accum commits = case commits of
+                        [] -> accum
+                        (_, (party, NotRedeemed value expire)) : ls | from `eqPk` party && blockNumber <= expire ->
+                            calcAvailable from (accum + value) ls
+
+                    -- | Note. It's O(nr_or_commitments), potentially slow. Check it last.
+                    hasEnoughCommitted :: Person -> Value -> Bool
+                    hasEnoughCommitted from value = calcAvailable from 0 (stateCommitted marloweState) >= value
+
                     isValid = pid == contractIdentPay
                         && blockNumber <= timeout
                         && payValue > 0
                         && change == scriptValue - payValue
                         && signedBy in1 to -- only receiver of the payment allowed to issue this transaction
                         && validatorHash `eqValidator` thisScriptHash
+                        && hasEnoughCommitted from payValue
                         -- TODO check inputs/outputs
                     in  if isValid then let
                             con1 = Null
@@ -456,7 +467,7 @@ commitCash :: (
 commitCash person (TxOut _ (UTXO.Value contractValue) _, ref) value timeout = do
     _ <- if value <= 0 then otherError "Must commit a positive value" else pure ()
     let identCC = (IdentCC 1)
-    let i   = scriptTxIn ref marloweValidator (UTXO.Redeemer $ UTXO.lifted $ Commit (CC identCC person (fromIntegral value) timeout))
+    let i   = scriptTxIn ref marloweValidator (UTXO.Redeemer $ UTXO.lifted $ Commit identCC)
 
     let ds = DataScript $ UTXO.lifted (MarloweData {
                 marloweContract = Pay (IdentPay 1) (PubKey 1) (PubKey 2) 100 256,
