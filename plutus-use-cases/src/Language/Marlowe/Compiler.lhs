@@ -352,11 +352,14 @@ instance TypeablePlc Contract
 
 \begin{code}
 marloweValidator = Validator result where
-    result = UTXO.fromPlcCode $(plutus [| \ (input :: Input) (MarloweData{..} :: MarloweData) (p :: PendingTx ValidatorHash) -> let
+    result = UTXO.fromPlcCode $(plutus [| \ (input :: Input) (MarloweData{..} :: MarloweData) (p@PendingTx{..} :: PendingTx ValidatorHash) -> let
         -- let isValid = True
 
         eqPk :: PubKey -> PubKey -> Bool
         eqPk = $(TH.eqPubKey)
+
+        eqValidator :: ValidatorHash -> ValidatorHash -> Bool
+        eqValidator = $(TH.eqValidator)
 
         infixr 3 &&
         (&&) :: Bool -> Bool -> Bool
@@ -366,16 +369,13 @@ marloweValidator = Validator result where
         (||) :: Bool -> Bool -> Bool
         (||) = $(TH.or)
 
+        signedBy :: PendingTxIn -> PubKey -> Bool
+        signedBy = $(TH.txInSignedBy)
+
         orderTxIns :: PendingTxIn -> PendingTxIn -> (PendingTxIn, PendingTxIn)
         orderTxIns t1 t2 = case t1 of
             PendingTxIn _ (Just _ :: Maybe (ValidatorHash, RedeemerHash)) _ -> (t1, t2)
             _ -> (t2, t1)
-
-        extract1x2 :: PendingTx ValidatorHash -> a -> ((Height, PendingTxIn, PendingTxOut, PendingTxOut) -> a) -> a
-        extract1x2 p def f = case p of
-            PendingTx (in1 : _) (out1 : out2 : _) _ _ blockNumber _ _ -> f (blockNumber, in1, out1, out2)
-            _ -> def
-
 
         extract2x2 :: PendingTx ValidatorHash -> a -> ((Height, PendingTxIn, PendingTxIn, PendingTxOut, PendingTxOut) -> a) -> a
         extract2x2 p def f = case p of
@@ -394,6 +394,7 @@ marloweValidator = Validator result where
                             PendingTxOut committed (Just (validatorHash, dataHash)) DataTxOut -> let
                                 isValid = blockNumber <= startTimeout
                                     && blockNumber <= endTimeout
+                                    && v > 0
                                     && committed == v + scriptValue
                                     && expectedIdentCC == idCC
                                     && pubKey `eqPk` person
@@ -407,20 +408,23 @@ marloweValidator = Validator result where
                                     else (state, Null {- Should be con2 -}, False)
                             _ -> (state, Null, False))
                 _ -> (state, Null, False)
-            Pay (IdentPay contractIdentPay) (from::Person) (to::Person) (value::Cash) (timeout::Timeout) -> case input of
-                PaymentRequest (IdentPay pid) ->
-                    extract1x2 p (state, contract, False) (\(blockNumber, PendingTxIn _ _ scriptValue, out1, out2) ->
-                        case out1 of
-                            PendingTxOut committed (Just (validatorHash, dataHash)) DataTxOut -> let
-                                isValid = pid == contractIdentPay
-                                    && blockNumber <= timeout
-                                    -- TODO check inputs/outputs
-                                in  if isValid then let
-                                        con1 = Null
-                                        updatedState = state
-                                        in (updatedState, con1, True)
-                                    else (state, Null {- Should be con -}, False)
-                            _ -> (state, Null, False))
+            Pay (IdentPay contractIdentPay) (from::Person) (to::Person) (payValue::Cash) (timeout::Timeout) -> case input of
+                PaymentRequest (IdentPay pid) -> let
+                    PendingTx [in1@ (PendingTxIn _ _ scriptValue)]
+                        [PendingTxOut change (Just (validatorHash, dataHash)) DataTxOut, out2]
+                        _ _ blockNumber [receiverSignature] thisScriptHash = p
+                    isValid = pid == contractIdentPay
+                        && blockNumber <= timeout
+                        && payValue > 0
+                        && change == scriptValue - payValue
+                        && signedBy in1 to -- only receiver of the payment allowed to issue this transaction
+                        && validatorHash `eqValidator` thisScriptHash
+                        -- TODO check inputs/outputs
+                    in  if isValid then let
+                            con1 = Null
+                            updatedState = state
+                            in (updatedState, con1, True)
+                        else (state, Null {- Should be con -}, False)
                 _ -> (state, Null, False)
 
             Null -> case input of
