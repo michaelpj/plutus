@@ -1,0 +1,20 @@
+# Build and CI stuff
+# not doing *.nix to avoid matching the generated packages nix file, negative patterns don't work
+lib.nix @disassembler @michaelpj
+default.nix @disassembler @michaelpj
+**/shell.nix @disassembler @michaelpj
+release.nix @disassembler @michaelpj
+/nix @disassembler @michaelpj
+/ci @disassembler @michaelpj
+
+/core-to-plc @michaelpj
+/plutus-th @michaelpj
+/plutus-ir @michaelpj
+/plutus-exe @michaelpj
+/plutus-core-intepreter @effectfully
+/language-plutus-core @vmchale @effectfully @michaelpj
+/wallet-api @j-mueller @michaelpj
+/plutus-use-cases @j-mueller
+
+# Spec
+/plutus-core-spec @psygnisfive 
