@@ -17,12 +17,19 @@ appSize n t = PIR.TyApp () t (PLC.TyInt () n)
 mkBuiltin :: PLC.BuiltinName -> PIR.Term tyname name ()
 mkBuiltin n = PIR.Builtin () $ PLC.BuiltinName () n
 
+mkDynBuiltin :: PLC.DynamicBuiltinName -> PIR.Term tyname name ()
+mkDynBuiltin n = PIR.Builtin () $ PLC.DynBuiltinName () $ n
+
 mkIntFun :: PLC.BuiltinName -> PIR.Term PIR.TyName PIR.Name ()
 mkIntFun name = instSize haskellIntSize (mkBuiltin name)
 
 -- | The size of Haskell integers as a PLC size. Sizes are in bytes, so 8 bytes is 64 bits.
 haskellIntSize :: Natural
 haskellIntSize = 8
+
+    -- | The size of Haskell chars as a PLC size. Sizes are in bytes, so 4 bytes is 32 bits.
+haskellCharSize :: Natural
+haskellCharSize = 4
 
 -- | The size of Haskell bytestrings as a PLC size. Sizes are in bytes, so 32 bytes is 256 bits.
 -- This is mostly so they are compatible with the output of the SHA functions.

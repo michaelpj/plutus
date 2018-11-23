@@ -2,9 +2,12 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
+{-# LANGUAGE LambdaCase      #-}
 
 -- | Functions for compiling GHC Core expressions into Plutus Core terms.
 module Language.PlutusTx.Compiler.Expr (convExpr, convExprWithDefs, convDataConRef) where
+
+import           PlutusPrelude (bsToStr)
 
 import           Language.PlutusTx.Compiler.Binders
 import           Language.PlutusTx.Compiler.Builtins
@@ -37,6 +40,7 @@ import qualified Data.ByteString.Lazy                   as BSL
 import           Data.List                              (elem, elemIndex)
 import qualified Data.List.NonEmpty                     as NE
 import           Data.Traversable
+import           Data.Char
 
 {- Note [System FC and System FW]
 Haskell uses system FC, which includes type equalities and coercions.
@@ -62,16 +66,23 @@ containing the actual data, but are wrapped in special functions (often ending i
 This is a pain to recognize.
 -}
 
-convLiteral :: Converting m => GHC.Literal -> m (PLC.Constant ())
-convLiteral l = case l of
+convLiteral :: Converting m => GHC.Literal -> m PIRTerm
+convLiteral = \case
     -- TODO: better sizes
-    GHC.MachInt64 i    -> pure $ PLC.BuiltinInt () haskellIntSize i
-    GHC.MachInt i      -> pure $ PLC.BuiltinInt () haskellIntSize i
-    GHC.MachStr bs     -> pure $ PLC.BuiltinBS () haskellBSSize (BSL.fromStrict bs)
+    GHC.MachInt64 i    -> pure $ PIR.Constant () $ PLC.BuiltinInt () haskellIntSize i
+    GHC.MachInt i      -> pure $ PIR.Constant () $ PLC.BuiltinInt () haskellIntSize i
+    GHC.MachStr bs     ->
+        -- Convert the bytestring into a core expression representing the list
+        -- of characters, then compile that!
+        let
+            str = bsToStr (BSL.fromStrict bs)
+            charExprs = fmap GHC.mkCharExpr str
+            listExpr = GHC.mkListExpr GHC.charTy charExprs
+        in convExpr listExpr
+    GHC.MachChar c     -> pure $ PIR.Constant () $ PLC.BuiltinInt () haskellCharSize $ fromIntegral $ ord c
     GHC.LitInteger _ _ -> throwPlain $ UnsupportedError "Literal (unbounded) integer"
     GHC.MachWord _     -> throwPlain $ UnsupportedError "Literal word"
     GHC.MachWord64 _   -> throwPlain $ UnsupportedError "Literal word64"
-    GHC.MachChar _     -> throwPlain $ UnsupportedError "Literal char"
     GHC.MachFloat _    -> throwPlain $ UnsupportedError "Literal float"
     GHC.MachDouble _   -> throwPlain $ UnsupportedError "Literal double"
     GHC.MachLabel {}   -> throwPlain $ UnsupportedError "Literal label"
@@ -84,7 +95,7 @@ isPrimitiveWrapper i = case GHC.idDetails i of
     _                    -> False
 
 isPrimitiveDataCon :: GHC.DataCon -> Bool
-isPrimitiveDataCon dc = dc == GHC.intDataCon
+isPrimitiveDataCon dc = dc == GHC.intDataCon || dc == GHC.charDataCon
 
 -- | Convert a reference to a data constructor, i.e. a call to it.
 convDataConRef :: Converting m => GHC.DataCon -> m PIRTerm
@@ -172,7 +183,7 @@ convExpr e = withContextM (sdToTxt $ "Converting expr:" GHC.<+> GHC.ppr e) $ do
                 -- the term we get must be closed - we don't resolve most references
                 -- TODO: possibly relax this?
                 Nothing -> throwSd FreeVariableError $ "Variable" GHC.<+> GHC.ppr n GHC.$+$ (GHC.ppr $ GHC.idDetails n)
-        GHC.Lit lit -> PIR.Constant () <$> convLiteral lit
+        GHC.Lit lit -> convLiteral lit
         -- arg can be a type here, in which case it's a type instantiation
         GHC.App l (GHC.Type t) -> PIR.TyInst () <$> convExpr l <*> convType t
         -- otherwise it's a normal application
