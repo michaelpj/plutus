@@ -50,6 +50,10 @@ library
     ghc-options: -Wall -Wnoncanonical-monad-instances
                  -Wincomplete-uni-patterns -Wincomplete-record-updates
                  -Wredundant-constraints
+    -- linker speed up for linux
+    if os(linux)
+        ghc-options: -optl-fuse-ld=gold
+        ld-options: -fuse-ld=gold
     build-depends:
         base >=4.9 && <5,
         aeson -any,
@@ -87,6 +91,10 @@ executable emulator
     default-language: Haskell2010
     ghc-options: -Wall -Wincomplete-uni-patterns
                  -Wincomplete-record-updates -Wredundant-constraints -Widentities
+    -- linker speed up for linux
+    if os(linux)
+        ghc-options: -optl-fuse-ld=gold
+        ld-options: -fuse-ld=gold
     build-depends:
         base <5,
         wallet-api -any,
@@ -97,6 +105,10 @@ test-suite wallet-api-test
     main-is: Spec.hs
     hs-source-dirs: test
     default-language: Haskell2010
+    -- linker speed up for linux
+    if os(linux)
+        ghc-options: -optl-fuse-ld=gold
+        ld-options: -fuse-ld=gold
     build-depends:
         base >=4.9 && <5,
         containers -any,

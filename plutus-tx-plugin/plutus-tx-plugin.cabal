@@ -61,6 +61,10 @@ library
     ghc-options: -Wall -Wnoncanonical-monad-instances
                  -Wincomplete-uni-patterns -Wincomplete-record-updates
                  -Wredundant-constraints -Widentities
+    -- linker speed up for linux
+    if os(linux)
+        ghc-options: -optl-fuse-ld=gold
+        ld-options: -fuse-ld=gold
     build-depends:
         base >=4.9 && <5,
         bytestring -any,
@@ -90,6 +94,10 @@ test-suite plutus-tx-plugin-tests
         Plugin.Spec
         Plugin.IllTyped
     default-language: Haskell2010
+    -- linker speed up for linux
+    if os(linux)
+        ghc-options: -optl-fuse-ld=gold
+        ld-options: -fuse-ld=gold
     build-depends:
         base >=4.9 && <5,
         plutus-tx-plugin -any,
