@@ -19,6 +19,7 @@ packages:
 extra-deps:
 - serialise-0.2.1.0
 - monad-stm-0.1.0.2
+- algebraic-graphs-0.3
 flags:
   language-plutus-core:
     development: true
