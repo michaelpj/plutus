@@ -75,6 +75,9 @@ integerOne :: PlcCode
 integerOne = $$(plutus [|| (1 :: Int) ||])
 ```
 
+`getAst` extracts the actual program (which is a `Program TyName Name ()`) from the `PlcCode`, 
+and `prettyPlcDef` pretty-prints it.
+
 The Plutus Core program will look incomprehensible, which is fine, since you
 mostly won't want to look at the output of the compiler. However, it's instructive to
 look at it here just to get a vague idea of what's going on.
