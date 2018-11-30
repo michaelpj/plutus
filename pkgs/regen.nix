@@ -14,13 +14,12 @@ in
 
 with pkgs;
 
-let
-  deps = [ nixStable coreutils git findutils cabal2nix glibcLocales stack cabal-install iohkPkgs.stack2nix ];
-in
-  writeScript "generate.sh" ''
-    #!${stdenv.shell}
+stdenvNoCC.mkDerivation {
+  name = "generated-stack-packages";
+  src =  (pkgs.lib.sourceFilesBySuffices (localLib.iohkNix.cleanSourceHaskell ../.) [".yaml" ".project" ".cabal" ]);
+  buildInputs = [ nixStable nix-prefetch-scripts coreutils git findutils cabal2nix glibcLocales stack cabal-install iohkPkgs.stack2nix haskell.compiler.ghc843 ];
+  buildPhase = ''
     set -euo pipefail
-    export PATH=${lib.makeBinPath deps}
     export HOME=$(pwd)
     export NIX_PATH=nixpkgs=${nixpkgsPath}
 
@@ -31,12 +30,11 @@ in
         export NIX_REMOTE=''${NIX_REMOTE:-daemon}
     fi
 
-    function cleanup {
-      rm -rf default.nix.new
-    }
-    trap cleanup EXIT
-
     # Generate package set
-    stack2nix --platform x86_64-linux --hackage-snapshot "${hackageSnapshot}" -j8 --test --bench --no-indent ../. > default.nix.new
-    mv default.nix.new default.nix
-  ''
+    mkdir $out
+    stack2nix --verbose --platform x86_64-linux --hackage-snapshot "${hackageSnapshot}" -j8 --test --bench --no-indent . > $out/default.nix
+  '';
+  outputHashMode = "recursive";
+  outputHashAlgo = "sha256";
+  outputHash = "10h0qs7svw0cqjkyxs8z6s3qraa8ga920zfrr59rdlanbwg4klly";
+}
