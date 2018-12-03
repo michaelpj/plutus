@@ -36,9 +36,16 @@ import           Control.Monad.Reader
 import           Control.Monad.State
 
 import           Data.Foldable
-import qualified Data.Graph                as Graph
+import           Data.Maybe
 import qualified Data.Map                  as Map
 import qualified Data.Set                  as Set
+
+import qualified Algebra.Graph as G
+import qualified Algebra.Graph.ToGraph as T
+import qualified Algebra.Graph.HigherKinded.Class as HK
+import qualified Algebra.Graph.NonEmpty.AdjacencyMap as NE
+import qualified Algebra.Graph.AdjacencyMap as AM
+import qualified Algebra.Graph.AdjacencyMap.Algorithm as AM
 
 -- | A map from keys to pairs of bindings and their dependencies (as a list of keys).
 type DefMap key def = Map.Map key (def, Set.Set key)
@@ -71,29 +78,32 @@ runDefT x act = do
                     datatypes = mapDefs (\d -> DatatypeBind x (PLC.defVal d)) (_datatypeDefs defs)
                 in terms `Map.union` types `Map.union` datatypes
 
--- | Given the definitions in the program, create a topologically ordered list of the SCCs using the dependency information
-defSccs :: Ord key => DefMap key def -> [Graph.SCC def]
-defSccs tds =
-    let
-        inputs = fmap (\(key, (d, deps)) -> (d, key, Set.toList deps)) (Map.assocs tds)
-    in
-        Graph.stronglyConnComp inputs
+keyGraph :: (HK.Graph g) => DefMap key def -> g key
+keyGraph defMap =
+    let keyMap = fmap (\(_, deps) -> Set.toList deps) defMap
+    in HK.stars (Map.assocs keyMap)
 
 wrapWithDefs
-    :: Ord key
+    :: forall key ann . Ord key
     => ann
     -> DefMap key (Binding TyName Name ann)
     -> Term TyName Name ann
     -> Term TyName Name ann
 wrapWithDefs x tds body =
     let
-        sccs = defSccs tds
-        wrapDefScc acc scc = case scc of
-            Graph.AcyclicSCC def -> Let x NonRec [ def ] acc
-            Graph.CyclicSCC ds   -> Let x Rec ds acc
+        keyG :: G.Graph key
+        keyG = keyGraph tds
+        sccs = case AM.topSort $ AM.scc $ T.toAdjacencyMap keyG of
+            Nothing -> error "Impossible: scc condensation makes graph acyclic"
+            Just order -> order
+        wrapDefScc scc acc
+            | T.isAcyclic scc = Let x NonRec ds acc
+            | otherwise = Let x Rec ds acc
+            -- this should also be an impossible failure
+            where ds = mapMaybe (\key -> fst <$> Map.lookup key tds) (T.vertexList scc)
     in
         -- process from the inside out
-        foldl' wrapDefScc body (reverse sccs)
+        foldr wrapDefScc body sccs
 
 class (Monad m, Ord key) => MonadDefs key ann m | m -> key where
     liftDef :: DefT key ann Identity a -> m a
