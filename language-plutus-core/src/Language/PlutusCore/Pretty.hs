@@ -51,8 +51,6 @@ module Language.PlutusCore.Pretty
     , PrettyReadableBy
     , topPrettyConfigReadable
     , botPrettyConfigReadable
-    -- * GHCi
-    , interactivePrint
     ) where
 
 import           Language.PlutusCore.Name            as Export
@@ -80,10 +78,6 @@ prettyPlcDefText = docText . prettyPlcClassicDef
 prettyPlcCondensedErrorClassicString :: PrettyPlc a => a -> String
 prettyPlcCondensedErrorClassicString =
     docString . prettyPlcCondensedErrorBy defPrettyConfigPlcClassic
-
--- | A command suitable for use in GHCi as an interactive printer.
-interactivePrint :: Pretty a => a -> IO ()
-interactivePrint = print . pretty
 
 {- Note [Default pretty instances for PLC]
 While the flexible pretty-printing infrastructure is useful when you want it,
