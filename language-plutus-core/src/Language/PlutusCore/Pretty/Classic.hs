@@ -7,12 +7,15 @@
 {-# LANGUAGE UndecidableInstances  #-}
 
 module Language.PlutusCore.Pretty.Classic
-    ( PrettyConfigClassic (..)
+    ( PrettyConfigClassic(..)
     , PrettyClassicBy
-    ) where
+    )
+where
 
 import           Language.PlutusCore.Lexer.Type
-import           Language.PlutusCore.Name       (HasPrettyConfigName (..), PrettyConfigName)
+import           Language.PlutusCore.Name       ( HasPrettyConfigName(..)
+                                                , PrettyConfigName
+                                                )
 import           Language.PlutusCore.Type
 import           PlutusPrelude
 

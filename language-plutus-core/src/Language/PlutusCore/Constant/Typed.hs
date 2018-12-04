@@ -21,12 +21,13 @@ module Language.PlutusCore.Constant.Typed
     , DynamicBuiltinNameMeanings(..)
     , Evaluator
     , Evaluate
-    , KnownDynamicBuiltinType (..)
+    , KnownDynamicBuiltinType(..)
     , eraseTypedBuiltinSized
     , runEvaluate
     , withEvaluator
     , readDynamicBuiltinM
-    ) where
+    )
+where
 
 import           Language.PlutusCore.Constant.Dynamic.Pretty
 import           Language.PlutusCore.Evaluation.Result
@@ -39,9 +40,9 @@ import           Language.PlutusCore.Type
 import           PlutusPrelude
 
 import           Control.Monad.Reader
-import qualified Data.ByteString.Lazy.Char8                  as BSL
+import qualified Data.ByteString.Lazy.Char8    as BSL
 import           Data.GADT.Compare
-import           Data.Map                                    (Map)
+import           Data.Map                       ( Map )
 
 infixr 9 `TypeSchemeArrow`
 
@@ -304,8 +305,10 @@ class KnownDynamicBuiltinType dyn where
 
 readDynamicBuiltinM
     :: (Monad m, KnownDynamicBuiltinType dyn)
-    => Term TyName Name () -> Evaluate m (Maybe dyn)
-readDynamicBuiltinM term = withEvaluator $ \eval -> readDynamicBuiltin eval term
+    => Term TyName Name ()
+    -> Evaluate m (Maybe dyn)
+readDynamicBuiltinM term =
+    withEvaluator $ \eval -> readDynamicBuiltin eval term
 
 instance Pretty BuiltinSized where
     pretty BuiltinSizedInt  = "integer"
@@ -345,7 +348,8 @@ instance GEq TypedBuiltinSized where
     _                     `geq` _                     = Nothing
 
 comparedDynamicBuiltinTypesError :: a
-comparedDynamicBuiltinTypesError = error "Dynamic built-in types cannot be compared"
+comparedDynamicBuiltinTypesError =
+    error "Dynamic built-in types cannot be compared"
 
 instance Eq size => GEq (TypedBuiltin size) where
     TypedBuiltinSized size1 tbs1 `geq` TypedBuiltinSized size2 tbs2 = do

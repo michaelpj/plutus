@@ -12,9 +12,10 @@ module Language.PlutusCore.View
     , termAsBuiltin
     , termAsTermIterApp
     , termAsPrimIterApp
-    ) where
+    )
+where
 
-import           Language.PlutusCore.Lexer.Type (StagedBuiltinName (..))
+import           Language.PlutusCore.Lexer.Type ( StagedBuiltinName(..) )
 import           Language.PlutusCore.Type
 import           PlutusPrelude
 
@@ -43,8 +44,9 @@ constantAsInteger _                    = Nothing
 
 -- | View a 'Constant' as a 'StagedBuiltinName'.
 constantAsStagedBuiltinName :: Builtin a -> StagedBuiltinName
-constantAsStagedBuiltinName (BuiltinName    _ name) = StaticStagedBuiltinName  name
-constantAsStagedBuiltinName (DynBuiltinName _ name) = DynamicStagedBuiltinName name
+constantAsStagedBuiltinName (BuiltinName _ name) = StaticStagedBuiltinName name
+constantAsStagedBuiltinName (DynBuiltinName _ name) =
+    DynamicStagedBuiltinName name
 
 -- | View a 'Term' as a 'Constant'.
 termAsBuiltin :: Term tyname name a -> Maybe (Builtin a)
@@ -53,10 +55,11 @@ termAsBuiltin _              = Nothing
 
 -- | An iterated application of a 'Term' to a list of 'Term's.
 termAsTermIterApp :: Term tyname name a -> TermIterApp tyname name a
-termAsTermIterApp = go [] where
-    go args (Apply _ fun arg) = go (arg : args) fun
-    go args (TyInst _ fun _)  = go args fun
-    go args  fun              = IterApp fun args
+termAsTermIterApp = go []
+  where
+    go args (Apply  _ fun arg) = go (arg : args) fun
+    go args (TyInst _ fun _  ) = go args fun
+    go args fun                = IterApp fun args
 
 -- | View a 'Term' as an iterated application of a 'BuiltinName' to a list of 'Value's.
 termAsPrimIterApp :: Term tyname name a -> Maybe (PrimIterApp tyname name a)
@@ -68,8 +71,8 @@ termAsPrimIterApp term = do
 
 -- | Check whether a 'Term' is a 'Value'.
 isValue :: Term tyname name a -> Bool
-isValue (TyAbs  _ _ _ body) = isValue body
-isValue (Wrap   _ _ _ term) = isValue term
-isValue LamAbs{}            = True
-isValue Constant{}          = True
-isValue term                = isJust $ termAsPrimIterApp term
+isValue (TyAbs _ _ _ body) = isValue body
+isValue (Wrap  _ _ _ term) = isValue term
+isValue LamAbs{}           = True
+isValue Constant{}         = True
+isValue term               = isJust $ termAsPrimIterApp term

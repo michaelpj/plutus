@@ -9,9 +9,9 @@ import           Language.PlutusTx.Compiler.Types
 import           Language.PlutusTx.Compiler.ValueRestriction
 import           Language.PlutusTx.PIRTypes
 
-import qualified GhcPlugins                                  as GHC
+import qualified GhcPlugins                    as GHC
 
-import qualified Language.PlutusIR                           as PIR
+import qualified Language.PlutusIR             as PIR
 
 import           Control.Monad.Reader
 
@@ -29,38 +29,54 @@ first.
 variable *last* (so it is on the outside, so will be first when applying).
 -}
 
-withVarScoped :: Converting m => GHC.Var -> (PIR.VarDecl PIR.TyName PIR.Name () -> m a) -> m a
+withVarScoped
+    :: Converting m
+    => GHC.Var
+    -> (PIR.VarDecl PIR.TyName PIR.Name () -> m a)
+    -> m a
 withVarScoped v k = do
     let ghcName = GHC.getName v
     var <- convVarFresh v
-    local (\c -> c {ccScopes=pushName ghcName var (ccScopes c)}) (k var)
+    local (\c -> c { ccScopes = pushName ghcName var (ccScopes c) }) (k var)
 
-withVarsScoped :: Converting m => [GHC.Var] -> ([PIR.VarDecl PIR.TyName PIR.Name ()] -> m a) -> m a
+withVarsScoped
+    :: Converting m
+    => [GHC.Var]
+    -> ([PIR.VarDecl PIR.TyName PIR.Name ()] -> m a)
+    -> m a
 withVarsScoped vs k = do
     vars <- for vs $ \v -> do
         let name = GHC.getName v
         var' <- convVarFresh v
         pure (name, var')
-    local (\c -> c {ccScopes=pushNames vars (ccScopes c)}) (k (fmap snd vars))
+    local (\c -> c { ccScopes = pushNames vars (ccScopes c) })
+          (k (fmap snd vars))
 
-withTyVarScoped :: Converting m => GHC.Var -> (PIR.TyVarDecl PIR.TyName () -> m a) -> m a
+withTyVarScoped
+    :: Converting m => GHC.Var -> (PIR.TyVarDecl PIR.TyName () -> m a) -> m a
 withTyVarScoped v k = do
     let ghcName = GHC.getName v
     var <- convTyVarFresh v
-    local (\c -> c {ccScopes=pushTyName ghcName var (ccScopes c)}) (k var)
+    local (\c -> c { ccScopes = pushTyName ghcName var (ccScopes c) }) (k var)
 
-withTyVarsScoped :: Converting m => [GHC.Var] -> ([PIR.TyVarDecl PIR.TyName ()] -> m a) -> m a
+withTyVarsScoped
+    :: Converting m
+    => [GHC.Var]
+    -> ([PIR.TyVarDecl PIR.TyName ()] -> m a)
+    -> m a
 withTyVarsScoped vs k = do
     vars <- for vs $ \v -> do
         let name = GHC.getName v
         var' <- convTyVarFresh v
         pure (name, var')
-    local (\c -> c {ccScopes=pushTyNames vars (ccScopes c)}) (k (fmap snd vars))
+    local (\c -> c { ccScopes = pushTyNames vars (ccScopes c) })
+          (k (fmap snd vars))
 
 -- | Builds a lambda, binding the given variable to a name that
 -- will be in scope when running the second argument.
 mkLamAbsScoped :: Converting m => GHC.Var -> m PIRTerm -> m PIRTerm
-mkLamAbsScoped v body = withVarScoped v $ \(PIR.VarDecl _ n t) -> PIR.LamAbs () n t <$> body
+mkLamAbsScoped v body =
+    withVarScoped v $ \(PIR.VarDecl _ n t) -> PIR.LamAbs () n t <$> body
 
 mkIterLamAbsScoped :: Converting m => [GHC.Var] -> m PIRTerm -> m PIRTerm
 mkIterLamAbsScoped vars body = foldr (\v acc -> mkLamAbsScoped v acc) body vars
@@ -79,15 +95,18 @@ mkIterTyAbsScoped vars body = foldr (\v acc -> mkTyAbsScoped v acc) body vars
 -- | Builds a forall, binding the given variable to a name that
 -- will be in scope when running the second argument.
 mkTyForallScoped :: Converting m => GHC.Var -> m PIRType -> m PIRType
-mkTyForallScoped v body = withTyVarScoped v $ \(PIR.TyVarDecl _ t k) -> PIR.TyForall () t k <$> body
+mkTyForallScoped v body =
+    withTyVarScoped v $ \(PIR.TyVarDecl _ t k) -> PIR.TyForall () t k <$> body
 
 mkIterTyForallScoped :: Converting m => [GHC.Var] -> m PIRType -> m PIRType
-mkIterTyForallScoped vars body = foldr (\v acc -> mkTyForallScoped v acc) body vars
+mkIterTyForallScoped vars body =
+    foldr (\v acc -> mkTyForallScoped v acc) body vars
 
 -- | Builds a type lambda, binding the given variable to a name that
 -- will be in scope when running the second argument.
 mkTyLamScoped :: Converting m => GHC.Var -> m PIRType -> m PIRType
-mkTyLamScoped v body = withTyVarScoped v $ \(PIR.TyVarDecl _ t k) -> PIR.TyLam () t k <$> body
+mkTyLamScoped v body =
+    withTyVarScoped v $ \(PIR.TyVarDecl _ t k) -> PIR.TyLam () t k <$> body
 
 mkIterTyLamScoped :: Converting m => [GHC.Var] -> m PIRType -> m PIRType
 mkIterTyLamScoped vars body = foldr (\v acc -> mkTyLamScoped v acc) body vars

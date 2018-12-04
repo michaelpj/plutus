@@ -1,12 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Data.Text.Prettyprint.Doc.Custom ( brackets'
-                                        , braces'
-                                        , vsep'
-                                        , parens'
-                                        , (</>)
-                                        , (<//>)
-                                        ) where
+module Data.Text.Prettyprint.Doc.Custom
+    ( brackets'
+    , braces'
+    , vsep'
+    , parens'
+    , (</>)
+    , (<//>)
+    )
+where
 
 import           Data.Text.Prettyprint.Doc
 
@@ -14,9 +16,10 @@ infixr 5 </>
 infixr 5 <//>
 
 -- | This operator prints @a@ and then prints @b@ indented on a new line
-(<//>) :: Doc a -- ^ @a@
-       -> Doc a -- ^ @b@
-       -> Doc a
+(<//>)
+    :: Doc a -- ^ @a@
+    -> Doc a -- ^ @b@
+    -> Doc a
 (<//>) d d' = d <> hardline <> indent 2 d'
 
 -- | This prints both documents on the same line separated by a space if they
@@ -33,7 +36,8 @@ vsep' :: [Doc a] -> Doc a
 vsep' = group . vsep
 
 section :: Doc a -> Doc a -> Doc a -> Doc a
-section c1 c2 d = group (flatAlt (c1 <> hardline <> indent 2 d <> hardline <> c2) (c1 <+> d <+> c2))
+section c1 c2 d = group
+    (flatAlt (c1 <> hardline <> indent 2 d <> hardline <> c2) (c1 <+> d <+> c2))
 
 -- | This prints a document enclosed by brackets, possibly indenting the output on
 -- a new line if it does not fit.

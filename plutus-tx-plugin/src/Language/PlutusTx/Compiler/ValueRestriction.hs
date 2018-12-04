@@ -11,8 +11,8 @@ import           Language.PlutusTx.Compiler.Laziness
 import           Language.PlutusTx.Compiler.Types
 import           Language.PlutusTx.PIRTypes
 
-import qualified Language.PlutusIR                   as PIR
-import qualified Language.PlutusIR.Value             as PIR
+import qualified Language.PlutusIR             as PIR
+import qualified Language.PlutusIR.Value       as PIR
 
 import           Control.Monad.Reader
 
@@ -84,16 +84,18 @@ bit of a hack, though.
 mangleTyForall :: Converting m => PIRType -> m PIRType
 mangleTyForall = \case
     PIR.TyForall a t k body -> PIR.TyForall a t k <$> delayType body
-    x -> pure x
+    x                       -> pure x
 
 -- See Note [Value restriction]
 mangleTyAbs :: Converting m => PIRTerm -> m PIRTerm
 mangleTyAbs = \case
     PIR.TyAbs a t k body -> PIR.TyAbs a t k <$> delay body
-    x -> pure x
+    x                    -> pure x
 
 checkTyAbsBody :: Converting m => PIRTerm -> m ()
 checkTyAbsBody t = do
-    ConvertingContext {ccOpts=opts} <- ask
+    ConvertingContext { ccOpts = opts } <- ask
     -- we sometimes need to turn this off, as checking for term values also checks for normalized types at the moment
-    unless (not (coCheckValueRestriction opts) || PIR.isTermValue t) $ throwPlain $ ValueRestrictionError "Type abstraction body is not a value"
+    unless (not (coCheckValueRestriction opts) || PIR.isTermValue t)
+        $ throwPlain
+        $ ValueRestrictionError "Type abstraction body is not a value"

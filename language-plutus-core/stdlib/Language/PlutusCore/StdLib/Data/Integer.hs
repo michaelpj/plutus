@@ -2,11 +2,10 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module Language.PlutusCore.StdLib.Data.Integer
-    ( getBuiltinSuccInteger
-    ) where
+module Language.PlutusCore.StdLib.Data.Integer (getBuiltinSuccInteger) where
 
-import           Language.PlutusCore.Constant.Make (makeDynBuiltinIntSizedAs)
+import           Language.PlutusCore.Constant.Make
+                                                ( makeDynBuiltinIntSizedAs )
 import           Language.PlutusCore.MkPlc
 import           Language.PlutusCore.Name
 import           Language.PlutusCore.Quote
@@ -20,11 +19,11 @@ import           Language.PlutusCore.Type
 getBuiltinSuccInteger :: Quote (Term TyName Name ())
 getBuiltinSuccInteger = rename =<< do
     s <- freshTyName () "s"
-    i  <- freshName () "i"
+    i <- freshName () "i"
     return
         . TyAbs () s (Size ())
         . LamAbs () i (TyApp () (TyBuiltin () TyInteger) $ TyVar () s)
-        . mkIterApp () (TyInst () (Builtin () $ BuiltinName () AddInteger) $ TyVar () s)
-        $ [ Var () i
-          , makeDynBuiltinIntSizedAs (TyVar () s) (Var () i) 1
-          ]
+        . mkIterApp
+              ()
+              (TyInst () (Builtin () $ BuiltinName () AddInteger) $ TyVar () s)
+        $ [Var () i, makeDynBuiltinIntSizedAs (TyVar () s) (Var () i) 1]

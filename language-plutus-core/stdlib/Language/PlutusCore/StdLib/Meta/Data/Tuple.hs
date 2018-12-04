@@ -6,9 +6,10 @@ module Language.PlutusCore.StdLib.Meta.Data.Tuple
     ( getBuiltinTuple
     , getBuiltinTupleConstructor
     , getBuiltinTupleAccessor
-    ) where
+    )
+where
 
-import           PlutusPrelude               (strToBs)
+import           PlutusPrelude                  ( strToBs )
 
 import           Language.PlutusCore.MkPlc
 import           Language.PlutusCore.Name
@@ -23,19 +24,23 @@ import           Data.Traversable
 -- @\(T_1 :: *) .. (T_n :: *) . all (R :: *) . (T_1 -> .. -> T_n -> R) -> R@
 getBuiltinTuple :: MonadQuote m => Int -> m (Type TyName ())
 getBuiltinTuple arity = do
-    tyVars <- for [0..(arity-1)] $ \i -> do
+    tyVars <- for [0 .. (arity - 1)] $ \i -> do
         tn <- liftQuote $ freshTyName () $ strToBs $ "t_" ++ show i
         pure $ TyVarDecl () tn $ Type ()
 
     resultType <- liftQuote $ freshTyName () "r"
-    let caseType = mkIterTyFun () (fmap (mkTyVar ()) tyVars) (TyVar () resultType)
-    pure $
+    let caseType =
+            mkIterTyFun () (fmap (mkTyVar ()) tyVars) (TyVar () resultType)
+    pure
+        $
         -- \T_1 .. T_n
-        mkIterTyLam () tyVars $
+          mkIterTyLam () tyVars
+        $
         -- all R
-        TyForall () resultType (Type ()) $
+          TyForall () resultType (Type ())
+        $
         -- (T_1 -> .. -> T_n -> r) -> r
-        TyFun () caseType (TyVar () resultType)
+          TyFun () caseType (TyVar () resultType)
 
 -- | Given an arity @n@, create the constructor for n-tuples.
 --
@@ -47,29 +52,36 @@ getBuiltinTuple arity = do
 -- @
 getBuiltinTupleConstructor :: MonadQuote m => Int -> m (Term TyName Name ())
 getBuiltinTupleConstructor arity = do
-    tyVars <- for [0..(arity-1)] $ \i -> do
+    tyVars <- for [0 .. (arity - 1)] $ \i -> do
         tn <- liftQuote $ freshTyName () $ strToBs $ "t_" ++ show i
         pure $ TyVarDecl () tn $ Type ()
 
     resultType <- liftQuote $ freshTyName () "r"
 
-    args <- for [0..(arity -1)] $ \i -> do
+    args       <- for [0 .. (arity - 1)] $ \i -> do
         n <- liftQuote $ freshName () $ strToBs $ "arg_" ++ show i
         pure $ VarDecl () n $ mkTyVar () $ tyVars !! i
 
     caseArg <- liftQuote $ freshName () "case"
-    let caseTy = mkIterTyFun () (fmap (mkTyVar ()) tyVars) (TyVar () resultType)
-    pure $
+    let caseTy =
+            mkIterTyFun () (fmap (mkTyVar ()) tyVars) (TyVar () resultType)
+    pure
+        $
         -- /\T_1 .. T_n
-        mkIterTyAbs () tyVars $
+          mkIterTyAbs () tyVars
+        $
         -- \arg_1 .. arg_n
-        mkIterLamAbs () args $
+          mkIterLamAbs () args
+        $
         -- /\R
-        TyAbs () resultType (Type ()) $
+          TyAbs () resultType (Type ())
+        $
         -- \case
-        LamAbs () caseArg caseTy $
+          LamAbs () caseArg caseTy
+        $
         -- case arg_1 .. arg_n
-        mkIterApp () (Var () caseArg) $ fmap (mkVar ()) args
+          mkIterApp () (Var () caseArg)
+        $ fmap (mkVar ()) args
 
 -- | Given an arity @n@ and an index @i@, create a function for accessing the i'th component of a n-tuple.
 --
@@ -80,7 +92,7 @@ getBuiltinTupleConstructor arity = do
 -- @
 getBuiltinTupleAccessor :: MonadQuote m => Int -> Int -> m (Term TyName Name ())
 getBuiltinTupleAccessor arity index = rename =<< do
-    tyVars <- for [0..(arity-1)] $ \i -> do
+    tyVars <- for [0 .. (arity - 1)] $ \i -> do
         tn <- liftQuote $ freshTyName () $ strToBs $ "t_" ++ show i
         pure $ TyVarDecl () tn $ Type ()
 
@@ -89,18 +101,22 @@ getBuiltinTupleAccessor arity index = rename =<< do
         pure $ mkIterTyApp () genericTuple (fmap (mkTyVar ()) tyVars)
     let selectedTy = mkTyVar () $ tyVars !! index
 
-    args <- for [0..(arity -1)] $ \i -> do
+    args <- for [0 .. (arity - 1)] $ \i -> do
         n <- liftQuote $ freshName () $ strToBs $ "arg_" ++ show i
         pure $ VarDecl () n $ mkTyVar () $ tyVars !! i
     let selectedArg = mkVar () $ args !! index
 
     tupleArg <- liftQuote $ freshName () "tuple"
-    pure $
+    pure
+        $
         -- /\T_1 .. T_n
-        mkIterTyAbs () tyVars $
+          mkIterTyAbs () tyVars
+        $
         -- \tuple :: (tupleN T_1 .. T_n)
-        LamAbs () tupleArg tupleTy $
+          LamAbs () tupleArg tupleTy
+        $
         -- tuple {T_i}
-        Apply () (TyInst () (Var () tupleArg) selectedTy) $
+          Apply () (TyInst () (Var () tupleArg) selectedTy)
+        $
         -- \arg_1 .. arg_n . arg_i
-        mkIterLamAbs () args selectedArg
+          mkIterLamAbs () args selectedArg

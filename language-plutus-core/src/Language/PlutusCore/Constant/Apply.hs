@@ -13,23 +13,25 @@ module Language.PlutusCore.Constant.Apply
     , makeConstAppResult
     , applyTypeSchemed
     , applyBuiltinName
-    ) where
+    )
+where
 
-import           Language.PlutusCore.Constant.Dynamic.Instances ()
+import           Language.PlutusCore.Constant.Dynamic.Instances
+                                                ( )
 import           Language.PlutusCore.Constant.Function
 import           Language.PlutusCore.Constant.Make
 import           Language.PlutusCore.Constant.Name
 import           Language.PlutusCore.Constant.Typed
-import           Language.PlutusCore.Lexer.Type                 (BuiltinName (..))
+import           Language.PlutusCore.Lexer.Type ( BuiltinName(..) )
 import           Language.PlutusCore.Name
 import           Language.PlutusCore.Quote
 import           Language.PlutusCore.Type
 import           PlutusPrelude
 
-import           Control.Monad.Trans.Class                      (lift)
-import qualified Data.ByteString.Lazy                           as BSL
-import           Data.IntMap.Strict                             (IntMap)
-import qualified Data.IntMap.Strict                             as IntMap
+import           Control.Monad.Trans.Class      ( lift )
+import qualified Data.ByteString.Lazy          as BSL
+import           Data.IntMap.Strict             ( IntMap )
+import qualified Data.IntMap.Strict            as IntMap
 
 -- | The type of constant applications errors.
 data ConstAppError
@@ -112,22 +114,26 @@ sizeAt (SizeVar sizeIndex) (SizeValues sizes) = sizes IntMap.! sizeIndex
 
 -- | If previously seen size is not equal to the most recently encountered,
 -- then return an error, otherwise return a received value and its expected size.
-checkBuiltinSize :: Maybe Size -> Size -> Constant () -> b -> Either ConstAppError (b, Size)
+checkBuiltinSize
+    :: Maybe Size -> Size -> Constant () -> b -> Either ConstAppError (b, Size)
 checkBuiltinSize (Just size) size' constant _ | size /= size' =
     Left $ SizeMismatchConstAppError size constant
-checkBuiltinSize  _          size' _        y = Right (y, size')
+checkBuiltinSize _ size' _ y = Right (y, size')
 
 -- | Convert a PLC constant into the corresponding Haskell value and also return its size.
 -- Checks that the constant is of a given type and there are no size mismatches.
 extractSizedBuiltin
-    :: TypedBuiltinSized a -> Maybe Size -> Constant () -> Either ConstAppError (a, Size)
-extractSizedBuiltin TypedBuiltinSizedInt  maySize constant@(BuiltinInt  () size' int) =
-    checkBuiltinSize maySize size' constant int
-extractSizedBuiltin TypedBuiltinSizedBS   maySize constant@(BuiltinBS   () size' bs ) =
-    checkBuiltinSize maySize size' constant bs
-extractSizedBuiltin TypedBuiltinSizedSize maySize constant@(BuiltinSize () size'    ) =
-    checkBuiltinSize maySize size' constant ()
-extractSizedBuiltin tbs                   _       constant                            =
+    :: TypedBuiltinSized a
+    -> Maybe Size
+    -> Constant ()
+    -> Either ConstAppError (a, Size)
+extractSizedBuiltin TypedBuiltinSizedInt maySize constant@(BuiltinInt () size' int)
+    = checkBuiltinSize maySize size' constant int
+extractSizedBuiltin TypedBuiltinSizedBS maySize constant@(BuiltinBS () size' bs)
+    = checkBuiltinSize maySize size' constant bs
+extractSizedBuiltin TypedBuiltinSizedSize maySize constant@(BuiltinSize () size')
+    = checkBuiltinSize maySize size' constant ()
+extractSizedBuiltin tbs _ constant =
     Left $ IllTypedConstAppError (eraseTypedBuiltinSized tbs) constant
 
 -- | Substitute the looked up 'Size' value for the size variable of a 'TypedBuiltin'.
@@ -144,20 +150,25 @@ extractBuiltin
     -> SizeValues
     -> Value TyName Name ()
     -> Evaluate m (Either ConstAppError (a, SizeValues))
-extractBuiltin (TypedBuiltinSized sizeEntry tbs) (SizeValues sizes) value = return $ case value of
-    Constant () constant -> case sizeEntry of
-        SizeValue size                ->
-            (SizeValues sizes <$) <$> extractSizedBuiltin tbs (Just size) constant
-        SizeBound (SizeVar sizeIndex) ->
-            unPairT . fmap SizeValues $ IntMap.alterF upd sizeIndex sizes where
-                upd maySize = fmap Just . PairT $ extractSizedBuiltin tbs maySize constant
-    _                    -> Left $ SizedNonConstantConstAppError value
-extractBuiltin TypedBuiltinBool                  _                  _     =
+extractBuiltin (TypedBuiltinSized sizeEntry tbs) (SizeValues sizes) value =
+    return $ case value of
+        Constant () constant -> case sizeEntry of
+            SizeValue size ->
+                (SizeValues sizes <$)
+                    <$> extractSizedBuiltin tbs (Just size) constant
+            SizeBound (SizeVar sizeIndex) ->
+                unPairT . fmap SizeValues $ IntMap.alterF upd sizeIndex sizes
+              where
+                upd maySize =
+                    fmap Just . PairT $ extractSizedBuiltin tbs maySize constant
+        _ -> Left $ SizedNonConstantConstAppError value
+extractBuiltin TypedBuiltinBool _ _ =
     -- TODO: move to dynamic built-ins here as well.
     error "Not implemented."
-extractBuiltin TypedBuiltinDyn                   sizeValues         value =
-    maybe (Left $ UnreadableBuiltinConstAppError value) (\x -> Right (x, sizeValues)) <$>
-        readDynamicBuiltinM value
+extractBuiltin TypedBuiltinDyn sizeValues value =
+    maybe (Left $ UnreadableBuiltinConstAppError value)
+          (\x -> Right (x, sizeValues))
+        <$> readDynamicBuiltinM value
 
 -- | Convert a PLC constant (unwrapped from 'Value') into the corresponding Haskell value.
 -- Checks that the constant is of a given type and there are no size mismatches.
@@ -169,16 +180,21 @@ extractSchemed
     -> SizeValues
     -> Value TyName Name ()
     -> Evaluate m (Either ConstAppError (a, SizeValues))
-extractSchemed (TypeSchemeBuiltin a) sizeValues value = extractBuiltin a sizeValues value
-extractSchemed (TypeSchemeArrow _ _) _          _     = error "Not implemented."
-extractSchemed (TypeSchemeAllSize _) _          _     = error "Not implemented."
+extractSchemed (TypeSchemeBuiltin a) sizeValues value =
+    extractBuiltin a sizeValues value
+extractSchemed (TypeSchemeArrow _ _) _ _ = error "Not implemented."
+extractSchemed (TypeSchemeAllSize _) _ _ = error "Not implemented."
 
 -- | Apply a function with a known 'TypeScheme' to a list of 'Constant's (unwrapped from 'Value's).
 -- Checks that the constants are of expected types and there are no size mismatches.
 applyTypeSchemed
     :: Monad m
-    => TypeScheme SizeVar a r -> a -> [Value TyName Name ()] -> QuoteT (Evaluate m) ConstAppResult
-applyTypeSchemed schema = go schema (SizeVar 0) (SizeValues mempty) where
+    => TypeScheme SizeVar a r
+    -> a
+    -> [Value TyName Name ()]
+    -> QuoteT (Evaluate m) ConstAppResult
+applyTypeSchemed schema = go schema (SizeVar 0) (SizeValues mempty)
+  where
     go
         :: Monad m
         => TypeScheme SizeVar a r
@@ -187,26 +203,28 @@ applyTypeSchemed schema = go schema (SizeVar 0) (SizeValues mempty) where
         -> a
         -> [Value TyName Name ()]
         -> QuoteT (Evaluate m) ConstAppResult
-    go (TypeSchemeBuiltin tb)      _       sizeValues y args = case args of  -- Computed the result.
+    go (TypeSchemeBuiltin tb) _ sizeValues y args = case args of  -- Computed the result.
         -- This is where all the size checks prescribed by the specification happen.
         -- We instantiate the size variable of a final 'TypedBuiltin' to its value and call
         -- 'makeConstAppResult' which performs the final size check before converting
         -- a Haskell value to the corresponding PLC one.
-        [] -> liftQuote . makeConstAppResult $ TypedBuiltinValue (substSizeVar sizeValues tb) y
-        _  -> return . ConstAppError $ ExcessArgumentsConstAppError args     -- Too many arguments.
+        [] -> liftQuote . makeConstAppResult $ TypedBuiltinValue
+            (substSizeVar sizeValues tb)
+            y
+        _ -> return . ConstAppError $ ExcessArgumentsConstAppError args     -- Too many arguments.
     go (TypeSchemeArrow schA schB) sizeVar sizeValues f args = case args of
         []          -> return ConstAppStuck             -- Not enough arguments to compute.
         arg : args' -> do                               -- Peel off one argument.
             -- Coerce the argument to a Haskell value.
             errOrRes <- lift $ extractSchemed schA sizeValues arg
             case errOrRes of
-                Left err               ->
+                Left err ->
                     -- The coercion resulted in an error.
                     return $ ConstAppError err
                 Right (x, sizeValues') ->
                     -- Apply the function to the coerced argument and proceed recursively.
                     go schB sizeVar sizeValues' (f x) args'
-    go (TypeSchemeAllSize schK)    sizeVar sizeValues f args =
+    go (TypeSchemeAllSize schK) sizeVar sizeValues f args =
         -- Instantiate the `forall` with a fresh var and proceed recursively.
         go (schK sizeVar) (succ sizeVar) sizeValues f args
 
@@ -214,36 +232,56 @@ applyTypeSchemed schema = go schema (SizeVar 0) (SizeValues mempty) where
 -- Checks that the constants are of expected types and there are no size mismatches.
 applyTypedBuiltinName
     :: Monad m
-    => TypedBuiltinName a r -> a -> [Value TyName Name ()] -> QuoteT (Evaluate m) ConstAppResult
+    => TypedBuiltinName a r
+    -> a
+    -> [Value TyName Name ()]
+    -> QuoteT (Evaluate m) ConstAppResult
 applyTypedBuiltinName (TypedBuiltinName _ schema) = applyTypeSchemed schema
 
 -- | Apply a 'TypedBuiltinName' to a list of 'Constant's (unwrapped from 'Value's)
 -- Checks that the constants are of expected types and there are no size mismatches.
 applyBuiltinName
     :: Monad m
-    => BuiltinName -> [Value TyName Name ()] -> QuoteT (Evaluate m) ConstAppResult
-applyBuiltinName AddInteger           = applyTypedBuiltinName typedAddInteger           (+)
-applyBuiltinName SubtractInteger      = applyTypedBuiltinName typedSubtractInteger      (-)
-applyBuiltinName MultiplyInteger      = applyTypedBuiltinName typedMultiplyInteger      (*)
-applyBuiltinName DivideInteger        = applyTypedBuiltinName typedDivideInteger        div
-applyBuiltinName QuotientInteger      = applyTypedBuiltinName typedQuotientInteger      quot
-applyBuiltinName RemainderInteger     = applyTypedBuiltinName typedRemainderInteger     rem
-applyBuiltinName ModInteger           = applyTypedBuiltinName typedModInteger           mod
-applyBuiltinName LessThanInteger      = applyTypedBuiltinName typedLessThanInteger      (<)
-applyBuiltinName LessThanEqInteger    = applyTypedBuiltinName typedLessThanEqInteger    (<=)
-applyBuiltinName GreaterThanInteger   = applyTypedBuiltinName typedGreaterThanInteger   (>)
-applyBuiltinName GreaterThanEqInteger = applyTypedBuiltinName typedGreaterThanEqInteger (>=)
-applyBuiltinName EqInteger            = applyTypedBuiltinName typedEqInteger            (==)
-applyBuiltinName ResizeInteger        = applyTypedBuiltinName typedResizeInteger        (const id)
-applyBuiltinName IntToByteString      = applyTypedBuiltinName typedIntToByteString      undefined
-applyBuiltinName Concatenate          = applyTypedBuiltinName typedConcatenate          (<>)
-applyBuiltinName TakeByteString       = applyTypedBuiltinName typedTakeByteString       (BSL.take . fromIntegral)
-applyBuiltinName DropByteString       = applyTypedBuiltinName typedDropByteString       (BSL.drop . fromIntegral)
-applyBuiltinName ResizeByteString     = applyTypedBuiltinName typedResizeByteString     (const id)
-applyBuiltinName SHA2                 = applyTypedBuiltinName typedSHA2                 undefined
-applyBuiltinName SHA3                 = applyTypedBuiltinName typedSHA3                 undefined
-applyBuiltinName VerifySignature      = applyTypedBuiltinName typedVerifySignature      undefined
-applyBuiltinName EqByteString         = applyTypedBuiltinName typedEqByteString         (==)
-applyBuiltinName TxHash               = applyTypedBuiltinName typedTxHash               undefined
-applyBuiltinName BlockNum             = applyTypedBuiltinName typedBlockNum             undefined
-applyBuiltinName SizeOfInteger        = applyTypedBuiltinName typedSizeOfInteger        (const ())
+    => BuiltinName
+    -> [Value TyName Name ()]
+    -> QuoteT (Evaluate m) ConstAppResult
+applyBuiltinName AddInteger = applyTypedBuiltinName typedAddInteger (+)
+applyBuiltinName SubtractInteger =
+    applyTypedBuiltinName typedSubtractInteger (-)
+applyBuiltinName MultiplyInteger =
+    applyTypedBuiltinName typedMultiplyInteger (*)
+applyBuiltinName DivideInteger = applyTypedBuiltinName typedDivideInteger div
+applyBuiltinName QuotientInteger =
+    applyTypedBuiltinName typedQuotientInteger quot
+applyBuiltinName RemainderInteger =
+    applyTypedBuiltinName typedRemainderInteger rem
+applyBuiltinName ModInteger = applyTypedBuiltinName typedModInteger mod
+applyBuiltinName LessThanInteger =
+    applyTypedBuiltinName typedLessThanInteger (<)
+applyBuiltinName LessThanEqInteger =
+    applyTypedBuiltinName typedLessThanEqInteger (<=)
+applyBuiltinName GreaterThanInteger =
+    applyTypedBuiltinName typedGreaterThanInteger (>)
+applyBuiltinName GreaterThanEqInteger =
+    applyTypedBuiltinName typedGreaterThanEqInteger (>=)
+applyBuiltinName EqInteger = applyTypedBuiltinName typedEqInteger (==)
+applyBuiltinName ResizeInteger =
+    applyTypedBuiltinName typedResizeInteger (const id)
+applyBuiltinName IntToByteString =
+    applyTypedBuiltinName typedIntToByteString undefined
+applyBuiltinName Concatenate = applyTypedBuiltinName typedConcatenate (<>)
+applyBuiltinName TakeByteString =
+    applyTypedBuiltinName typedTakeByteString (BSL.take . fromIntegral)
+applyBuiltinName DropByteString =
+    applyTypedBuiltinName typedDropByteString (BSL.drop . fromIntegral)
+applyBuiltinName ResizeByteString =
+    applyTypedBuiltinName typedResizeByteString (const id)
+applyBuiltinName SHA2 = applyTypedBuiltinName typedSHA2 undefined
+applyBuiltinName SHA3 = applyTypedBuiltinName typedSHA3 undefined
+applyBuiltinName VerifySignature =
+    applyTypedBuiltinName typedVerifySignature undefined
+applyBuiltinName EqByteString = applyTypedBuiltinName typedEqByteString (==)
+applyBuiltinName TxHash       = applyTypedBuiltinName typedTxHash undefined
+applyBuiltinName BlockNum     = applyTypedBuiltinName typedBlockNum undefined
+applyBuiltinName SizeOfInteger =
+    applyTypedBuiltinName typedSizeOfInteger (const ())

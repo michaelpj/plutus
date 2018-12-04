@@ -1,6 +1,6 @@
 module Language.PlutusTx.PIRTypes where
 
-import qualified Language.PlutusIR as PIR
+import qualified Language.PlutusIR             as PIR
 
 type PIRKind = PIR.Kind ()
 type PIRType = PIR.Type PIR.TyName ()

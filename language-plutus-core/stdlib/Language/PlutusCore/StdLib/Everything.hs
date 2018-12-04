@@ -6,9 +6,7 @@
 
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Language.PlutusCore.StdLib.Everything
-    ( foldStdLib
-    ) where
+module Language.PlutusCore.StdLib.Everything (foldStdLib) where
 
 import           Language.PlutusCore
 import           Language.PlutusCore.StdLib.Data.Bool
@@ -42,7 +40,7 @@ type StdLibFsEntity = Named AnonStdLibFsEntity
 
 -- | Fold a 'StdLibPlcEntity'.
 foldStdLibPlcEntity
-    :: (String -> Quote (Type TyName ())      -> a)  -- ^ What to do on a type.
+    :: (String -> Quote (Type TyName ()) -> a)  -- ^ What to do on a type.
     -> (String -> Quote (Term TyName Name ()) -> a)  -- ^ What to do on a term.
     -> StdLibPlcEntity
     -> a
@@ -54,81 +52,88 @@ foldStdLibPlcEntity onType onTerm (Named plcName anonStdLibPlcEntity) =
 -- | Fold a 'StdLibFsEntity'.
 foldStdLibFsEntity
     :: (String -> [a] -> a)                          -- ^ What to do on a folder or a file.
-    -> (String -> Quote (Type TyName ())      -> a)  -- ^ What to do on a type.
+    -> (String -> Quote (Type TyName ()) -> a)  -- ^ What to do on a type.
     -> (String -> Quote (Term TyName Name ()) -> a)  -- ^ What to do on a term.
     -> StdLibFsEntity
     -> a
-foldStdLibFsEntity onFs onType onTerm = go where
-    go (Named fsName anonStdLibFsEntity) = onFs fsName $ case anonStdLibFsEntity of
-        AnonStdLibFolder fsEntities  -> map go fsEntities
-        AnonStdLibFile   plcEntities -> map (foldStdLibPlcEntity onType onTerm) plcEntities
+foldStdLibFsEntity onFs onType onTerm = go
+  where
+    go (Named fsName anonStdLibFsEntity) =
+        onFs fsName $ case anonStdLibFsEntity of
+            AnonStdLibFolder fsEntities -> map go fsEntities
+            AnonStdLibFile plcEntities ->
+                map (foldStdLibPlcEntity onType onTerm) plcEntities
 
 -- | Fold the entire stdlib.
 foldStdLib
     :: (String -> [a] -> a)                          -- ^ What to do on a folder or a file.
-    -> (String -> Quote (Type TyName ())      -> a)  -- ^ What to do on a type.
+    -> (String -> Quote (Type TyName ()) -> a)  -- ^ What to do on a type.
     -> (String -> Quote (Term TyName Name ()) -> a)  -- ^ What to do on a term.
     -> a
 foldStdLib onFs onType onTerm = foldStdLibFsEntity onFs onType onTerm stdLib
 
 -- | The entire stdlib exported as a single value.
 stdLib :: StdLibFsEntity
-stdLib
-    = Named "StdLib" $ AnonStdLibFolder
-        [ Named "Data" $ AnonStdLibFolder
-            [ Named "Bool" $ AnonStdLibFile
-                [ Named "Bool"  $ AnonStdLibType getBuiltinBool
-                , Named "True"  $ AnonStdLibTerm getBuiltinTrue
-                , Named "False" $ AnonStdLibTerm getBuiltinFalse
-                , Named "If"    $ AnonStdLibTerm getBuiltinIf
-                ]
-            , Named "ChurchNat" $ AnonStdLibFile
-                [ Named "ChurchNat"  $ AnonStdLibType getBuiltinChurchNat
-                , Named "ChurchZero" $ AnonStdLibTerm getBuiltinChurchZero
-                , Named "ChurchSucc" $ AnonStdLibTerm getBuiltinChurchSucc
-                ]
-            , Named "Function" $ AnonStdLibFile
-                [ Named "Const"  $ AnonStdLibTerm getBuiltinConst
-                -- , Named "Self"   $ AnonStdLibType getBuiltinSelf
-                , Named "Unroll" $ AnonStdLibTerm getBuiltinUnroll
-                , Named "Fix"    $ AnonStdLibTerm getBuiltinFix
-                , Named "Fix2"   $ AnonStdLibTerm (getBuiltinFixN 2)
-                ]
-            , Named "Integer" $ AnonStdLibFile
-                [ Named "SuccInteger" $ AnonStdLibTerm getBuiltinSuccInteger
-                ]
-            , Named "List" $ AnonStdLibFile
-                [ -- Named "List"       $ AnonStdLibType getBuiltinList
-                  Named "Nil"        $ AnonStdLibTerm getBuiltinNil
-                , Named "Cons"       $ AnonStdLibTerm getBuiltinCons
-                , Named "FoldrList"  $ AnonStdLibTerm getBuiltinFoldrList
-                , Named "FoldList"   $ AnonStdLibTerm getBuiltinFoldList
-                , Named "EnumFromTo" $ AnonStdLibTerm getBuiltinEnumFromTo
-                , Named "Sum"        $ AnonStdLibTerm getBuiltinSum
-                , Named "Product"    $ AnonStdLibTerm getBuiltinProduct
-                ]
-            , Named "Nat" $ AnonStdLibFile
-                [ -- Named "Nat"          $ AnonStdLibType getBuiltinNat
-                  Named "Zero"         $ AnonStdLibTerm getBuiltinZero
-                , Named "Succ"         $ AnonStdLibTerm getBuiltinSucc
-                , Named "FoldrNat"     $ AnonStdLibTerm getBuiltinFoldrNat
-                , Named "FoldNat"      $ AnonStdLibTerm getBuiltinFoldNat
-                , Named "NatToInteger" $ AnonStdLibTerm getBuiltinNatToInteger
-                ]
-            , Named "Unit" $ AnonStdLibFile
-                [ Named "Unit"    $ AnonStdLibType getBuiltinUnit
-                , Named "Unitval" $ AnonStdLibTerm getBuiltinUnitval
-                ]
+stdLib = Named "StdLib" $ AnonStdLibFolder
+    [ Named "Data" $ AnonStdLibFolder
+        [ Named "Bool" $ AnonStdLibFile
+            [ Named "Bool" $ AnonStdLibType getBuiltinBool
+            , Named "True" $ AnonStdLibTerm getBuiltinTrue
+            , Named "False" $ AnonStdLibTerm getBuiltinFalse
+            , Named "If" $ AnonStdLibTerm getBuiltinIf
             ]
-        , Named "Meta" $ AnonStdLibFolder
-            [ Named "Data" $ AnonStdLibFolder
-                [ Named "Tuple" $ AnonStdLibFile
-                    [ Named "Tuple2"       $ AnonStdLibType $ getBuiltinTuple 2
-                    , Named "Tuple2_0"     $ AnonStdLibTerm $ getBuiltinTupleAccessor 2 0
-                    , Named "Tuple2_1"     $ AnonStdLibTerm $ getBuiltinTupleAccessor 2 1
-                    , Named "MkTuple2"     $ AnonStdLibTerm $ getBuiltinTupleConstructor 2
-                    ]
-                ]
+        , Named "ChurchNat" $ AnonStdLibFile
+            [ Named "ChurchNat" $ AnonStdLibType getBuiltinChurchNat
+            , Named "ChurchZero" $ AnonStdLibTerm getBuiltinChurchZero
+            , Named "ChurchSucc" $ AnonStdLibTerm getBuiltinChurchSucc
+            ]
+        , Named "Function" $ AnonStdLibFile
+            [ Named "Const" $ AnonStdLibTerm getBuiltinConst
+                -- , Named "Self"   $ AnonStdLibType getBuiltinSelf
+            , Named "Unroll" $ AnonStdLibTerm getBuiltinUnroll
+            , Named "Fix" $ AnonStdLibTerm getBuiltinFix
+            , Named "Fix2" $ AnonStdLibTerm (getBuiltinFixN 2)
+            ]
+        , Named "Integer" $ AnonStdLibFile
+            [Named "SuccInteger" $ AnonStdLibTerm getBuiltinSuccInteger]
+        , Named "List" $ AnonStdLibFile
+            [ -- Named "List"       $ AnonStdLibType getBuiltinList
+              Named "Nil" $ AnonStdLibTerm getBuiltinNil
+            , Named "Cons" $ AnonStdLibTerm getBuiltinCons
+            , Named "FoldrList" $ AnonStdLibTerm getBuiltinFoldrList
+            , Named "FoldList" $ AnonStdLibTerm getBuiltinFoldList
+            , Named "EnumFromTo" $ AnonStdLibTerm getBuiltinEnumFromTo
+            , Named "Sum" $ AnonStdLibTerm getBuiltinSum
+            , Named "Product" $ AnonStdLibTerm getBuiltinProduct
+            ]
+        , Named "Nat" $ AnonStdLibFile
+            [ -- Named "Nat"          $ AnonStdLibType getBuiltinNat
+              Named "Zero" $ AnonStdLibTerm getBuiltinZero
+            , Named "Succ" $ AnonStdLibTerm getBuiltinSucc
+            , Named "FoldrNat" $ AnonStdLibTerm getBuiltinFoldrNat
+            , Named "FoldNat" $ AnonStdLibTerm getBuiltinFoldNat
+            , Named "NatToInteger" $ AnonStdLibTerm getBuiltinNatToInteger
+            ]
+        , Named "Unit" $ AnonStdLibFile
+            [ Named "Unit" $ AnonStdLibType getBuiltinUnit
+            , Named "Unitval" $ AnonStdLibTerm getBuiltinUnitval
             ]
         ]
+    , Named "Meta" $ AnonStdLibFolder
+        [ Named "Data" $ AnonStdLibFolder
+              [ Named "Tuple" $ AnonStdLibFile
+                    [ Named "Tuple2" $ AnonStdLibType $ getBuiltinTuple 2
+                    , Named "Tuple2_0"
+                    $ AnonStdLibTerm
+                    $ getBuiltinTupleAccessor 2 0
+                    , Named "Tuple2_1"
+                    $ AnonStdLibTerm
+                    $ getBuiltinTupleAccessor 2 1
+                    , Named "MkTuple2"
+                    $ AnonStdLibTerm
+                    $ getBuiltinTupleConstructor 2
+                    ]
+              ]
+        ]
+    ]
 -- Commented out types are of the 'HoledType' form which will vanish in future.

@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Main(main) where
+module Main (main) where
 
 import qualified Spec.Crowdfunding
 import qualified Spec.Future
 import qualified Spec.Vesting
 import           Test.Tasty
-import           Test.Tasty.Hedgehog (HedgehogTestLimit (..))
+import           Test.Tasty.Hedgehog            ( HedgehogTestLimit(..) )
 
 main :: IO ()
 main = defaultMain tests
@@ -18,8 +18,6 @@ limit :: HedgehogTestLimit
 limit = HedgehogTestLimit (Just 30)
 
 tests :: TestTree
-tests = localOption limit $ testGroup "use cases" [
-    Spec.Crowdfunding.tests,
-    Spec.Vesting.tests,
-    Spec.Future.tests
-    ]
+tests = localOption limit $ testGroup
+    "use cases"
+    [Spec.Crowdfunding.tests, Spec.Vesting.tests, Spec.Future.tests]

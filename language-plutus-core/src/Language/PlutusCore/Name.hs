@@ -6,37 +6,39 @@
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE OverloadedStrings      #-}
 
-module Language.PlutusCore.Name ( -- * Types
-                                  IdentifierState
-                                , Unique (..)
-                                , TypeUnique (..)
-                                , TermUnique (..)
-                                , HasUnique (..)
-                                , Name (..)
-                                , TyName (..)
+module Language.PlutusCore.Name
+    ( -- * Types
+      IdentifierState
+    , Unique(..)
+    , TypeUnique(..)
+    , TermUnique(..)
+    , HasUnique(..)
+    , Name(..)
+    , TyName(..)
                                 -- * Functions
-                                , newIdentifier
-                                , emptyIdentifierState
-                                , identifierStateFrom
-                                , mapNameString
-                                , mapTyNameString
-                                , newtypeUnique
-                                , PrettyConfigName (..)
-                                , HasPrettyConfigName (..)
-                                , defPrettyConfigName
-                                , debugPrettyConfigName
-                                ) where
+    , newIdentifier
+    , emptyIdentifierState
+    , identifierStateFrom
+    , mapNameString
+    , mapTyNameString
+    , newtypeUnique
+    , PrettyConfigName(..)
+    , HasPrettyConfigName(..)
+    , defPrettyConfigName
+    , debugPrettyConfigName
+    )
+where
 
 import           PlutusPrelude
 
 import           Control.Lens
 import           Control.Monad.State
-import qualified Data.ByteString.Lazy       as BSL
-import qualified Data.IntMap                as IM
-import qualified Data.Map                   as M
-import           Data.Text.Encoding         (decodeUtf8)
-import           Instances.TH.Lift          ()
-import           Language.Haskell.TH.Syntax (Lift)
+import qualified Data.ByteString.Lazy          as BSL
+import qualified Data.IntMap                   as IM
+import qualified Data.Map                      as M
+import           Data.Text.Encoding             ( decodeUtf8 )
+import           Instances.TH.Lift              ( )
+import           Language.Haskell.TH.Syntax     ( Lift )
 
 -- | A 'Name' represents variables/names in Plutus Core.
 data Name a = Name { nameAttribute :: a
@@ -95,7 +97,10 @@ newtype TermUnique = TermUnique
 
 -- | The default implementation of 'HasUnique' for newtypes.
 newtypeUnique
-    :: (Wrapped new, HasUnique (Unwrapped new) unique', Coercible unique' unique)
+    :: ( Wrapped new
+       , HasUnique (Unwrapped new) unique'
+       , Coercible unique' unique
+       )
     => Lens' new unique
 newtypeUnique = _Wrapped' . unique . coerced
 
@@ -118,10 +123,10 @@ newIdentifier :: (MonadState IdentifierState m) => BSL.ByteString -> m Unique
 newIdentifier str = do
     (is, ss, nextU) <- get
     case M.lookup str ss of
-        Just k -> pure k
+        Just k  -> pure k
         Nothing -> do
-            let key = unUnique nextU
-            let nextU' = Unique (key+1)
+            let key    = unUnique nextU
+            let nextU' = Unique (key + 1)
             put (IM.insert key str is, M.insert str nextU ss, nextU')
             pure nextU
 

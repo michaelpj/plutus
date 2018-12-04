@@ -10,19 +10,24 @@
 {-# LANGUAGE UndecidableInstances  #-}
 
 module Language.PlutusCore.Pretty.Readable
-    ( RenderContext (..)
-    , PrettyConfigReadable (..)
+    ( RenderContext(..)
+    , PrettyConfigReadable(..)
     , PrettyReadableBy
     , topPrettyConfigReadable
     , botPrettyConfigReadable
-    ) where
+    )
+where
 
-import           Language.PlutusCore.Lexer.Type     hiding (name)
-import           Language.PlutusCore.Name           (HasPrettyConfigName (..), PrettyConfigName)
+import           Language.PlutusCore.Lexer.Type
+                                         hiding ( name )
+import           Language.PlutusCore.Name       ( HasPrettyConfigName(..)
+                                                , PrettyConfigName
+                                                )
 import           Language.PlutusCore.Type
 import           PlutusPrelude
 
-import           Data.Text.Prettyprint.Doc.Internal (enclose)
+import           Data.Text.Prettyprint.Doc.Internal
+                                                ( enclose )
 
 -- | Associativity of an expression.
 data Associativity
@@ -94,15 +99,21 @@ topApp = Fixity 13 NonAssociative
 
 -- | A 'PrettyConfigReadable' with the fixity specified to 'topApp'.
 topPrettyConfigReadable :: configName -> PrettyConfigReadable configName
-topPrettyConfigReadable configName = PrettyConfigReadable configName $ RenderContext topApp Forward
+topPrettyConfigReadable configName =
+    PrettyConfigReadable configName $ RenderContext topApp Forward
 
 -- | A 'PrettyConfigReadable' with the fixity specified to 'botApp'.
 botPrettyConfigReadable :: configName -> PrettyConfigReadable configName
-botPrettyConfigReadable configName = PrettyConfigReadable configName $ RenderContext botApp Forward
+botPrettyConfigReadable configName =
+    PrettyConfigReadable configName $ RenderContext botApp Forward
 
 -- | Set the 'RenderContext' of a 'PrettyConfigReadable'.
-setRenderContext :: RenderContext -> PrettyConfigReadable configName -> PrettyConfigReadable configName
-setRenderContext context configReadable = configReadable { _pcrRenderContext = context }
+setRenderContext
+    :: RenderContext
+    -> PrettyConfigReadable configName
+    -> PrettyConfigReadable configName
+setRenderContext context configReadable =
+    configReadable { _pcrRenderContext = context }
 
 -- | Enclose a 'Doc' in parens if required or leave it as is.
 -- The need for enclosing is determined from an outer 'RenderContext' and the 'Doc's fixity.
@@ -111,8 +122,8 @@ encloseInContext
     -> Fixity         -- ^ An inner fixity.
     -> Doc ann
     -> Doc ann
-encloseInContext (RenderContext (Fixity precOut assocOut) dir) (Fixity precIn assocIn) =
-    case precOut `compare` precIn of
+encloseInContext (RenderContext (Fixity precOut assocOut) dir) (Fixity precIn assocIn)
+    = case precOut `compare` precIn of
         LT -> id                      -- If the outer precedence is lower than the inner, then
                                       -- do not add parens. E.g. in @Add x (Mul y z)@ the precedence
                                       -- of @Add@ is lower than the one of @Mul@, hence there is
@@ -122,13 +133,13 @@ encloseInContext (RenderContext (Fixity precOut assocOut) dir) (Fixity precIn as
                                       -- of @Mul@ is greater than the one of @Add@, hence
                                       -- parens are needed in @x * (y + z)@.
         EQ ->                         -- If precedences are equal, then judge from associativity.
-            case (assocOut, dir) of
-                _ | assocOut /= assocIn     -> parens  -- Associativities differ => parens are needed.
-                (LeftAssociative, Backward) -> id      -- No need for parens in @Add (Add x y) z@
-                                                       -- which is rendered as @x + y + z@.
-                (RightAssociative, Forward) -> id      -- No need for parens in @Concat xs (Concat xs zs)@
-                                                       -- which is rendered as @xs ++ ys ++ zs@.
-                _                           -> parens  -- Every other case requires parens.
+              case (assocOut, dir) of
+            _ | assocOut /= assocIn      -> parens  -- Associativities differ => parens are needed.
+            (LeftAssociative , Backward) -> id      -- No need for parens in @Add (Add x y) z@
+                                                   -- which is rendered as @x + y + z@.
+            (RightAssociative, Forward ) -> id      -- No need for parens in @Concat xs (Concat xs zs)@
+                                                   -- which is rendered as @xs ++ ys ++ zs@.
+            _                            -> parens  -- Every other case requires parens.
 
 -- | The "readably pretty-printable" constraint.
 type PrettyReadableBy configName = PrettyBy (PrettyConfigReadable configName)
@@ -136,15 +147,28 @@ type PrettyReadableBy configName = PrettyBy (PrettyConfigReadable configName)
 -- | Adjust a 'PrettyConfigReadable' by setting new 'Fixity' and 'Direction' and call 'prettyBy'.
 prettyInBy
     :: PrettyReadableBy configName a
-    => PrettyConfigReadable configName -> Fixity -> Direction -> a -> Doc ann
-prettyInBy config app dir = prettyBy $ setRenderContext (RenderContext app dir) config
+    => PrettyConfigReadable configName
+    -> Fixity
+    -> Direction
+    -> a
+    -> Doc ann
+prettyInBy config app dir =
+    prettyBy $ setRenderContext (RenderContext app dir) config
 
 -- | Pretty-print in 'botApp'.
-prettyInBotBy :: PrettyReadableBy configName a => PrettyConfigReadable configName -> a -> Doc ann
+prettyInBotBy
+    :: PrettyReadableBy configName a
+    => PrettyConfigReadable configName
+    -> a
+    -> Doc ann
 prettyInBotBy config = prettyInBy config botApp Forward
 
 -- | Pretty-print in 'middleApp'.
-prettyInMiddleBy :: PrettyReadableBy configName a => PrettyConfigReadable configName -> a -> Doc ann
+prettyInMiddleBy
+    :: PrettyReadableBy configName a
+    => PrettyConfigReadable configName
+    -> a
+    -> Doc ann
 prettyInMiddleBy config = prettyInBy config middleApp Forward
 
 -- | Call 'encloseInContext' on 'unitApp'.
@@ -159,9 +183,8 @@ rayDoc
     -> Fixity
     -> ((a -> Doc ann) -> Doc ann)
     -> Doc ann
-rayDoc config app k =
-    encloseInContext (_pcrRenderContext config) app $
-        k (prettyInBy config app Forward)
+rayDoc config app k = encloseInContext (_pcrRenderContext config) app
+    $ k (prettyInBy config app Forward)
 
 -- | 'rayDoc' specialized to 'binderApp'.
 binderDoc
@@ -185,23 +208,28 @@ compoundDoc
     -> Fixity
     -> ((a -> Doc ann) -> (b -> Doc ann) -> Doc ann)
     -> Doc ann
-compoundDoc config app k =
-    encloseInContext (_pcrRenderContext config) app $
-        k (prettyInBy config app Backward) (prettyInBy config app Forward)
+compoundDoc config app k = encloseInContext (_pcrRenderContext config) app
+    $ k (prettyInBy config app Backward) (prettyInBy config app Forward)
 
 -- | Pretty-print an application of a function to its argument.
 applicationDoc
     :: (PrettyReadableBy configName a, PrettyReadableBy configName b)
-    => PrettyConfigReadable configName -> a -> b -> Doc ann
-applicationDoc config fun arg =
-    compoundDoc config juxtApp $ \juxtLeft juxtRight -> juxtLeft fun <+> juxtRight arg
+    => PrettyConfigReadable configName
+    -> a
+    -> b
+    -> Doc ann
+applicationDoc config fun arg = compoundDoc config juxtApp
+    $ \juxtLeft juxtRight -> juxtLeft fun <+> juxtRight arg
 
 -- | Pretty-print a @->@ between two things.
 arrowDoc
     :: (PrettyReadableBy configName a, PrettyReadableBy configName b)
-    => PrettyConfigReadable configName -> a -> b -> Doc ann
-arrowDoc config a b =
-    compoundDoc config arrowApp $ \arrLeft arrRight -> arrLeft a <+> "->" <+> arrRight b
+    => PrettyConfigReadable configName
+    -> a
+    -> b
+    -> Doc ann
+arrowDoc config a b = compoundDoc config arrowApp
+    $ \arrLeft arrRight -> arrLeft a <+> "->" <+> arrRight b
 
 instance PrettyBy (PrettyConfigReadable configName) (Kind a) where
     prettyBy config = \case

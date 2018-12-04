@@ -12,15 +12,15 @@ import           Language.PlutusIR.Compiler.Definitions
 
 import           Language.PlutusCore.Quote
 
-import qualified GhcPlugins                             as GHC
+import qualified GhcPlugins                    as GHC
 
 import           Control.Monad.Except
 import           Control.Monad.Reader
 
-import qualified Data.List.NonEmpty                     as NE
-import qualified Data.Map                               as Map
+import qualified Data.List.NonEmpty            as NE
+import qualified Data.Map                      as Map
 
-import qualified Language.Haskell.TH.Syntax             as TH
+import qualified Language.Haskell.TH.Syntax    as TH
 
 type BuiltinNameInfo = Map.Map TH.Name GHC.TyThing
 

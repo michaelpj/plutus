@@ -6,9 +6,10 @@
 {-# LANGUAGE UndecidableInstances  #-}
 
 module Language.PlutusCore.Evaluation.MachineException
-    ( MachineError (..)
-    , MachineException (..)
-    ) where
+    ( MachineError(..)
+    , MachineException(..)
+    )
+where
 
 import           Language.PlutusCore.Constant
 import           Language.PlutusCore.Name

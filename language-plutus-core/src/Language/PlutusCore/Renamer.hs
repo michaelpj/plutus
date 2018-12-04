@@ -4,13 +4,15 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
-module Language.PlutusCore.Renamer ( Rename (..)
-                                   , annotateProgram
-                                   , annotateTerm
-                                   , annotateType
-                                   , TypeState (..)
-                                   , RenameError (..)
-                                   ) where
+module Language.PlutusCore.Renamer
+    ( Rename(..)
+    , annotateProgram
+    , annotateTerm
+    , annotateType
+    , TypeState(..)
+    , RenameError(..)
+    )
+where
 
 import           Language.PlutusCore.Error
 import           Language.PlutusCore.Name
@@ -22,7 +24,7 @@ import           Control.Lens.TH
 import           Control.Monad.Except
 import           Control.Monad.Reader
 import           Control.Monad.State.Lazy
-import qualified Data.IntMap               as IM
+import qualified Data.IntMap                   as IM
 
 data TypeState a = TypeState { _terms :: IM.IntMap (RenamedType a), _types :: IM.IntMap (Kind a) }
 
@@ -42,16 +44,27 @@ instance Monoid (TypeState a) where
 type TypeM a = StateT (TypeState a) (Either (RenameError a))
 
 -- | Annotate a PLC program, so that all names are annotated with their types/kinds.
-annotateProgram :: (AsRenameError e a, MonadError e m) => Program TyName Name a -> m (Program TyNameWithKind NameWithType a)
+annotateProgram
+    :: (AsRenameError e a, MonadError e m)
+    => Program TyName Name a
+    -> m (Program TyNameWithKind NameWithType a)
 annotateProgram (Program a v t) = Program a v <$> annotateTerm t
 
 -- | Annotate a PLC term, so that all names are annotated with their types/kinds.
-annotateTerm :: (AsRenameError e a, MonadError e m) => Term TyName Name a -> m (Term TyNameWithKind NameWithType a)
-annotateTerm t = fmap fst $ throwingEither _RenameError $ runStateT (annotateT t) mempty
+annotateTerm
+    :: (AsRenameError e a, MonadError e m)
+    => Term TyName Name a
+    -> m (Term TyNameWithKind NameWithType a)
+annotateTerm t =
+    fmap fst $ throwingEither _RenameError $ runStateT (annotateT t) mempty
 
 -- | Annotate a PLC type, so that all names are annotated with their types/kinds.
-annotateType :: (AsRenameError e a, MonadError e m) => Type TyName a -> m (Type TyNameWithKind a)
-annotateType t = fmap fst $ throwingEither _RenameError $ runStateT (annotateTy t) mempty
+annotateType
+    :: (AsRenameError e a, MonadError e m)
+    => Type TyName a
+    -> m (Type TyNameWithKind a)
+annotateType t =
+    fmap fst $ throwingEither _RenameError $ runStateT (annotateTy t) mempty
 
 insertType :: Int -> Type TyNameWithKind a -> TypeM a ()
 insertType = modify .* over terms .* IM.insert
@@ -74,18 +87,12 @@ annotateT (TyAbs x (TyName (Name x' b u@(Unique i))) k t) = do
     insertKind i k
     let nwty = TyNameWithKind (TyName (Name (x', k) b u))
     TyAbs x nwty k <$> annotateT t
-annotateT (Unwrap x t) =
-    Unwrap x <$> annotateT t
-annotateT (Error x ty) =
-    Error x <$> annotateTy ty
-annotateT (Apply x t t') =
-    Apply x <$> annotateT t <*> annotateT t'
-annotateT (Constant x c) =
-    pure (Constant x c)
-annotateT (Builtin x bi) =
-    pure (Builtin x bi)
-annotateT (TyInst x t ty) =
-    TyInst x <$> annotateT t <*> annotateTy ty
+annotateT (Unwrap x t   ) = Unwrap x <$> annotateT t
+annotateT (Error  x ty  ) = Error x <$> annotateTy ty
+annotateT (Apply x t t' ) = Apply x <$> annotateT t <*> annotateT t'
+annotateT (Constant x c ) = pure (Constant x c)
+annotateT (Builtin  x bi) = pure (Builtin x bi)
+annotateT (TyInst x t ty) = TyInst x <$> annotateT t <*> annotateTy ty
 annotateT (Wrap x (TyName (Name x' b u@(Unique i))) ty t) = do
     let k = Type x'
     insertKind i k
@@ -97,7 +104,8 @@ annotateTy :: Type TyName a -> TypeM a (RenamedType a)
 annotateTy (TyVar x (TyName (Name x' b (Unique u)))) = do
     st <- gets _types
     case IM.lookup u st of
-        Just ty -> pure $ TyVar x (TyNameWithKind (TyName (Name (x', ty) b (Unique u))))
+        Just ty -> pure
+            $ TyVar x (TyNameWithKind (TyName (Name (x', ty) b (Unique u))))
         Nothing -> throwError $ UnboundTyVar (TyName (Name x' b (Unique u)))
 annotateTy (TyLam x (TyName (Name x' s u@(Unique i))) k ty) = do
     insertKind i k
@@ -112,12 +120,10 @@ annotateTy (TyFix x (TyName (Name x' s u@(Unique i))) ty) = do
     insertKind i k
     let nwty = TyNameWithKind (TyName (Name (x', k) s u))
     TyFix x nwty <$> annotateTy ty
-annotateTy (TyFun x ty ty') =
-    TyFun x <$> annotateTy ty <*> annotateTy ty'
-annotateTy (TyApp x ty ty') =
-    TyApp x <$> annotateTy ty <*> annotateTy ty'
+annotateTy (TyFun x ty ty' ) = TyFun x <$> annotateTy ty <*> annotateTy ty'
+annotateTy (TyApp x ty ty' ) = TyApp x <$> annotateTy ty <*> annotateTy ty'
 annotateTy (TyBuiltin x tyb) = pure (TyBuiltin x tyb)
-annotateTy (TyInt x n) = pure (TyInt x n)
+annotateTy (TyInt     x n  ) = pure (TyInt x n)
 
 -- | Mapping from locally unique indices to globally unique uniques.
 newtype UniquesRenaming unique = UniquesRenaming
@@ -188,32 +194,48 @@ emptyUniquesRenaming = UniquesRenaming mempty
 
 -- | The empty 'ScopedUniquesRenaming'.
 emptyScopedUniquesRenaming :: ScopedUniquesRenaming
-emptyScopedUniquesRenaming = ScopedUniquesRenaming emptyUniquesRenaming emptyUniquesRenaming
+emptyScopedUniquesRenaming =
+    ScopedUniquesRenaming emptyUniquesRenaming emptyUniquesRenaming
 
 -- | Save the mapping from an old 'Unique' to a new one.
 updateScopedUniquesRenaming
-    :: HasUniquesRenaming renaming unique => unique -> unique -> renaming -> renaming
+    :: HasUniquesRenaming renaming unique
+    => unique
+    -> unique
+    -> renaming
+    -> renaming
 updateScopedUniquesRenaming uniqOld uniqNew =
-    over uniquesRenaming $ UniquesRenaming . IM.insert (coerce uniqOld) uniqNew . unUniquesRenaming
+    over uniquesRenaming
+        $ UniquesRenaming
+        . IM.insert (coerce uniqOld) uniqNew
+        . unUniquesRenaming
 
 -- | Look up a new unique an old unique got mapped to.
-lookupUnique :: HasUniquesRenaming renaming unique => unique -> RenameM renaming (Maybe unique)
-lookupUnique uniq = asks $ IM.lookup (coerce uniq) . unUniquesRenaming . view uniquesRenaming
+lookupUnique
+    :: HasUniquesRenaming renaming unique
+    => unique
+    -> RenameM renaming (Maybe unique)
+lookupUnique uniq =
+    asks $ IM.lookup (coerce uniq) . unUniquesRenaming . view uniquesRenaming
 
 -- | Replace the unique in a value by a new unique, save the mapping
 -- from an old unique to the new one and supply the updated value to a continuation.
 withRefreshed
     :: (HasUniquesRenaming renaming unique, HasUnique a unique)
-    => a -> (a -> RenameM renaming c) -> RenameM renaming c
+    => a
+    -> (a -> RenameM renaming c)
+    -> RenameM renaming c
 withRefreshed x k = do
     let uniqOld = x ^. unique
     uniqNew <- liftQuote $ coerce <$> freshUnique
-    local (updateScopedUniquesRenaming uniqOld uniqNew) $ k (x & unique .~ uniqNew)
+    local (updateScopedUniquesRenaming uniqOld uniqNew)
+        $ k (x & unique .~ uniqNew)
 
 -- | Rename a name that has a unique inside.
 renameNameM
     :: (HasUniquesRenaming renaming unique, HasUnique name unique)
-    => name -> RenameM renaming name
+    => name
+    -> RenameM renaming name
 renameNameM name = do
     let uniqOld = name ^. unique
     mayUniqNew <- lookupUnique uniqOld
@@ -224,39 +246,46 @@ renameNameM name = do
 -- | Rename a 'Type' in the 'RenameM' monad.
 renameTypeM
     :: (HasUniquesRenaming renaming TypeUnique, HasUnique (tyname a) TypeUnique)
-    => Type tyname a -> RenameM renaming (Type tyname a)
-renameTypeM (TyLam ann name kind ty)    =
+    => Type tyname a
+    -> RenameM renaming (Type tyname a)
+renameTypeM (TyLam ann name kind ty) =
     withRefreshed name $ \nameFr -> TyLam ann nameFr kind <$> renameTypeM ty
-renameTypeM (TyForall ann name kind ty) =
-    withRefreshed name $ \nameFr -> TyForall ann nameFr kind <$> renameTypeM ty
-renameTypeM (TyFix ann name pat)        =
+renameTypeM (TyForall ann name kind ty) = withRefreshed name
+    $ \nameFr -> TyForall ann nameFr kind <$> renameTypeM ty
+renameTypeM (TyFix ann name pat) =
     withRefreshed name $ \nameFr -> TyFix ann nameFr <$> renameTypeM pat
-renameTypeM (TyApp ann fun arg)         = TyApp ann <$> renameTypeM fun <*> renameTypeM arg
-renameTypeM (TyFun ann dom cod)         = TyFun ann <$> renameTypeM dom <*> renameTypeM cod
-renameTypeM (TyVar ann name)            = TyVar ann <$> renameNameM name
-renameTypeM ty@TyInt{}                  = pure ty
-renameTypeM ty@TyBuiltin{}              = pure ty
+renameTypeM (TyApp ann fun arg) =
+    TyApp ann <$> renameTypeM fun <*> renameTypeM arg
+renameTypeM (TyFun ann dom cod) =
+    TyFun ann <$> renameTypeM dom <*> renameTypeM cod
+renameTypeM (TyVar ann name) = TyVar ann <$> renameNameM name
+renameTypeM ty@TyInt{}       = pure ty
+renameTypeM ty@TyBuiltin{}   = pure ty
 
 -- | Rename a 'Term' in the 'RenameM' monad.
 renameTermM
     :: (HasUnique (tyname a) TypeUnique, HasUnique (name a) TermUnique)
-    => Term tyname name a -> RenameM ScopedUniquesRenaming (Term tyname name a)
-renameTermM (LamAbs ann name ty body)  =
-    withRefreshed name $ \nameFr -> LamAbs ann nameFr <$> renameTypeM ty <*> renameTermM body
-renameTermM (Wrap ann name ty term)    =
-    withRefreshed name $ \nameFr -> Wrap ann nameFr <$> renameTypeM ty <*> renameTermM term
-renameTermM (TyAbs ann name kind body) =
-    withRefreshed name $ \nameFr -> TyAbs ann nameFr kind <$> renameTermM body
-renameTermM (Apply ann fun arg)        = Apply ann <$> renameTermM fun <*> renameTermM arg
-renameTermM (Unwrap ann term)          = Unwrap ann <$> renameTermM term
-renameTermM (Error ann ty)             = Error ann <$> renameTypeM ty
-renameTermM (TyInst ann body ty)       = TyInst ann <$> renameTermM body <*> renameTypeM ty
-renameTermM (Var ann name)             = Var ann <$> renameNameM name
-renameTermM con@Constant{}             = pure con
-renameTermM bi@Builtin{} = pure bi
+    => Term tyname name a
+    -> RenameM ScopedUniquesRenaming (Term tyname name a)
+renameTermM (LamAbs ann name ty body) = withRefreshed name
+    $ \nameFr -> LamAbs ann nameFr <$> renameTypeM ty <*> renameTermM body
+renameTermM (Wrap ann name ty term) = withRefreshed name
+    $ \nameFr -> Wrap ann nameFr <$> renameTypeM ty <*> renameTermM term
+renameTermM (TyAbs ann name kind body) = withRefreshed name
+    $ \nameFr -> TyAbs ann nameFr kind <$> renameTermM body
+renameTermM (Apply ann fun arg) =
+    Apply ann <$> renameTermM fun <*> renameTermM arg
+renameTermM (Unwrap ann term) = Unwrap ann <$> renameTermM term
+renameTermM (Error  ann ty  ) = Error ann <$> renameTypeM ty
+renameTermM (TyInst ann body ty) =
+    TyInst ann <$> renameTermM body <*> renameTypeM ty
+renameTermM (Var ann name) = Var ann <$> renameNameM name
+renameTermM con@Constant{} = pure con
+renameTermM bi@Builtin{}   = pure bi
 
 -- | Rename a 'Program' in the 'RenameM' monad.
 renameProgramM
     :: (HasUnique (tyname a) TypeUnique, HasUnique (name a) TermUnique)
-    => Program tyname name a -> RenameM ScopedUniquesRenaming (Program tyname name a)
+    => Program tyname name a
+    -> RenameM ScopedUniquesRenaming (Program tyname name a)
 renameProgramM (Program ann ver term) = Program ann ver <$> renameTermM term

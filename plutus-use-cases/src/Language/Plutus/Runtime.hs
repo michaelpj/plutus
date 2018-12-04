@@ -1,11 +1,13 @@
 -- | A model of the types involved in transactions. These types are intented to
 --   be used in PLC scripts.
-module Language.Plutus.Runtime (
+module Language.Plutus.Runtime
+    (
     -- * Pending transactions
-    module Types
-    ) where
+      module Types
+    )
+where
 
-import           Wallet.UTXO.Runtime as Types
+import           Wallet.UTXO.Runtime           as Types
 
 {- Note [Script types in pending transactions]
 

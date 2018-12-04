@@ -50,13 +50,14 @@ instance Show Binding where
 type Context = [Binding]
 
 addBinding :: Context -> Binding -> Context
-addBinding ctx b = b:ctx
+addBinding ctx b = b : ctx
 
 getBinding :: Context -> VarName -> Either Type Kind
-getBinding [] x = error ("variable " ++ x ++ " isn't bound in the current context")
-getBinding (b:bs) x = case b of
-                        (TermBind y t) -> if x == y then Left  t else getBinding bs x
-                        (TypeBind y k) -> if x == y then Right k else getBinding bs x
+getBinding [] x =
+    error ("variable " ++ x ++ " isn't bound in the current context")
+getBinding (b : bs) x = case b of
+    (TermBind y t) -> if x == y then Left t else getBinding bs x
+    (TypeBind y k) -> if x == y then Right k else getBinding bs x
 
 --------------------
 -- Kind Inference --
@@ -105,27 +106,30 @@ kind ctx (TyFix t) = let k = kind ctx t in
 ------------------------
 
 reduce :: Type -> Type
-reduce (TyVar x) = TyVar x
+reduce (TyVar x    ) = TyVar x
 reduce (TyFun t1 t2) = TyFun (reduce t1) (reduce t2)
-reduce (TyAll x t) = TyAll x t
-reduce (TyAbs x t) = TyAbs x t
-reduce (TyFix t) = TyFix (reduce t)
+reduce (TyAll x  t ) = TyAll x t
+reduce (TyAbs x  t ) = TyAbs x t
+reduce (TyFix t    ) = TyFix (reduce t)
 reduce (TyApp t1 t2) = case t1 of
-                        (TyAbs x t) -> sub t2 x t
-                        _           -> (TyApp (reduce t1) t2)
+    (TyAbs x t) -> sub t2 x t
+    _           -> (TyApp (reduce t1) t2)
 
 -- sub a x t is t[a/x].
 sub :: Type -> VarName -> Type -> Type
 sub = subExcept []
   where
-  subExcept :: [VarName] -> Type -> VarName -> Type -> Type
-  subExcept bound t x t' = if x `elem` bound then t' else
-                             case t' of
-                               (TyVar y)     -> if x == y then t else (TyVar y)
-                               (TyFun t1 t2) -> TyFun (subExcept bound t x t1) (subExcept bound t x t2)
-                               (TyAll x' t') -> TyAll x' (subExcept (x:bound) t x t')
-                               (TyAbs x' t') -> TyAbs x' (subExcept (x:bound) t x t')
-                               (TyFix t')    -> TyFix (subExcept (bound) t x t')
-                               (TyApp t1 t2) -> TyApp (subExcept bound t x t1) (subExcept bound t x t2)
+    subExcept :: [VarName] -> Type -> VarName -> Type -> Type
+    subExcept bound t x t' = if x `elem` bound
+        then t'
+        else case t' of
+            (TyVar y) -> if x == y then t else (TyVar y)
+            (TyFun t1 t2) ->
+                TyFun (subExcept bound t x t1) (subExcept bound t x t2)
+            (TyAll x' t') -> TyAll x' (subExcept (x : bound) t x t')
+            (TyAbs x' t') -> TyAbs x' (subExcept (x : bound) t x t')
+            (TyFix t'   ) -> TyFix (subExcept (bound) t x t')
+            (TyApp t1 t2) ->
+                TyApp (subExcept bound t x t1) (subExcept bound t x t2)
 
 

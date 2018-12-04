@@ -2,14 +2,12 @@
 
 {-# LANGUAGE DefaultSignatures #-}
 
-module Language.PlutusCore.Constant.Dynamic.Pretty
-    ( PrettyDynamic (..)
-    ) where
+module Language.PlutusCore.Constant.Dynamic.Pretty (PrettyDynamic(..)) where
 
 import           Language.PlutusCore.Lexer.Type
 import           PlutusPrelude
 
-import qualified Data.ByteString.Lazy.Char8     as BSL
+import qualified Data.ByteString.Lazy.Char8    as BSL
 
 -- We probably want to just merge this into the 'KnownDynamicBuiltinType' class.
 -- However 'PrettyDynamic' is used in places where 'KnownDynamicBuiltinType' is not used.

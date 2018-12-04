@@ -8,11 +8,11 @@ import {-# SOURCE #-} Language.PlutusTx.Compiler.Type
 import           Language.PlutusTx.Compiler.Types
 import           Language.PlutusTx.PIRTypes
 
-import qualified Language.PlutusIR                as PIR
+import qualified Language.PlutusIR             as PIR
 
 import           Language.PlutusCore.Quote
 
-import qualified GhcPlugins                       as GHC
+import qualified GhcPlugins                    as GHC
 
 {- Note [Object- vs meta-language combinators]
 Many of the things we define as *meta*-langugage combinators (i.e. operations on terms) could be defined
@@ -27,7 +27,11 @@ a simplifier pass. Also, PLC isn't lazy, so combinators work less well.
 -}
 
 delay :: Converting m => PIRTerm -> m PIRTerm
-delay body = PIR.LamAbs () <$> liftQuote (freshName () "thunk") <*> convType GHC.unitTy <*> pure body
+delay body =
+    PIR.LamAbs ()
+        <$> liftQuote (freshName () "thunk")
+        <*> convType GHC.unitTy
+        <*> pure body
 
 delayType :: Converting m => PIRType -> m PIRType
 delayType orig = PIR.TyFun () <$> convType GHC.unitTy <*> pure orig

@@ -4,33 +4,40 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# OPTIONS_GHC -Wno-orphans       #-}
-module Language.PlutusIR (
-    TyName (..),
-    Name (..),
-    VarDecl (..),
-    TyVarDecl (..),
-    varDeclNameString,
-    tyVarDeclNameString,
-    Kind (..),
-    Type (..),
-    Datatype (..),
-    datatypeNameString,
-    Recursivity (..),
-    Binding (..),
-    Term (..),
-    Program (..),
-    prettyDef,
-    embedIntoIR
-    ) where
+module Language.PlutusIR
+    ( TyName(..)
+    , Name(..)
+    , VarDecl(..)
+    , TyVarDecl(..)
+    , varDeclNameString
+    , tyVarDeclNameString
+    , Kind(..)
+    , Type(..)
+    , Datatype(..)
+    , datatypeNameString
+    , Recursivity(..)
+    , Binding(..)
+    , Term(..)
+    , Program(..)
+    , prettyDef
+    , embedIntoIR
+    )
+where
 
 import           PlutusPrelude
 
-import           Language.PlutusCore        (Kind, Name, TyName, Type)
-import qualified Language.PlutusCore        as PLC
-import           Language.PlutusCore.MkPlc  (TyVarDecl (..), VarDecl (..))
-import qualified Language.PlutusCore.Pretty as PLC
+import           Language.PlutusCore            ( Kind
+                                                , Name
+                                                , TyName
+                                                , Type
+                                                )
+import qualified Language.PlutusCore           as PLC
+import           Language.PlutusCore.MkPlc      ( TyVarDecl(..)
+                                                , VarDecl(..)
+                                                )
+import qualified Language.PlutusCore.Pretty    as PLC
 
-import           GHC.Generics               (Generic)
+import           GHC.Generics                   ( Generic )
 
 -- Datatypes
 
@@ -99,16 +106,16 @@ data Term tyname name a = Let a Recursivity [Binding tyname name a] (Term tyname
 
 embedIntoIR :: PLC.Term tyname name a -> Term tyname name a
 embedIntoIR = \case
-    PLC.Var a n -> Var a n
-    PLC.TyAbs a tn k t -> TyAbs a tn k (embedIntoIR t)
-    PLC.LamAbs a n ty t -> LamAbs a n ty (embedIntoIR t)
-    PLC.Apply a t1 t2 -> Apply a (embedIntoIR t1) (embedIntoIR t2)
-    PLC.Constant a c ->  Constant a c
-    PLC.Builtin a bi -> Builtin a bi
-    PLC.TyInst a t ty -> TyInst a (embedIntoIR t) ty
-    PLC.Error a ty -> Error a ty
-    PLC.Unwrap a t -> Unwrap a (embedIntoIR t)
-    PLC.Wrap a tn ty t -> Wrap a tn ty (embedIntoIR t)
+    PLC.Var a n          -> Var a n
+    PLC.TyAbs  a tn k  t -> TyAbs a tn k (embedIntoIR t)
+    PLC.LamAbs a n  ty t -> LamAbs a n ty (embedIntoIR t)
+    PLC.Apply a t1 t2    -> Apply a (embedIntoIR t1) (embedIntoIR t2)
+    PLC.Constant a c     -> Constant a c
+    PLC.Builtin  a bi    -> Builtin a bi
+    PLC.TyInst a t ty    -> TyInst a (embedIntoIR t) ty
+    PLC.Error  a ty      -> Error a ty
+    PLC.Unwrap a t       -> Unwrap a (embedIntoIR t)
+    PLC.Wrap a tn ty t   -> Wrap a tn ty (embedIntoIR t)
 
 -- no version as PIR is not versioned
 data Program tyname name a = Program a (Term tyname name a)
@@ -162,5 +169,8 @@ instance (PLC.PrettyClassicBy configName (tyname a), PLC.PrettyClassicBy configN
         PrettyBy (PLC.PrettyConfigClassic configName) (Program tyname name a) where
     prettyBy config (Program _ t) = parens' ("program" </> prettyBy config t)
 
-prettyDef :: (PLC.PrettyBy (PLC.PrettyConfigClassic PLC.PrettyConfigName) a) => a -> Doc ann
+prettyDef
+    :: (PLC.PrettyBy (PLC.PrettyConfigClassic PLC.PrettyConfigName) a)
+    => a
+    -> Doc ann
 prettyDef = prettyBy $ PLC.PrettyConfigClassic PLC.defPrettyConfigName

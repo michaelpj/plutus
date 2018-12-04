@@ -3,8 +3,8 @@
 
 module Language.PlutusTx.Utils where
 
-import qualified Language.PlutusCore as PLC
-import qualified Language.PlutusIR   as PIR
+import qualified Language.PlutusCore           as PLC
+import qualified Language.PlutusIR             as PIR
 
 import           GHC.Natural
 
@@ -33,4 +33,5 @@ haskellBSSize :: Natural
 haskellBSSize = 32
 
 mustBeReplaced :: a
-mustBeReplaced = error "This must be replaced by the core-to-plc plugin during compilation"
+mustBeReplaced =
+    error "This must be replaced by the core-to-plc plugin during compilation"

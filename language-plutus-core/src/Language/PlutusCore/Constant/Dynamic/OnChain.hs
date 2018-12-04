@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeOperators       #-}
 
 module Language.PlutusCore.Constant.Dynamic.OnChain
-    ( OnChain (..)
+    ( OnChain(..)
     , OnChainEvaluator
     , OnChainTransformer
     , OnChainHandler
@@ -17,11 +17,13 @@ module Language.PlutusCore.Constant.Dynamic.OnChain
     , dynamicLog
     , handleDynamicLog
     , evaluateHandlersBy
-    ) where
+    )
+where
 
 import           Language.PlutusCore.Constant.Dynamic.Call
 import           Language.PlutusCore.Constant.Dynamic.Emit
-import           Language.PlutusCore.Constant.Dynamic.Instances ()
+import           Language.PlutusCore.Constant.Dynamic.Instances
+                                                ( )
 import           Language.PlutusCore.Constant.Function
 import           Language.PlutusCore.Constant.Make
 import           Language.PlutusCore.Constant.Typed
@@ -31,7 +33,7 @@ import           Language.PlutusCore.Type
 import           Control.Exception
 import           Data.Coerce
 import           Data.Proxy
-import qualified Data.Text                                      as Text
+import qualified Data.Text                     as Text
 import           GHC.TypeLits
 
 {- Note [Interpretation of names]
@@ -84,7 +86,8 @@ type OnChainTransformer f names r names' r' =
 type OnChainHandler name f r s =
     forall names. OnChainTransformer f names r (name ': names) s
 
-mangleOnChain :: OnChain names f tyname name ann -> OnChain names' f tyname name ann
+mangleOnChain
+    :: OnChain names f tyname name ann -> OnChain names' f tyname name ann
 mangleOnChain = coerce
 
 -- We should connect names with their meanings at the type level: @DynamicBuiltinNameMeaningOf name@.
@@ -93,41 +96,56 @@ mangleOnChain = coerce
 -- | Interpret a 'DynamicBuiltinNameMeaning' as an 'OnChainHandler' that doesn't change
 -- the resulting type of evaluation.
 handleDynamicByMeaning
-    :: forall name f r. KnownSymbol name
-    => DynamicBuiltinNameMeaning -> OnChainHandler name f r r
-handleDynamicByMeaning mean eval env = eval env' . mangleOnChain where
+    :: forall name f r
+     . KnownSymbol name
+    => DynamicBuiltinNameMeaning
+    -> OnChainHandler name f r r
+handleDynamicByMeaning mean eval env = eval env' . mangleOnChain
+  where
     name    = DynamicBuiltinName . Text.pack $ symbolVal (Proxy :: Proxy name)
     nameDef = DynamicBuiltinNameDefinition name mean
     env'    = insertDynamicBuiltinNameDefinition nameDef env
 
 handleDynamicEmitter
-    :: forall name f r. KnownSymbol name
-    => OnChainHandler name f r (forall a. (forall size. TypedBuiltin size a) -> IO ([a], r))
+    :: forall name f r
+     . KnownSymbol name
+    => OnChainHandler
+           name
+           f
+           r
+           (forall a . (forall size . TypedBuiltin size a) -> IO ([a], r))
 handleDynamicEmitter eval env term tb = withEmit $ \emit -> do
-    let emitName = DynamicBuiltinName . Text.pack $ symbolVal (Proxy :: Proxy name)
-        emitDef  = dynamicCallAssign tb emitName emit
-        env' = insertDynamicBuiltinNameDefinition emitDef env
+    let emitName =
+            DynamicBuiltinName . Text.pack $ symbolVal (Proxy :: Proxy name)
+        emitDef = dynamicCallAssign tb emitName emit
+        env'    = insertDynamicBuiltinNameDefinition emitDef env
     evaluate . eval env' $ mangleOnChain term
 
 dynamicEmit :: Term tyname name ()
 dynamicEmit = dynamicBuiltinNameAsTerm $ DynamicBuiltinName "emit"
 
 handleDynamicEmit
-    :: OnChainHandler "emit" f r (forall a. (forall size. TypedBuiltin size a) -> IO ([a], r))
+    :: OnChainHandler
+           "emit"
+           f
+           r
+           (forall a . (forall size . TypedBuiltin size a) -> IO ([a], r))
 handleDynamicEmit = handleDynamicEmitter
 
 dynamicLog :: Term tyname name ()
 dynamicLog = dynamicBuiltinNameAsTerm $ DynamicBuiltinName "log"
 
 handleDynamicLog :: OnChainHandler "log" f r (IO ([String], r))
-handleDynamicLog eval env term = handleDynamicEmitter eval env term TypedBuiltinDyn
+handleDynamicLog eval env term =
+    handleDynamicEmitter eval env term TypedBuiltinDyn
 
 evaluateHandlersBy
     :: Evaluator f m
     -> (Evaluator (OnChain '[] f) m -> OnChainEvaluator names f r)
     -> OnChain names f TyName Name ()
     -> r
-evaluateHandlersBy eval handlers = handlers (\means -> eval means . unOnChain) mempty
+evaluateHandlersBy eval handlers =
+    handlers (\means -> eval means . unOnChain) mempty
 
 -- We could have this class just to ensure that names are globally unique, but any instance
 -- is necessary orphan which defeats the entire purpose.

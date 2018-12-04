@@ -1,8 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module DynamicBuiltins.Common
-    ( typecheckEvaluate
-    ) where
+module DynamicBuiltins.Common (typecheckEvaluate) where
 
 import           Language.PlutusCore
 import           Language.PlutusCore.Constant
@@ -16,7 +14,9 @@ import           Control.Monad.Except
 -- that may contain such types.
 typecheckEvaluate
     :: (MonadError (Error ()) m, MonadQuote m)
-    => DynamicBuiltinNameMeanings -> Term TyName Name () -> m EvaluationResult
+    => DynamicBuiltinNameMeanings
+    -> Term TyName Name ()
+    -> m EvaluationResult
 typecheckEvaluate meanings term = do
     let types = dynamicBuiltinNameMeaningsToTypes meanings
         typecheckConfig = TypeConfig True types Nothing

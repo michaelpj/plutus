@@ -24,10 +24,28 @@ let
       exit
     '';
   };
+  fixBrittany = pkgs.stdenv.mkDerivation {
+    name = "fix-brittany";
+    buildInputs = with pkgs; [ haskellPackages.brittany git fd ];
+    shellHook = ''
+      git diff > pre-brittany.diff
+      fd --extension hs --exclude '*/dist/*' --exclude '*/docs/*' --exec brittany --config-file config.yaml --write-mode inplace {}
+      git diff > post-brittany.diff
+      diff pre-brittany.diff post-brittany.diff > /dev/null
+      if [ $? != 0 ]
+      then
+        echo "Changes by brittany have been made. Please commit them."
+      else
+        echo "No brittany changes were made."
+      fi
+      rm pre-brittany.diff post-brittany.diff
+      exit
+    '';
+  };
   shell = localLib.withDevTools (localPackages.haskellPackages.shellFor {
     packages = p: (map (x: p.${x}) localLib.plutusPkgList);
   });
 
 in shell // {
-  inherit fixStylishHaskell;
+  inherit fixStylishHaskell fixBrittany;
 }

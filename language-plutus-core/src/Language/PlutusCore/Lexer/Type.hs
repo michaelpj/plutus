@@ -2,27 +2,30 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE OverloadedStrings  #-}
 
-module Language.PlutusCore.Lexer.Type ( BuiltinName (..)
-                                      , DynamicBuiltinName (..)
-                                      , StagedBuiltinName (..)
-                                      , Version (..)
-                                      , Keyword (..)
-                                      , Special (..)
-                                      , Token (..)
-                                      , TypeBuiltin (..)
-                                      , prettyBytes
-                                      , allBuiltinNames
-                                      ) where
+module Language.PlutusCore.Lexer.Type
+    ( BuiltinName(..)
+    , DynamicBuiltinName(..)
+    , StagedBuiltinName(..)
+    , Version(..)
+    , Keyword(..)
+    , Special(..)
+    , Token(..)
+    , TypeBuiltin(..)
+    , prettyBytes
+    , allBuiltinNames
+    )
+where
 
 import           Language.PlutusCore.Name
 import           PlutusPrelude
 
-import qualified Data.ByteString.Lazy               as BSL
-import qualified Data.Text                          as T
-import           Data.Text.Encoding                 (decodeUtf8)
-import           Data.Text.Prettyprint.Doc.Internal (Doc (Text))
-import           Language.Haskell.TH.Syntax         (Lift)
-import           Numeric                            (showHex)
+import qualified Data.ByteString.Lazy          as BSL
+import qualified Data.Text                     as T
+import           Data.Text.Encoding             ( decodeUtf8 )
+import           Data.Text.Prettyprint.Doc.Internal
+                                                ( Doc(Text) )
+import           Language.Haskell.TH.Syntax     ( Lift )
+import           Numeric                        ( showHex )
 
 -- | A builtin type
 data TypeBuiltin = TyByteString

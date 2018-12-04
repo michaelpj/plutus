@@ -7,14 +7,14 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Language.PlutusTx.Lift.Instances () where
 
-import qualified Language.PlutusCore            as PLC
+import qualified Language.PlutusCore           as PLC
 
 import           Language.PlutusTx.Lift.LiftPir
 import           Language.PlutusTx.Utils
 
 import           Language.PlutusIR
 
-import qualified Data.ByteString.Lazy           as BSL
+import qualified Data.ByteString.Lazy          as BSL
 import           Data.Proxy
 
 -- Derived instances

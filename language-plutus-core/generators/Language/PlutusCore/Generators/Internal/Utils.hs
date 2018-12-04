@@ -17,16 +17,21 @@ module Language.PlutusCore.Generators.Internal.Utils
     , forAllPrettyPlcMaybeT
     , runQuoteSampleSucceed
     , errorPlc
-    ) where
+    )
+where
 
 import           Language.PlutusCore.Pretty
-import           Language.PlutusCore.Quote  (Quote, runQuote)
+import           Language.PlutusCore.Quote      ( Quote
+                                                , runQuote
+                                                )
 
 import           Control.Monad.Morph
 import           Control.Monad.Reader
-import           Hedgehog                   hiding (Size, Var)
-import qualified Hedgehog.Gen               as Gen
-import           Hedgehog.Internal.Property (forAllWithT)
+import           Hedgehog                hiding ( Size
+                                                , Var
+                                                )
+import qualified Hedgehog.Gen                  as Gen
+import           Hedgehog.Internal.Property     ( forAllWithT )
 
 -- | @hoist lift@
 liftT :: (MFunctor t, MonadTrans s, Monad m) => t m a -> t (s m) a
@@ -71,13 +76,15 @@ forAllPrettyPlcT = forAllWithT prettyPlcDefString
 
 -- | Generate a value wrapped in 'Maybe' using the 'PrettyPlc' constraint
 -- for getting its 'String' representation.
-forAllPrettyPlcMaybe :: (Monad m, PrettyPlc a) => Gen (Maybe a) -> PropertyT m (Maybe a)
+forAllPrettyPlcMaybe
+    :: (Monad m, PrettyPlc a) => Gen (Maybe a) -> PropertyT m (Maybe a)
 forAllPrettyPlcMaybe = forAllWith $ maybe "Nothing" prettyPlcDefString
 
 -- | Generate a value wrapped in 'Maybe' using the 'PrettyPlc' constraint
 -- for getting its 'String' representation.
 -- A supplied generator has access to the 'Monad' the whole property has access to.
-forAllPrettyPlcMaybeT :: (Monad m, PrettyPlc a) => GenT m (Maybe a) -> PropertyT m (Maybe a)
+forAllPrettyPlcMaybeT
+    :: (Monad m, PrettyPlc a) => GenT m (Maybe a) -> PropertyT m (Maybe a)
 forAllPrettyPlcMaybeT = forAllWithT $ maybe "Nothing" prettyPlcDefString
 
 -- | Run a generator until it succeeds with a 'Just'.
@@ -86,4 +93,5 @@ runQuoteSampleSucceed = Gen.sample . Gen.just . hoist (pure . runQuote)
 
 -- | Throw a PLC error.
 errorPlc :: PrettyPlc err => err -> b
-errorPlc = error . docString . prettyPlcCondensedErrorBy debugPrettyConfigPlcClassic
+errorPlc =
+    error . docString . prettyPlcCondensedErrorBy debugPrettyConfigPlcClassic

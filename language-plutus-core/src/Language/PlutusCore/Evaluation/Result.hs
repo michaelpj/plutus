@@ -6,11 +6,12 @@
 {-# LANGUAGE UndecidableInstances  #-}
 
 module Language.PlutusCore.Evaluation.Result
-    ( EvaluationResultF (EvaluationSuccess, EvaluationFailure)
+    ( EvaluationResultF(EvaluationSuccess, EvaluationFailure)
     , EvaluationResult
     , evaluationResultToMaybe
     , maybeToEvaluationResult
-    ) where
+    )
+where
 
 import           Language.PlutusCore.Name
 import           Language.PlutusCore.Type

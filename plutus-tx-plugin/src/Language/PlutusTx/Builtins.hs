@@ -1,42 +1,46 @@
 -- | Primitive names and functions for working with Plutus Core builtins.
-module Language.PlutusTx.Builtins (
+module Language.PlutusTx.Builtins
+    (
                                 -- * Bytestring builtins
-                                concatenate
-                                , takeByteString
-                                , dropByteString
-                                , sha2_256
-                                , sha3_256
-                                , verifySignature
-                                , equalsByteString
+      concatenate
+    , takeByteString
+    , dropByteString
+    , sha2_256
+    , sha3_256
+    , verifySignature
+    , equalsByteString
                                 -- * Blockchain builtins
-                                , txhash
-                                , blocknum
+    , txhash
+    , blocknum
                                 -- * Integer builtins
-                                , addInteger
-                                , subtractInteger
-                                , multiplyInteger
-                                , divideInteger
-                                , remainderInteger
-                                , greaterThanInteger
-                                , greaterThanEqInteger
-                                , lessThanInteger
-                                , lessThanEqInteger
-                                , equalsInteger
+    , addInteger
+    , subtractInteger
+    , multiplyInteger
+    , divideInteger
+    , remainderInteger
+    , greaterThanInteger
+    , greaterThanEqInteger
+    , lessThanInteger
+    , lessThanEqInteger
+    , equalsInteger
                                 -- * Error
-                                , error
+    , error
                                 -- * Strings
-                                , String
-                                , appendString
-                                , emptyString
-                                , charToString
+    , String
+    , appendString
+    , emptyString
+    , charToString
                                 -- * Tracing
-                                , trace
-                                ) where
+    , trace
+    )
+where
 
-import           Data.ByteString.Lazy    hiding (append)
-import           Prelude                 hiding (String, error)
+import           Data.ByteString.Lazy    hiding ( append )
+import           Prelude                 hiding ( String
+                                                , error
+                                                )
 
-import           Language.PlutusTx.Utils (mustBeReplaced)
+import           Language.PlutusTx.Utils        ( mustBeReplaced )
 
 -- TODO: resizing primitives? better handling of sizes?
 

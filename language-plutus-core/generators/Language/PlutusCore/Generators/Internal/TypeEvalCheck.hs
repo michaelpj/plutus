@@ -8,12 +8,13 @@
 {-# LANGUAGE UndecidableInstances   #-}
 
 module Language.PlutusCore.Generators.Internal.TypeEvalCheck
-    ( TypeEvalCheckError (..)
-    , TypeEvalCheckResult (..)
+    ( TypeEvalCheckError(..)
+    , TypeEvalCheckResult(..)
     , TypeEvalCheckM
     , typeEvalCheckBy
     , unsafeTypeEvalCheck
-    ) where
+    )
+where
 
 import           Language.PlutusCore
 import           Language.PlutusCore.Constant
@@ -77,21 +78,27 @@ typeEvalCheckBy
     -> TermOf (TypedBuiltinValue Size a)
     -> TypeEvalCheckM (TermOf TypeEvalCheckResult)
 typeEvalCheckBy eval (TermOf term tbv) = TermOf term <$> do
-    let typecheck = annotateTerm >=> typecheckTerm (TypeConfig True mempty (Just 1000))
-    termTy <- typecheck term
+    let typecheck =
+            annotateTerm >=> typecheckTerm (TypeConfig True mempty (Just 1000))
+    termTy      <- typecheck term
     resExpected <- liftQuote $ maybeToEvaluationResult <$> makeBuiltin tbv
-    fmap (TypeEvalCheckResult termTy) $
-        for ((,) <$> resExpected <*> eval term) $ \(valExpected, valActual) ->
-            if valExpected == valActual
-                then return valActual
-                else throwError $ TypeEvalCheckErrorIllEvaled valExpected valActual
+    fmap (TypeEvalCheckResult termTy)
+        $ for ((,) <$> resExpected <*> eval term)
+        $ \(valExpected, valActual) -> if valExpected == valActual
+              then return valActual
+              else throwError
+                  $ TypeEvalCheckErrorIllEvaled valExpected valActual
 
 -- | Type check and evaluate a term and check that the expected result is equal to the actual one.
 -- Throw an error in case something goes wrong.
 unsafeTypeEvalCheck
-    :: forall a. TermOf (TypedBuiltinValue Size a) -> Quote (Maybe (TermOf (Value TyName Name ())))
+    :: forall a
+     . TermOf (TypedBuiltinValue Size a)
+    -> Quote (Maybe (TermOf (Value TyName Name ())))
 unsafeTypeEvalCheck termOfTbv = do
     errOrRes <- runExceptT $ typeEvalCheckBy evaluateCk termOfTbv
     pure $ case errOrRes of
-        Left err         -> errorPlc err
-        Right termOfTecr -> traverse (evaluationResultToMaybe . _termCheckResultValue) termOfTecr
+        Left  err        -> errorPlc err
+        Right termOfTecr -> traverse
+            (evaluationResultToMaybe . _termCheckResultValue)
+            termOfTecr

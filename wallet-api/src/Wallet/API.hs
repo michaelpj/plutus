@@ -6,61 +6,83 @@
 {-# LANGUAGE TemplateHaskell    #-}
 {-# LANGUAGE TypeFamilies       #-}
 -- | Interface between wallet and Plutus client
-module Wallet.API(
-    WalletAPI(..),
-    WalletDiagnostics(..),
-    Range(..),
-    EventHandler(..),
-    KeyPair(..),
-    PubKey(..),
-    pubKey,
-    keyPair,
-    signature,
-    createPayment,
-    signAndSubmit,
-    payToScript,
-    payToPubKey,
-    ownPubKeyTxOut,
+module Wallet.API
+    ( WalletAPI(..)
+    , WalletDiagnostics(..)
+    , Range(..)
+    , EventHandler(..)
+    , KeyPair(..)
+    , PubKey(..)
+    , pubKey
+    , keyPair
+    , signature
+    , createPayment
+    , signAndSubmit
+    , payToScript
+    , payToPubKey
+    , ownPubKeyTxOut
+    ,
     -- * Triggers
-    EventTrigger,
-    AnnotatedEventTrigger,
-    EventTriggerF(..),
-    andT,
-    orT,
-    notT,
-    alwaysT,
-    neverT,
-    blockHeightT,
-    fundsAtAddressT,
-    checkTrigger,
-    addresses,
+      EventTrigger
+    , AnnotatedEventTrigger
+    , EventTriggerF(..)
+    , andT
+    , orT
+    , notT
+    , alwaysT
+    , neverT
+    , blockHeightT
+    , fundsAtAddressT
+    , checkTrigger
+    , addresses
+    ,
     -- AnnTriggerF,
-    getAnnot,
-    annTruthValue,
+      getAnnot
+    , annTruthValue
+    ,
     -- * Error handling
-    WalletAPIError(..),
-    insufficientFundsError,
-    otherError,
+      WalletAPIError(..)
+    , insufficientFundsError
+    , otherError
+    ,
     -- * Logging
-    WalletLog(..)
-    ) where
+      WalletLog(..)
+    )
+where
 
-import           Control.Monad.Error.Class  (MonadError (..))
-import           Data.Aeson                 (FromJSON, ToJSON)
-import           Data.Eq.Deriving           (deriveEq1)
-import           Data.Functor.Compose       (Compose (..))
-import           Data.Functor.Foldable      (Corecursive (..), Fix (..), Recursive (..), unfix)
-import qualified Data.Map                   as Map
-import           Data.Ord.Deriving          (deriveOrd1)
-import qualified Data.Set                   as Set
-import           Data.Text                  (Text)
-import           GHC.Generics               (Generic)
-import           Text.Show.Deriving         (deriveShow1)
-import           Wallet.Emulator.AddressMap (AddressMap)
-import           Wallet.UTXO                (Address', DataScript, Height, PubKey (..), Signature (..), Tx (..), TxIn',
-                                             TxOut (..), TxOut', TxOutType (..), Value, pubKeyTxOut)
+import           Control.Monad.Error.Class      ( MonadError(..) )
+import           Data.Aeson                     ( FromJSON
+                                                , ToJSON
+                                                )
+import           Data.Eq.Deriving               ( deriveEq1 )
+import           Data.Functor.Compose           ( Compose(..) )
+import           Data.Functor.Foldable          ( Corecursive(..)
+                                                , Fix(..)
+                                                , Recursive(..)
+                                                , unfix
+                                                )
+import qualified Data.Map                      as Map
+import           Data.Ord.Deriving              ( deriveOrd1 )
+import qualified Data.Set                      as Set
+import           Data.Text                      ( Text )
+import           GHC.Generics                   ( Generic )
+import           Text.Show.Deriving             ( deriveShow1 )
+import           Wallet.Emulator.AddressMap     ( AddressMap )
+import           Wallet.UTXO                    ( Address'
+                                                , DataScript
+                                                , Height
+                                                , PubKey(..)
+                                                , Signature(..)
+                                                , Tx(..)
+                                                , TxIn'
+                                                , TxOut(..)
+                                                , TxOut'
+                                                , TxOutType(..)
+                                                , Value
+                                                , pubKeyTxOut
+                                                )
 
-import           Prelude                    hiding (Ordering (..))
+import           Prelude                 hiding ( Ordering(..) )
 
 newtype PrivateKey = PrivateKey { getPrivateKey :: Int }
     deriving (Eq, Ord, Show)
@@ -92,8 +114,8 @@ data Range a =
 inRange :: Ord a => a -> Range a -> Bool
 inRange a = \case
     Interval l h -> a >= l && a < h
-    GEQ l -> a >= l
-    LT  l -> a <  l
+    GEQ l        -> a >= l
+    LT  l        -> a < l
 
 data EventTriggerF f =
     And f f
@@ -152,29 +174,35 @@ checkTrigger h mp = getAnnot . annTruthValue h mp
 
 -- | Annotate each node in an `EventTriggerF` with its truth value given a block height
 --   and a set of unspent outputs
-annTruthValue :: Height -> Map.Map Address' Value -> EventTrigger -> AnnotatedEventTrigger Bool
-annTruthValue h mp = cata f where
+annTruthValue
+    :: Height
+    -> Map.Map Address' Value
+    -> EventTrigger
+    -> AnnotatedEventTrigger Bool
+annTruthValue h mp = cata f
+  where
     embedC = embed . Compose
-    f = \case
-        And l r -> embedC (getAnnot l && getAnnot r, And l r)
-        Or  l r -> embedC (getAnnot l || getAnnot r, Or l r)
-        Not r   -> embedC (not $ getAnnot r, Not r)
-        PAlways -> embedC (True, PAlways)
-        PNever -> embedC (False, PNever)
+    f      = \case
+        And l r            -> embedC (getAnnot l && getAnnot r, And l r)
+        Or  l r            -> embedC (getAnnot l || getAnnot r, Or l r)
+        Not r              -> embedC (not $ getAnnot r, Not r)
+        PAlways            -> embedC (True, PAlways)
+        PNever             -> embedC (False, PNever)
         BlockHeightRange r -> embedC (h `inRange` r, BlockHeightRange r)
         FundsAtAddress a r ->
-            let funds = Map.findWithDefault 0 a mp in
-            embedC (funds `inRange` r, FundsAtAddress a r)
+            let funds = Map.findWithDefault 0 a mp
+            in  embedC (funds `inRange` r, FundsAtAddress a r)
 
 -- | The addresses that an [[EventTrigger]] refers to
 addresses :: EventTrigger -> [Address']
-addresses = cata adr where
+addresses = cata adr
+  where
     adr = \case
-        And l r -> l ++ r
-        Or l r  -> l ++ r
-        Not t   -> t
-        PAlways -> []
-        PNever -> []
+        And l r            -> l ++ r
+        Or  l r            -> l ++ r
+        Not t              -> t
+        PAlways            -> []
+        PNever             -> []
         BlockHeightRange _ -> []
         FundsAtAddress a _ -> [a]
 
@@ -264,7 +292,7 @@ createPayment vl = fst <$> createPaymentWithChange vl
 payToScript :: (Monad m, WalletAPI m) => Address' -> Value -> DataScript -> m Tx
 payToScript addr v ds = do
     (i, own) <- createPaymentWithChange v
-    let  other = TxOut addr v (PayToScript ds)
+    let other = TxOut addr v (PayToScript ds)
     signAndSubmit i [own, other]
 
 -- | Transfer some funds to an address locked by a public key
@@ -284,10 +312,10 @@ signAndSubmit :: (Monad m, WalletAPI m) => Set.Set TxIn' -> [TxOut'] -> m Tx
 signAndSubmit ins outs = do
     sig <- signature <$> myKeyPair
     let tx = Tx
-            { txInputs = ins
-            , txOutputs = outs
-            , txForge = 0
-            , txFee = 0
+            { txInputs     = ins
+            , txOutputs    = outs
+            , txForge      = 0
+            , txFee        = 0
             , txSignatures = [sig]
             }
     submitTxn tx

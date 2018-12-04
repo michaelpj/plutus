@@ -6,21 +6,22 @@ module Quotation.Spec (tests) where
 import           Language.PlutusCore
 import           Language.PlutusCore.Pretty
 
-import qualified Data.ByteString.Lazy       as BSL
-import           Data.Text.Encoding         (encodeUtf8)
+import qualified Data.ByteString.Lazy          as BSL
+import           Data.Text.Encoding             ( encodeUtf8 )
 
 import           Test.Tasty
 import           Test.Tasty.Golden
 
 tests :: TestTree
-tests = testGroup "quasiquoter" [
-  asGolden (runQuote unit) "test/Quotation/unit.plc",
-  asGolden (runQuote one) "test/Quotation/one.plc",
-  asGolden (runQuote bool) "test/Quotation/bool.plc",
-  asGolden (runQuote true) "test/Quotation/true.plc",
-  asGolden (runQuote false) "test/Quotation/false.plc",
-  asGolden (runQuote free) "test/Quotation/free.plc"
- ]
+tests = testGroup
+    "quasiquoter"
+    [ asGolden (runQuote unit)  "test/Quotation/unit.plc"
+    , asGolden (runQuote one)   "test/Quotation/one.plc"
+    , asGolden (runQuote bool)  "test/Quotation/bool.plc"
+    , asGolden (runQuote true)  "test/Quotation/true.plc"
+    , asGolden (runQuote false) "test/Quotation/false.plc"
+    , asGolden (runQuote free)  "test/Quotation/free.plc"
+    ]
 
 asGolden :: PrettyPlc a => a -> TestName -> TestTree
 asGolden a file = goldenVsString file (file ++ ".golden") (pure $ showTest a)
@@ -54,5 +55,5 @@ false = do
 free :: Quote (Term TyName Name ())
 free = do
   -- both occurences should be the same variable
-  f <- TyVar () <$> freshTyName () "free"
-  [plcTerm|[(lam x f x) (lam x f x)]|]
+    f <- TyVar () <$> freshTyName () "free"
+    [plcTerm|[(lam x f x) (lam x f x)]|]

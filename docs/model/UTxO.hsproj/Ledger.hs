@@ -1,20 +1,31 @@
 {-# LANGUAGE PackageImports  #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Ledger (
+module Ledger
+    (
 
   -- ** Ledger & transaction types
-  Ledger, Tx(..), TxIn(..), TxOut(..), TxOutRef(..), txIn,
+      Ledger
+    , Tx(..)
+    , TxIn(..)
+    , TxOut(..)
+    , TxOutRef(..)
+    , txIn
+    ,
 
   -- ** Ledger & transaction state for scripts
-  hashTx, preHashTx, validValuesTx, state
-) where
+      hashTx
+    , preHashTx
+    , validValuesTx
+    , state
+    )
+where
 
-import           "cryptonite" Crypto.Hash
-import qualified Data.ByteArray           as BA
-import qualified Data.ByteString.Char8    as BS
-import           Data.Set                 (Set)
-import qualified Data.Set                 as Set
+import "cryptonite" Crypto.Hash
+import qualified Data.ByteArray                as BA
+import qualified Data.ByteString.Char8         as BS
+import           Data.Set                       ( Set )
+import qualified Data.Set                      as Set
 
 import           Types
 import           Witness
@@ -48,13 +59,12 @@ data TxStripped
     deriving (Show)
 
 stripTx :: Tx -> TxStripped
-stripTx Tx{..}
-  = TxStripped{..}
+stripTx Tx {..} = TxStripped {..}
   where
-    inputsTXS   = Set.fromList . map refTI $ inputsTX
-    outputsTXS  = outputsTX
-    forgeTXS    = forgeTX
-    feeTXS      = feeTX
+    inputsTXS  = Set.fromList . map refTI $ inputsTX
+    outputsTXS = outputsTX
+    forgeTXS   = forgeTX
+    feeTXS     = feeTX
 
 -- |Hash (double) the given transaction *without* witnesses.
 --
@@ -69,8 +79,8 @@ preHashTx tx = hash (stripTx tx)
 -- |Check that all values in a transaction are no.
 --
 validValuesTx :: Tx -> Bool
-validValuesTx Tx{..}
-  = all ((>= 0) . valueTO) outputsTX && forgeTX >= 0 && feeTX >= 0
+validValuesTx Tx {..} =
+    all ((>= 0) . valueTO) outputsTX && forgeTX >= 0 && feeTX >= 0
 
 data TxOutRef
   = TxOutRef

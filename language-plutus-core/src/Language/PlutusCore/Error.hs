@@ -10,24 +10,25 @@
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
 module Language.PlutusCore.Error
-    ( ParseError (..)
-    , AsParseError (..)
-    , NormalizationError (..)
-    , AsNormalizationError (..)
-    , UniqueError (..)
-    , AsUniqueError (..)
-    , RenameError (..)
-    , AsRenameError (..)
-    , UnknownDynamicBuiltinNameError (..)
-    , AsUnknownDynamicBuiltinNameError (..)
-    , InternalTypeError (..)
-    , AsInternalTypeError (..)
-    , TypeError (..)
-    , AsTypeError (..)
-    , Error (..)
-    , AsError (..)
+    ( ParseError(..)
+    , AsParseError(..)
+    , NormalizationError(..)
+    , AsNormalizationError(..)
+    , UniqueError(..)
+    , AsUniqueError(..)
+    , RenameError(..)
+    , AsRenameError(..)
+    , UnknownDynamicBuiltinNameError(..)
+    , AsUnknownDynamicBuiltinNameError(..)
+    , InternalTypeError(..)
+    , AsInternalTypeError(..)
+    , TypeError(..)
+    , AsTypeError(..)
+    , Error(..)
+    , AsError(..)
     , throwingEither
-    ) where
+    )
+where
 
 import           Language.PlutusCore.Lexer.Type
 import           Language.PlutusCore.Name
@@ -35,17 +36,18 @@ import           Language.PlutusCore.Pretty
 import           Language.PlutusCore.Type
 import           PlutusPrelude
 
-import           Control.Lens                       hiding (use)
+import           Control.Lens            hiding ( use )
 import           Control.Monad.Error.Lens
 import           Control.Monad.Except
 
-import qualified Data.Text                          as T
-import           Data.Text.Prettyprint.Doc.Internal (Doc (Text))
+import qualified Data.Text                     as T
+import           Data.Text.Prettyprint.Doc.Internal
+                                                ( Doc(Text) )
 
 -- | Lifts an 'Either' into an error context where we can embed the 'Left' value into the error.
 throwingEither :: MonadError e m => AReview e t -> Either t a -> m a
 throwingEither r e = case e of
-    Left t  -> throwing r t
+    Left  t -> throwing r t
     Right v -> pure v
 
 -- | An error encountered during parsing.
@@ -127,8 +129,10 @@ instance AsNormalizationError (Error a) TyName Name a where
 
 asInternalError :: Doc ann -> Doc ann
 asInternalError doc =
-    "An internal error has occurred:" <+> doc <> hardline <>
-    "Please report this as a bug."
+    "An internal error has occurred:"
+        <+> doc
+        <>  hardline
+        <>  "Please report this as a bug."
 
 instance Pretty a => Pretty (ParseError a) where
     pretty (LexErr s)         = "Lexical error:" <+> Text (length s) (T.pack s)

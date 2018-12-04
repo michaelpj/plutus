@@ -10,16 +10,19 @@ module Common
     , nestedGoldenVsTextM
     , nestedGoldenVsDoc
     , nestedGoldenVsDocM
-    ) where
+    )
+where
 
 import           Language.PlutusCore.Pretty
 
-import           Control.Monad.Reader       (Reader, runReader)
-import qualified Control.Monad.Reader       as Reader
-import qualified Data.ByteString.Lazy       as BSL
-import           Data.Text                  (Text)
-import           Data.Text.Encoding         (encodeUtf8)
-import           System.FilePath            ((</>))
+import           Control.Monad.Reader           ( Reader
+                                                , runReader
+                                                )
+import qualified Control.Monad.Reader          as Reader
+import qualified Data.ByteString.Lazy          as BSL
+import           Data.Text                      ( Text )
+import           Data.Text.Encoding             ( encodeUtf8 )
+import           System.FilePath                ( (</>) )
 import           Test.Tasty
 import           Test.Tasty.Golden
 
@@ -41,7 +44,8 @@ goldenVsText name ref = goldenVsTextM name ref . pure
 
 -- | Check the contents of a file against a 'Text'.
 goldenVsTextM :: TestName -> FilePath -> IO Text -> TestTree
-goldenVsTextM name ref val = goldenVsString name ref $ BSL.fromStrict . encodeUtf8 <$> val
+goldenVsTextM name ref val =
+    goldenVsString name ref $ BSL.fromStrict . encodeUtf8 <$> val
 
 -- | Check the contents of a file against a 'Doc'.
 goldenVsDoc :: TestName -> FilePath -> Doc ann -> TestTree

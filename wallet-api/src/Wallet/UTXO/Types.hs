@@ -13,121 +13,151 @@
 {-# LANGUAGE ViewPatterns       #-}
 {-# OPTIONS -fplugin=Language.PlutusTx.Plugin -fplugin-opt Language.PlutusTx.Plugin:dont-typecheck #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Wallet.UTXO.Types(
+module Wallet.UTXO.Types
+    (
     -- * Basic types
-    Value(..),
-    Height(..),
-    height,
-    TxId(..),
-    TxId',
-    PubKey(..),
-    Signature(..),
-    signedBy,
+      Value(..)
+    , Height(..)
+    , height
+    , TxId(..)
+    , TxId'
+    , PubKey(..)
+    , Signature(..)
+    , signedBy
+    ,
     -- ** Addresses
-    Address(..),
-    Address',
-    pubKeyAddress,
-    scriptAddress,
+      Address(..)
+    , Address'
+    , pubKeyAddress
+    , scriptAddress
+    ,
     -- ** Scripts
-    Script, -- abstract
-    fromPlcCode,
-    lifted,
-    applyScript,
-    evaluateScript,
-    Validator(..),
-    Redeemer(..),
-    DataScript(..),
+      Script
+    , -- abstract
+      fromPlcCode
+    , lifted
+    , applyScript
+    , evaluateScript
+    , Validator(..)
+    , Redeemer(..)
+    , DataScript(..)
+    ,
     -- * Transactions
-    Tx(..),
-    TxStripped(..),
-    strip,
-    preHash,
-    hashTx,
-    dataTxo,
-    TxIn(..),
-    TxInType(..),
-    TxIn',
-    TxOut(..),
-    TxOutType(..),
-    TxOut',
-    TxOutRef(..),
-    TxOutRef',
-    simpleInput,
-    simpleOutput,
-    pubKeyTxIn,
-    scriptTxIn,
-    pubKeyTxOut,
-    scriptTxOut,
-    isPubKeyOut,
-    isPayToScriptOut,
-    txOutRefs,
+      Tx(..)
+    , TxStripped(..)
+    , strip
+    , preHash
+    , hashTx
+    , dataTxo
+    , TxIn(..)
+    , TxInType(..)
+    , TxIn'
+    , TxOut(..)
+    , TxOutType(..)
+    , TxOut'
+    , TxOutRef(..)
+    , TxOutRef'
+    , simpleInput
+    , simpleOutput
+    , pubKeyTxIn
+    , scriptTxIn
+    , pubKeyTxOut
+    , scriptTxOut
+    , isPubKeyOut
+    , isPayToScriptOut
+    , txOutRefs
+    ,
     -- * Blockchain & UTxO model
-    Block,
-    Blockchain,
-    BlockchainState(..),
-    ValidationData(..),
-    state,
-    transaction,
-    out,
-    value,
-    unspentOutputsTx,
-    spentOutputs,
-    unspentOutputs,
-    unspentOutputsAndSigs,
-    updateUtxo,
-    validTx,
-    txOutPubKey,
-    pubKeyTxo,
-    validValuesTx,
+      Block
+    , Blockchain
+    , BlockchainState(..)
+    , ValidationData(..)
+    , state
+    , transaction
+    , out
+    , value
+    , unspentOutputsTx
+    , spentOutputs
+    , unspentOutputs
+    , unspentOutputsAndSigs
+    , updateUtxo
+    , validTx
+    , txOutPubKey
+    , pubKeyTxo
+    , validValuesTx
+    ,
     -- * Scripts
-    validate,
-    emptyValidator,
-    unitRedeemer,
-    unitData,
-    unitValidationData,
-    runScript,
+      validate
+    , emptyValidator
+    , unitRedeemer
+    , unitData
+    , unitValidationData
+    , runScript
+    ,
     -- * Lenses
-    inputs,
-    outputs,
-    signatures,
-    outAddress,
-    outValue,
-    outType,
-    inRef,
-    inType,
-    inScripts,
-    inSignature
-    ) where
+      inputs
+    , outputs
+    , signatures
+    , outAddress
+    , outValue
+    , outType
+    , inRef
+    , inType
+    , inScripts
+    , inSignature
+    )
+where
 
-import qualified Codec.CBOR.Write                         as Write
-import           Codec.Serialise                          (deserialise, deserialiseOrFail, serialise)
-import           Codec.Serialise.Class                    (Serialise, decode, encode)
-import           Control.Lens                             hiding (lifted)
-import           Control.Monad                            (join)
-import           Crypto.Hash                              (Digest, SHA256, digestFromByteString, hash)
-import           Data.Aeson                               (FromJSON (parseJSON), ToJSON (toJSON), withText)
-import qualified Data.Aeson                               as JSON
-import           Data.Bifunctor                           (first)
-import qualified Data.ByteArray                           as BA
-import qualified Data.ByteString                          as BSS
-import qualified Data.ByteString.Base64                   as Base64
-import qualified Data.ByteString.Char8                    as BS8
-import qualified Data.ByteString.Lazy                     as BSL
-import           Data.Foldable                            (foldMap)
-import           Data.Map                                 (Map)
-import qualified Data.Map                                 as Map
-import           Data.Maybe                               (fromMaybe, isJust, listToMaybe)
-import           Data.Monoid                              (Sum (..))
-import qualified Data.Set                                 as Set
-import qualified Data.Text.Encoding                       as TE
-import           GHC.Generics                             (Generic)
+import qualified Codec.CBOR.Write              as Write
+import           Codec.Serialise                ( deserialise
+                                                , deserialiseOrFail
+                                                , serialise
+                                                )
+import           Codec.Serialise.Class          ( Serialise
+                                                , decode
+                                                , encode
+                                                )
+import           Control.Lens            hiding ( lifted )
+import           Control.Monad                  ( join )
+import           Crypto.Hash                    ( Digest
+                                                , SHA256
+                                                , digestFromByteString
+                                                , hash
+                                                )
+import           Data.Aeson                     ( FromJSON(parseJSON)
+                                                , ToJSON(toJSON)
+                                                , withText
+                                                )
+import qualified Data.Aeson                    as JSON
+import           Data.Bifunctor                 ( first )
+import qualified Data.ByteArray                as BA
+import qualified Data.ByteString               as BSS
+import qualified Data.ByteString.Base64        as Base64
+import qualified Data.ByteString.Char8         as BS8
+import qualified Data.ByteString.Lazy          as BSL
+import           Data.Foldable                  ( foldMap )
+import           Data.Map                       ( Map )
+import qualified Data.Map                      as Map
+import           Data.Maybe                     ( fromMaybe
+                                                , isJust
+                                                , listToMaybe
+                                                )
+import           Data.Monoid                    ( Sum(..) )
+import qualified Data.Set                      as Set
+import qualified Data.Text.Encoding            as TE
+import           GHC.Generics                   ( Generic )
 
-import qualified Language.PlutusCore                      as PLC
-import           Language.PlutusTx.Evaluation             (evaluateCekTrace)
+import qualified Language.PlutusCore           as PLC
+import           Language.PlutusTx.Evaluation   ( evaluateCekTrace )
 import           Language.PlutusCore.Evaluation.Result
-import           Language.PlutusTx.Lift                   (LiftPir, makeLift, unsafeLiftPlc)
-import           Language.PlutusTx.Plugin                 (PlcCode, getSerializedCode)
-import           Language.PlutusTx.TH                     (plutus)
+import           Language.PlutusTx.Lift         ( LiftPir
+                                                , makeLift
+                                                , unsafeLiftPlc
+                                                )
+import           Language.PlutusTx.Plugin       ( PlcCode
+                                                , getSerializedCode
+                                                )
+import           Language.PlutusTx.TH           ( plutus )
 
 {- Note [Serialisation and hashing]
 
@@ -242,10 +272,12 @@ getAst = deserialise . getSerialized
 
 applyScript :: Script -> Script -> Script
 -- TODO: this is a bit inefficient
-applyScript (getAst -> s1) (getAst -> s2) = Script $ serialise $ s1 `PLC.applyProgram` s2
+applyScript (getAst -> s1) (getAst -> s2) =
+    Script $ serialise $ s1 `PLC.applyProgram` s2
 
 evaluateScript :: Script -> ([String], Bool)
-evaluateScript (getAst -> s) = (isJust . evaluationResultToMaybe) <$> evaluateCekTrace s
+evaluateScript (getAst -> s) =
+    (isJust . evaluationResultToMaybe) <$> evaluateCekTrace s
 
 instance ToJSON Script where
   toJSON = JSON.String . TE.decodeUtf8 . Base64.encode . BSL.toStrict . serialise
@@ -260,7 +292,12 @@ instance FromJSON Script where
       Right v -> pure v
 
 lifted :: LiftPir a => a -> Script
-lifted = Script . serialise . PLC.Program () (PLC.defaultVersion ()) . PLC.runQuote . unsafeLiftPlc
+lifted =
+    Script
+        . serialise
+        . PLC.Program () (PLC.defaultVersion ())
+        . PLC.runQuote
+        . unsafeLiftPlc
 
 -- | A validator is a PLC script.
 newtype Validator = Validator { getValidator :: Script }
@@ -353,18 +390,21 @@ data Tx = Tx {
 
 -- | The inputs of a transaction
 inputs :: Lens' Tx (Set.Set TxIn')
-inputs = lens g s where
+inputs = lens g s
+  where
     g = txInputs
     s tx i = tx { txInputs = i }
 
 outputs :: Lens' Tx [TxOut']
-outputs = lens g s where
+outputs = lens g s
+  where
     g = txOutputs
     s tx o = tx { txOutputs = o }
 
 -- | Signatures of a transaction
 signatures :: Lens' Tx [Signature]
-signatures = lens g s where
+signatures = lens g s
+  where
     g = txSignatures
     s tx sg = tx { txSignatures = sg }
 
@@ -375,8 +415,8 @@ instance BA.ByteArrayAccess Tx where
 -- | Check that all values in a transaction are no.
 --
 validValuesTx :: Tx -> Bool
-validValuesTx Tx{..}
-  = all ((>= 0) . txOutValue) txOutputs && txForge >= 0 && txFee >= 0
+validValuesTx Tx {..} =
+    all ((>= 0) . txOutValue) txOutputs && txForge >= 0 && txFee >= 0
 
 -- | Transaction without witnesses for its inputs
 data TxStripped = TxStripped {
@@ -391,8 +431,8 @@ instance BA.ByteArrayAccess TxStripped where
     withByteArray = BA.withByteArray . BS8.pack . show
 
 strip :: Tx -> TxStripped
-strip Tx{..} = TxStripped i txOutputs txForge txFee where
-    i = Set.map txInRef txInputs
+strip Tx {..} = TxStripped i txOutputs txForge txFee
+    where i = Set.map txInRef txInputs
 
 -- | Hash a stripped transaction once
 preHash :: TxStripped -> Digest SHA256
@@ -416,7 +456,8 @@ deriving instance FromJSON TxOutRef'
 
 -- | A list of a transaction's outputs paired with their [[TxOutRef']]s
 txOutRefs :: Tx -> [(TxOut', TxOutRef')]
-txOutRefs t = mkOut <$> zip [0..] (txOutputs t) where
+txOutRefs t = mkOut <$> zip [0 ..] (txOutputs t)
+  where
     mkOut (i, o) = (o, TxOutRef txId i)
     txId = hashTx t
 
@@ -440,26 +481,24 @@ deriving instance FromJSON TxIn'
 
 -- | The `TxOutRef` spent by a transaction input
 inRef :: Lens (TxIn h) (TxIn g) (TxOutRef h) (TxOutRef g)
-inRef = lens txInRef s where
-    s txi r = txi { txInRef = r }
+inRef = lens txInRef s where s txi r = txi { txInRef = r }
 
 -- | The type of a transaction input
 inType :: Lens' (TxIn h) TxInType
-inType = lens txInType s where
-    s txi t = txi { txInType = t }
+inType = lens txInType s where s txi t = txi { txInType = t }
 
 -- | Validator and redeemer scripts of a transaction input that spends a
 --   "pay to script" output
 --
 inScripts :: TxIn h -> Maybe (Validator, Redeemer)
-inScripts TxIn{ txInType = t } = case t of
+inScripts TxIn { txInType = t } = case t of
     ConsumeScriptAddress v r  -> Just (v, r)
     ConsumePublicKeyAddress _ -> Nothing
 
 -- | Signature of a transaction input that spends a "pay to public key" output
 --
 inSignature :: TxIn h -> Maybe Signature
-inSignature TxIn{ txInType = t } = case t of
+inSignature TxIn { txInType = t } = case t of
     ConsumeScriptAddress _ _  -> Nothing
     ConsumePublicKeyAddress s -> Just s
 
@@ -495,32 +534,29 @@ deriving instance FromJSON TxOut'
 
 -- | The data script that a [[TxOut]] refers to
 txOutData :: TxOut h -> Maybe DataScript
-txOutData TxOut{txOutType = t} = case  t of
+txOutData TxOut { txOutType = t } = case t of
     PayToScript s -> Just s
     PayToPubKey _ -> Nothing
 
 -- | The public key that a [[TxOut]] refers to
 txOutPubKey :: TxOut h -> Maybe PubKey
-txOutPubKey TxOut{txOutType = t} = case  t of
+txOutPubKey TxOut { txOutType = t } = case t of
     PayToPubKey k -> Just k
     _             -> Nothing
 
 -- | The address of a transaction output
 outAddress :: Lens (TxOut h) (TxOut g) (Address h) (Address g)
-outAddress = lens txOutAddress s where
-    s tx a = tx { txOutAddress = a }
+outAddress = lens txOutAddress s where s tx a = tx { txOutAddress = a }
 
 -- | The value of a transaction output
 -- | TODO: Compute address again
 outValue :: Lens' (TxOut h) Value
-outValue = lens txOutValue s where
-    s tx v = tx { txOutValue = v }
+outValue = lens txOutValue s where s tx v = tx { txOutValue = v }
 
 -- | The type of a transaction output
 -- | TODO: Compute address again
 outType :: Lens' (TxOut h) TxOutType
-outType = lens txOutType s where
-    s tx d = tx { txOutType = d }
+outType = lens txOutType s where s tx d = tx { txOutType = d }
 
 -- | Returns true if the output is a pay-to-pubkey output
 isPubKeyOut :: TxOut h -> Bool
@@ -532,26 +568,30 @@ isPayToScriptOut = isJust . txOutData
 
 -- | The address of a transaction output locked by public key
 pubKeyAddress :: PubKey -> Address (Digest SHA256)
-pubKeyAddress pk = Address $ hash h where
+pubKeyAddress pk = Address $ hash h
+  where
     h :: Digest SHA256 = hash $ Write.toStrictByteString e
-    e = encode pk
+    e                  = encode pk
 
 -- | The address of a transaction output locked by a validator script
 scriptAddress :: Validator -> Address (Digest SHA256)
-scriptAddress vl = Address $ hash h where
+scriptAddress vl = Address $ hash h
+  where
     h :: Digest SHA256 = hash $ Write.toStrictByteString e
-    e = encode vl
+    e                  = encode vl
 
 -- | Create a transaction output locked by a validator script
 scriptTxOut :: Value -> Validator -> DataScript -> TxOut'
-scriptTxOut v vl ds = TxOut a v tp where
-    a = scriptAddress vl
+scriptTxOut v vl ds = TxOut a v tp
+  where
+    a  = scriptAddress vl
     tp = PayToScript ds
 
 -- | Create a transaction output locked by a public key
 pubKeyTxOut :: Value -> PubKey -> TxOut'
-pubKeyTxOut v pk = TxOut a v tp where
-    a = pubKeyAddress pk
+pubKeyTxOut v pk = TxOut a v tp
+  where
+    a  = pubKeyAddress pk
     tp = PayToPubKey pk
 
 instance BA.ByteArrayAccess TxOut' where
@@ -563,17 +603,15 @@ type Blockchain = [Block]
 
 -- | Lookup a transaction by its hash
 transaction :: Blockchain -> TxOutRef' -> Maybe Tx
-transaction bc o = listToMaybe $ filter p  $ join bc where
-    p = (txOutRefId o ==) . hashTx
+transaction bc o = listToMaybe $ filter p $ join bc
+    where p = (txOutRefId o ==) . hashTx
 
 -- | Determine the unspent output that an input refers to
 out :: Blockchain -> TxOutRef' -> Maybe TxOut'
 out bc o = do
     t <- transaction bc o
     let i = txOutRefIdx o
-    if length (txOutputs t) <= i
-        then Nothing
-        else Just $ txOutputs t !! i
+    if length (txOutputs t) <= i then Nothing else Just $ txOutputs t !! i
 
 -- | Determine the unspent value that an input refers to
 value :: Blockchain -> TxOutRef' -> Maybe Value
@@ -589,8 +627,8 @@ pubKeyTxo bc o = out bc o >>= txOutPubKey
 
 -- | The unspent outputs of a transaction
 unspentOutputsTx :: Tx -> Map TxOutRef' TxOut'
-unspentOutputsTx t = Map.fromList $ fmap f $ zip [0..] $ txOutputs t where
-    f (idx, o) = (TxOutRef (hashTx t) idx, o)
+unspentOutputsTx t = Map.fromList $ fmap f $ zip [0 ..] $ txOutputs t
+    where f (idx, o) = (TxOutRef (hashTx t) idx, o)
 
 -- | The outputs consumed by a transaction
 spentOutputs :: Tx -> Set.Set TxOutRef'
@@ -606,10 +644,15 @@ unspentOutputsAndSigs = foldr updateUtxo Map.empty . join
 
 -- | Update a map of unspent transaction outputs and sigantures with the inputs
 --   and outputs of a transaction.
-updateUtxo :: Tx -> Map TxOutRef' (TxOut', [Signature]) -> Map TxOutRef' (TxOut', [Signature])
-updateUtxo t unspent = (unspent `Map.difference` lift' (spentOutputs t)) `Map.union` outs where
+updateUtxo
+    :: Tx
+    -> Map TxOutRef' (TxOut', [Signature])
+    -> Map TxOutRef' (TxOut', [Signature])
+updateUtxo t unspent =
+    (unspent `Map.difference` lift' (spentOutputs t)) `Map.union` outs
+  where
     lift' = Map.fromSet (const ())
-    outs = Map.map (,txSignatures t) $ unspentOutputsTx t
+    outs  = Map.map (, txSignatures t) $ unspentOutputsTx t
 
 -- | Ledger and transaction state available to both the validator and redeemer
 --   scripts
@@ -645,16 +688,15 @@ state tx bc = BlockchainState (height bc) (hashTx tx)
 -- * All values in the transaction are non-negative.
 --
 validTx :: ValidationData -> Tx -> Blockchain -> Bool
-validTx v t bc = inputsAreValid && valueIsPreserved && validValuesTx t where
-    inputsAreValid = all (`validatesIn` unspentOutputs bc) (txInputs t)
+validTx v t bc = inputsAreValid && valueIsPreserved && validValuesTx t
+  where
+    inputsAreValid   = all (`validatesIn` unspentOutputs bc) (txInputs t)
     valueIsPreserved = inVal == outVal
-    inVal =
-        txForge t + getSum (foldMap (Sum . fromMaybe 0 . value bc . txInRef) (txInputs t))
-    outVal =
-        txFee t + sum (map txOutValue (txOutputs t))
+    inVal            = txForge t + getSum
+        (foldMap (Sum . fromMaybe 0 . value bc . txInRef) (txInputs t))
+    outVal = txFee t + sum (map txOutValue (txOutputs t))
     txIn `validatesIn` allOutputs =
-        maybe False (validate v txIn)
-        $ txInRef txIn `Map.lookup` allOutputs
+        maybe False (validate v txIn) $ txInRef txIn `Map.lookup` allOutputs
 
 -- | Check whether a transaction output can be spent by the given
 --   transaction input. This involves
@@ -668,21 +710,22 @@ validTx v t bc = inputsAreValid && valueIsPreserved && validValuesTx t where
 --     * Verifying that the signature matches the public key
 --
 validate :: ValidationData -> TxIn' -> TxOut' -> Bool
-validate bs TxIn{ txInType = ti } TxOut{..} =
-    case (ti, txOutType) of
-        (ConsumeScriptAddress v r, PayToScript d)
-            | txOutAddress /= scriptAddress v -> False
-            | otherwise                       -> snd $ runScript bs v r d
-        (ConsumePublicKeyAddress sig, PayToPubKey pk) -> sig `signedBy` pk
-        _ -> False
+validate bs TxIn { txInType = ti } TxOut {..} = case (ti, txOutType) of
+    (ConsumeScriptAddress v r, PayToScript d)
+        | txOutAddress /= scriptAddress v -> False
+        | otherwise                       -> snd $ runScript bs v r d
+    (ConsumePublicKeyAddress sig, PayToPubKey pk) -> sig `signedBy` pk
+    _ -> False
 
 -- | Evaluate a validator script with the given inputs
-runScript :: ValidationData -> Validator -> Redeemer -> DataScript -> ([String], Bool)
-runScript (ValidationData valData) (Validator validator) (Redeemer redeemer) (DataScript dataScript) =
-    let
-        applied = ((validator `applyScript` redeemer) `applyScript` dataScript) `applyScript` valData
-        -- TODO: do something with the error
-    in evaluateScript applied
+runScript
+    :: ValidationData -> Validator -> Redeemer -> DataScript -> ([String], Bool)
+runScript (ValidationData valData) (Validator validator) (Redeemer redeemer) (DataScript dataScript)
+    = let applied =
+              ((validator `applyScript` redeemer) `applyScript` dataScript)
+                  `applyScript` valData
+                      -- TODO: do something with the error
+      in  evaluateScript applied
         -- TODO: Enable type checking of the program
         -- void typecheck
 

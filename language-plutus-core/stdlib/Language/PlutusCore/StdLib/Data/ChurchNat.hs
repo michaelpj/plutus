@@ -6,7 +6,8 @@ module Language.PlutusCore.StdLib.Data.ChurchNat
     ( getBuiltinChurchNat
     , getBuiltinChurchZero
     , getBuiltinChurchSucc
-    ) where
+    )
+where
 
 import           Language.PlutusCore.MkPlc
 import           Language.PlutusCore.Name
@@ -46,17 +47,14 @@ getBuiltinChurchZero = rename =<< do
 getBuiltinChurchSucc :: Quote (Term TyName Name ())
 getBuiltinChurchSucc = rename =<< do
     nat <- getBuiltinChurchNat
-    n <- freshName () "n"
-    r <- freshTyName () "r"
-    z <- freshName () "z"
-    f <- freshName () "f"
+    n   <- freshName () "n"
+    r   <- freshTyName () "r"
+    z   <- freshName () "z"
+    f   <- freshName () "f"
     return
         . LamAbs () n nat
         . TyAbs () r (Type ())
         . LamAbs () z (TyVar () r)
         . LamAbs () f (TyFun () (TyVar () r) $ TyVar () r)
         . Apply () (Var () f)
-        $ mkIterApp () (TyInst () (Var () n) $ TyVar () r)
-          [ Var () z
-          , Var () f
-          ]
+        $ mkIterApp () (TyInst () (Var () n) $ TyVar () r) [Var () z, Var () f]

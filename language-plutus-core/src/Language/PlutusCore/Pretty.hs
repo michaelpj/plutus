@@ -2,10 +2,10 @@ module Language.PlutusCore.Pretty
     (
     -- * Basic types and functions
       Doc
-    , Pretty (..)
-    , PrettyBy (..)
-    , PrettyConfigIgnore (..)
-    , PrettyConfigAttach (..)
+    , Pretty(..)
+    , PrettyBy(..)
+    , PrettyConfigIgnore(..)
+    , PrettyConfigAttach(..)
     , docString
     , docText
     , prettyString
@@ -17,9 +17,9 @@ module Language.PlutusCore.Pretty
     , prettyPlcDefString
     , prettyPlcDefText
     -- * Global configuration
-    , PrettyConfigPlcOptions (..)
-    , PrettyConfigPlcStrategy (..)
-    , PrettyConfigPlc (..)
+    , PrettyConfigPlcOptions(..)
+    , PrettyConfigPlcStrategy(..)
+    , PrettyConfigPlc(..)
     , PrettyPlc
     , defPrettyConfigPlcOptions
     , defPrettyConfigPlcClassic
@@ -34,28 +34,32 @@ module Language.PlutusCore.Pretty
     , prettyPlcCondensedErrorBy
     , prettyPlcCondensedErrorClassicString
     -- * Names
-    , PrettyConfigName (..)
-    , HasPrettyConfigName (..)
+    , PrettyConfigName(..)
+    , HasPrettyConfigName(..)
     , defPrettyConfigName
     , debugPrettyConfigName
     -- * Classic view
-    , PrettyConfigClassic (..)
+    , PrettyConfigClassic(..)
     , PrettyClassicBy
     -- * Readable view
-    , RenderContext (..)
-    , PrettyConfigReadable (..)
+    , RenderContext(..)
+    , PrettyConfigReadable(..)
     , PrettyReadableBy
     , topPrettyConfigReadable
     , botPrettyConfigReadable
-    ) where
+    )
+where
 
-import           Language.PlutusCore.Name            as Export
-import           Language.PlutusCore.Pretty.Classic  as Export
-import           Language.PlutusCore.Pretty.Plc      as Export
-import           Language.PlutusCore.Pretty.Readable as Export
+import           Language.PlutusCore.Name      as Export
+import           Language.PlutusCore.Pretty.Classic
+                                               as Export
+import           Language.PlutusCore.Pretty.Plc
+                                               as Export
+import           Language.PlutusCore.Pretty.Readable
+                                               as Export
 import           PlutusPrelude
 
-import           Data.Text                           (Text)
+import           Data.Text                      ( Text )
 
 -- | Pretty-print a value in the default mode using the classic view.
 prettyPlcDef :: PrettyPlc a => a -> Doc ann

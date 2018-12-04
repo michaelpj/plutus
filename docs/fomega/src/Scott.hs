@@ -1,7 +1,7 @@
 module Scott where
 
 import           AlgTypes
-import qualified Data.Set as S
+import qualified Data.Set                      as S
 import           SystemF
 
 -- note that "#R" is not a valid bnfc Ident(ifier), and as such it won't
@@ -13,22 +13,22 @@ returnType :: Type
 returnType = TyVar returnName
 
 scottType :: AlgType -> Type
-scottType alg = let ty = s alg in
-                  TyAll returnName ty
- where
- s :: AlgType -> Type
- s One  = TyAll "x" (TyFun (TyVar "x") (TyVar "x")) -- 1 => all x . x -> x
- s Zero = TyAll "x" (TyVar "x")                     -- 0 => all x . x
- s (Var x) = TyVar x
- s (All x t) = TyAll x (s t)
- s (Abs x t) = TyAbs x (s t)
- s (App t1 t2) = TyApp (s t1) (s t2)
- s (Fun t1 t2) = TyFun (s t1) (s t2)
- s (Prod t1 t2) = TyFun (TyFun (s t1) (s t2)) returnType -- a * b => (a -> b -> R)
- s (Sum t1 t2)  = TyFun (TyFun (TyFun (s t1) returnType) -- a + b => (a -> R) -> (b -> R) -> R
-                               (TyFun (s t2) returnType))
-                  returnType
- s (Mu x t) = TyMu x (s t)
+scottType alg = let ty = s alg in TyAll returnName ty
+  where
+    s :: AlgType -> Type
+    s One          = TyAll "x" (TyFun (TyVar "x") (TyVar "x")) -- 1 => all x . x -> x
+    s Zero         = TyAll "x" (TyVar "x")                     -- 0 => all x . x
+    s (Var x     ) = TyVar x
+    s (All  x  t ) = TyAll x (s t)
+    s (Abs  x  t ) = TyAbs x (s t)
+    s (App  t1 t2) = TyApp (s t1) (s t2)
+    s (Fun  t1 t2) = TyFun (s t1) (s t2)
+    s (Prod t1 t2) = TyFun (TyFun (s t1) (s t2)) returnType -- a * b => (a -> b -> R)
+    s (Sum  t1 t2) = TyFun
+        (TyFun (TyFun (s t1) returnType) -- a + b => (a -> R) -> (b -> R) -> R
+                                         (TyFun (s t2) returnType))
+        returnType
+    s (Mu x t) = TyMu x (s t)
 
 
 type FSignature = S.Set (Decl Type)

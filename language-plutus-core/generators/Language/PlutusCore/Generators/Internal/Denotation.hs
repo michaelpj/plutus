@@ -13,14 +13,15 @@ module Language.PlutusCore.Generators.Internal.Denotation
     , insertVariable
     , insertTypedBuiltinName
     , typedBuiltinNames
-    ) where
+    )
+where
 
 import           Language.PlutusCore
 import           Language.PlutusCore.Constant
 
-import qualified Data.ByteString.Lazy         as BSL
-import           Data.Dependent.Map           (DMap)
-import qualified Data.Dependent.Map           as DMap
+import qualified Data.ByteString.Lazy          as BSL
+import           Data.Dependent.Map             ( DMap )
+import qualified Data.Dependent.Map            as DMap
 import           Data.Functor.Compose
 
 -- | Haskell denotation of a PLC object. An object can be a 'BuiltinName' or a variable for example.
@@ -54,59 +55,72 @@ newtype DenotationContext = DenotationContext
 -- not required as we can always generate an argument out of thin air in a rank-0 setting (without @Void@).
 
 -- | Get the 'Denotation' of a variable.
-denoteVariable :: Name () -> TypedBuiltin size r -> r -> Denotation (Name ()) size r
-denoteVariable name tb meta = Denotation name (Var ()) meta (TypeSchemeBuiltin tb)
+denoteVariable
+    :: Name () -> TypedBuiltin size r -> r -> Denotation (Name ()) size r
+denoteVariable name tb meta =
+    Denotation name (Var ()) meta (TypeSchemeBuiltin tb)
 
 -- | Get the 'Denotation' of a 'TypedBuiltinName'.
-denoteTypedBuiltinName :: TypedBuiltinName a r -> a -> Denotation BuiltinName size r
+denoteTypedBuiltinName
+    :: TypedBuiltinName a r -> a -> Denotation BuiltinName size r
 denoteTypedBuiltinName (TypedBuiltinName name scheme) meta =
     Denotation name (Builtin () . BuiltinName ()) meta scheme
 
 -- | Insert the 'Denotation' of an object into a 'DenotationContext'.
-insertDenotation :: TypedBuiltin () r -> Denotation object Size r -> DenotationContext -> DenotationContext
-insertDenotation tb denotation (DenotationContext vs) = DenotationContext $
-    DMap.insertWith'
+insertDenotation
+    :: TypedBuiltin () r
+    -> Denotation object Size r
+    -> DenotationContext
+    -> DenotationContext
+insertDenotation tb denotation (DenotationContext vs) =
+    DenotationContext $ DMap.insertWith'
         (\(Compose xs) (Compose ys) -> Compose $ xs ++ ys)
         tb
         (Compose [DenotationContextMember denotation])
         vs
 
 -- | Insert a variable into a 'DenotationContext'.
-insertVariable :: Name () -> TypedBuiltin Size a -> a -> DenotationContext -> DenotationContext
+insertVariable
+    :: Name ()
+    -> TypedBuiltin Size a
+    -> a
+    -> DenotationContext
+    -> DenotationContext
 insertVariable name tb meta =
     insertDenotation (closeTypedBuiltin tb) (denoteVariable name tb meta)
 
 -- | Insert a 'TypedBuiltinName' into a 'DenotationContext'.
-insertTypedBuiltinName :: TypedBuiltinName a r -> a -> DenotationContext -> DenotationContext
+insertTypedBuiltinName
+    :: TypedBuiltinName a r -> a -> DenotationContext -> DenotationContext
 insertTypedBuiltinName tbn@(TypedBuiltinName _ scheme) meta =
     insertDenotation (typeSchemeResult scheme) (denoteTypedBuiltinName tbn meta)
 
 -- | A 'DenotationContext' that consists of 'TypedBuiltinName's.
 typedBuiltinNames :: DenotationContext
-typedBuiltinNames
-    = insertTypedBuiltinName typedAddInteger           (+)
-    . insertTypedBuiltinName typedSubtractInteger      (-)
-    . insertTypedBuiltinName typedMultiplyInteger      (*)
-    . insertTypedBuiltinName typedDivideInteger        div
-    . insertTypedBuiltinName typedRemainderInteger     rem
-    . insertTypedBuiltinName typedQuotientInteger      quot
-    . insertTypedBuiltinName typedModInteger           mod
-    . insertTypedBuiltinName typedLessThanInteger      (<)
-    . insertTypedBuiltinName typedLessThanEqInteger    (<=)
-    . insertTypedBuiltinName typedGreaterThanInteger   (>)
-    . insertTypedBuiltinName typedGreaterThanEqInteger (>=)
-    . insertTypedBuiltinName typedEqInteger            (==)
-    . insertTypedBuiltinName typedResizeInteger        (const id)
+typedBuiltinNames =
+    insertTypedBuiltinName typedAddInteger (+)
+        . insertTypedBuiltinName typedSubtractInteger      (-)
+        . insertTypedBuiltinName typedMultiplyInteger      (*)
+        . insertTypedBuiltinName typedDivideInteger        div
+        . insertTypedBuiltinName typedRemainderInteger     rem
+        . insertTypedBuiltinName typedQuotientInteger      quot
+        . insertTypedBuiltinName typedModInteger           mod
+        . insertTypedBuiltinName typedLessThanInteger      (<)
+        . insertTypedBuiltinName typedLessThanEqInteger    (<=)
+        . insertTypedBuiltinName typedGreaterThanInteger   (>)
+        . insertTypedBuiltinName typedGreaterThanEqInteger (>=)
+        . insertTypedBuiltinName typedEqInteger            (==)
+        . insertTypedBuiltinName typedResizeInteger        (const id)
 --     . insertTypedBuiltinName typedIntToByteString      undefined
-    . insertTypedBuiltinName typedConcatenate          (<>)
-    . insertTypedBuiltinName typedTakeByteString       (BSL.take . fromIntegral)
-    . insertTypedBuiltinName typedDropByteString       (BSL.drop . fromIntegral)
+        . insertTypedBuiltinName typedConcatenate          (<>)
+        . insertTypedBuiltinName typedTakeByteString (BSL.take . fromIntegral)
+        . insertTypedBuiltinName typedDropByteString (BSL.drop . fromIntegral)
 --     . insertTypedBuiltinName typedSHA2                 undefined
 --     . insertTypedBuiltinName typedSHA3                 undefined
 --     . insertTypedBuiltinName typedVerifySignature      undefined
-    . insertTypedBuiltinName typedResizeByteString     (const id)
-    . insertTypedBuiltinName typedEqByteString         (==)
+        . insertTypedBuiltinName typedResizeByteString     (const id)
+        . insertTypedBuiltinName typedEqByteString         (==)
 --     . insertTypedBuiltinName typedTxHash               undefined
 --     . insertTypedBuiltinName typedBlockNum             undefined
 --     . insertTypedBuiltinName typedSizeOfInteger        sizeOfInteger
-    $ DenotationContext mempty
+        $ DenotationContext mempty

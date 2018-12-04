@@ -9,15 +9,16 @@ import           Common
 import           Test.Tasty
 
 prettyConfigReadable :: PrettyConfigPlc
-prettyConfigReadable
-    = PrettyConfigPlc defPrettyConfigPlcOptions
-    . PrettyConfigPlcReadable
-    $ botPrettyConfigReadable defPrettyConfigName
+prettyConfigReadable =
+    PrettyConfigPlc defPrettyConfigPlcOptions
+        . PrettyConfigPlcReadable
+        $ botPrettyConfigReadable defPrettyConfigName
 
 testReadable :: PrettyPlc a => TestName -> Quote a -> TestNested
-testReadable name = nestedGoldenVsDoc name . prettyBy prettyConfigReadable . runQuote
+testReadable name =
+    nestedGoldenVsDoc name . prettyBy prettyConfigReadable . runQuote
 
 test_PrettyReadable :: TestTree
 test_PrettyReadable =
-    runTestNestedIn ["test", "Pretty", "Golden", "Readable"] $
-        foldStdLib testNested testReadable testReadable
+    runTestNestedIn ["test", "Pretty", "Golden", "Readable"]
+        $ foldStdLib testNested testReadable testReadable

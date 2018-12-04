@@ -7,17 +7,17 @@ import           Language.PlutusIR
 isTermValue :: Term tyname name a -> Bool
 isTermValue = \case
     -- Let is not a value (will compile into applications and/or type instantiations)
-    Let {} -> False
+    Let{}         -> False
     -- Lambdas and constants are always values
-    LamAbs {} -> True
-    Constant {} -> True
-    Builtin {} -> True
+    LamAbs{}      -> True
+    Constant{}    -> True
+    Builtin{}     -> True
     -- Type abstractions and wraps are values if their bodies are
     TyAbs _ _ _ t -> isTermValue t
-    Wrap _ _ _ t -> isTermValue t
+    Wrap  _ _ _ t -> isTermValue t
     -- All other PLC terms are not values
-    Var {} -> False
-    Apply {} -> False
-    TyInst {} -> False
-    Error {} -> False
-    Unwrap {} -> False
+    Var{}         -> False
+    Apply{}       -> False
+    TyInst{}      -> False
+    Error{}       -> False
+    Unwrap{}      -> False

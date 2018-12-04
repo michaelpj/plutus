@@ -5,25 +5,27 @@
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE OverloadedStrings      #-}
 {-# LANGUAGE TemplateHaskell        #-}
-module Language.PlutusTx.Compiler.Error (
-    ConvError
-    , Error (..)
-    , WithContext (..)
+module Language.PlutusTx.Compiler.Error
+    ( ConvError
+    , Error(..)
+    , WithContext(..)
     , withContext
     , withContextM
     , throwPlain
-    , stripContext) where
+    , stripContext
+    )
+where
 
-import qualified Language.PlutusIR.Compiler as PIR
+import qualified Language.PlutusIR.Compiler    as PIR
 
-import qualified Language.PlutusCore        as PLC
-import qualified Language.PlutusCore.Pretty as PLC
+import qualified Language.PlutusCore           as PLC
+import qualified Language.PlutusCore.Pretty    as PLC
 
 import           Control.Lens
 import           Control.Monad.Except
 
-import qualified Data.Text                  as T
-import qualified Data.Text.Prettyprint.Doc  as PP
+import qualified Data.Text                     as T
+import qualified Data.Text.Prettyprint.Doc     as PP
 import           Data.Typeable
 
 -- | An error with some (nested) context.
@@ -46,7 +48,7 @@ throwPlain = throwError . NoContext
 
 stripContext :: WithContext c e -> e
 stripContext = \case
-    NoContext e -> e
+    NoContext e      -> e
     WithContextC _ e -> stripContext e
 
 instance (PP.Pretty c, PP.Pretty e) => PP.Pretty (WithContext c e) where

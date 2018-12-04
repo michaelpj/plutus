@@ -10,10 +10,9 @@
 --
 -- Basic type definitions
 
-module Types
-where
+module Types where
 
-import           "cryptonite" Crypto.Hash
+import "cryptonite" Crypto.Hash
 
 
 -- Basic types

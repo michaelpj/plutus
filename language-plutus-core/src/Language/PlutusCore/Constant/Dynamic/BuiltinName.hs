@@ -11,9 +11,11 @@ module Language.PlutusCore.Constant.Dynamic.BuiltinName
     , dynamicAppendDefinition
     , dynamicAppend
     , dynamicTraceName
-    ) where
+    )
+where
 
-import           Language.PlutusCore.Constant.Dynamic.Instances ()
+import           Language.PlutusCore.Constant.Dynamic.Instances
+                                                ( )
 import           Language.PlutusCore.Constant.Make
 import           Language.PlutusCore.Constant.Typed
 import           Language.PlutusCore.Lexer.Type
@@ -23,14 +25,15 @@ dynamicCharToStringName :: DynamicBuiltinName
 dynamicCharToStringName = DynamicBuiltinName "charToString"
 
 dynamicCharToStringMeaning :: DynamicBuiltinNameMeaning
-dynamicCharToStringMeaning = DynamicBuiltinNameMeaning sch pure where
-    sch =
-        TypeSchemeBuiltin (TypedBuiltinDyn @Char) `TypeSchemeArrow`
-        TypeSchemeBuiltin (TypedBuiltinDyn @String)
+dynamicCharToStringMeaning = DynamicBuiltinNameMeaning sch pure
+  where
+    sch = TypeSchemeBuiltin (TypedBuiltinDyn @Char)
+        `TypeSchemeArrow` TypeSchemeBuiltin (TypedBuiltinDyn @String)
 
 dynamicCharToStringDefinition :: DynamicBuiltinNameDefinition
-dynamicCharToStringDefinition =
-    DynamicBuiltinNameDefinition dynamicCharToStringName dynamicCharToStringMeaning
+dynamicCharToStringDefinition = DynamicBuiltinNameDefinition
+    dynamicCharToStringName
+    dynamicCharToStringMeaning
 
 dynamicCharToString :: Term tyname name ()
 dynamicCharToString = dynamicBuiltinNameAsTerm dynamicCharToStringName
@@ -39,11 +42,12 @@ dynamicAppendName :: DynamicBuiltinName
 dynamicAppendName = DynamicBuiltinName "append"
 
 dynamicAppendMeaning :: DynamicBuiltinNameMeaning
-dynamicAppendMeaning = DynamicBuiltinNameMeaning sch (++) where
+dynamicAppendMeaning = DynamicBuiltinNameMeaning sch (++)
+  where
     sch =
-        TypeSchemeBuiltin (TypedBuiltinDyn @String) `TypeSchemeArrow`
-        TypeSchemeBuiltin (TypedBuiltinDyn @String) `TypeSchemeArrow`
         TypeSchemeBuiltin (TypedBuiltinDyn @String)
+            `TypeSchemeArrow` TypeSchemeBuiltin (TypedBuiltinDyn @String)
+            `TypeSchemeArrow` TypeSchemeBuiltin (TypedBuiltinDyn @String)
 
 dynamicAppendDefinition :: DynamicBuiltinNameDefinition
 dynamicAppendDefinition =

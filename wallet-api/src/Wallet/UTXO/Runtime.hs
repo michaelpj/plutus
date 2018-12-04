@@ -7,39 +7,47 @@
 {-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
 -- | A model of the types involved in transactions. These types are intented to
 --   be used in PLC scripts.
-module Wallet.UTXO.Runtime (-- * Transactions and related types
-                PubKey(..)
-              , Value(..)
-              , Height(..)
-              , PendingTxOutRef(..)
-              , Signature(..)
+module Wallet.UTXO.Runtime
+    (-- * Transactions and related types
+      PubKey(..)
+    , Value(..)
+    , Height(..)
+    , PendingTxOutRef(..)
+    , Signature(..)
               -- ** Hashes (see note [Hashes in validator scripts])
-              , DataScriptHash(..)
-              , RedeemerHash(..)
-              , ValidatorHash(..)
-              , TxHash(..)
-              , plcDataScriptHash
-              , plcValidatorDigest
-              , plcRedeemerHash
-              , plcTxHash
+    , DataScriptHash(..)
+    , RedeemerHash(..)
+    , ValidatorHash(..)
+    , TxHash(..)
+    , plcDataScriptHash
+    , plcValidatorDigest
+    , plcRedeemerHash
+    , plcTxHash
               -- * Pending transactions
-              , PendingTx(..)
-              , PendingTxOut(..)
-              , PendingTxIn(..)
-              , PendingTxOutType(..)
+    , PendingTx(..)
+    , PendingTxOut(..)
+    , PendingTxIn(..)
+    , PendingTxOutType(..)
               -- * Oracles
-              , Signed(..)
-              , OracleValue(..)
-              ) where
+    , Signed(..)
+    , OracleValue(..)
+    )
+where
 
-import           Codec.Serialise        (serialise)
-import           Crypto.Hash            (Digest, SHA256, hash)
-import qualified Data.ByteArray         as BA
-import qualified Data.ByteString.Lazy   as BSL
-import           GHC.Generics           (Generic)
-import           Language.PlutusTx.Lift (makeLift)
-import           Wallet.UTXO.Types      (PubKey (..), Signature (..), Value (..))
-import qualified Wallet.UTXO.Types      as UTXO
+import           Codec.Serialise                ( serialise )
+import           Crypto.Hash                    ( Digest
+                                                , SHA256
+                                                , hash
+                                                )
+import qualified Data.ByteArray                as BA
+import qualified Data.ByteString.Lazy          as BSL
+import           GHC.Generics                   ( Generic )
+import           Language.PlutusTx.Lift         ( makeLift )
+import           Wallet.UTXO.Types              ( PubKey(..)
+                                                , Signature(..)
+                                                , Value(..)
+                                                )
+import qualified Wallet.UTXO.Types             as UTXO
 
 -- Ignore newtype warnings related to `Oracle` and `Signed` because it causes
 -- problems with the plugin

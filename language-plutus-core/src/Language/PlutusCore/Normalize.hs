@@ -4,7 +4,8 @@ module Language.PlutusCore.Normalize
     ( normalizeType
     , substituteNormalizeType
     , GasInit
-    ) where
+    )
+where
 
 import           Language.PlutusCore.Error
 import           Language.PlutusCore.Name
@@ -17,8 +18,8 @@ import           Control.Lens
 import           Control.Monad.Except
 import           Control.Monad.Reader
 import           Control.Monad.State
-import           Data.IntMap                 (IntMap)
-import qualified Data.IntMap                 as IntMap
+import           Data.IntMap                    ( IntMap )
+import qualified Data.IntMap                   as IntMap
 
 -- | Type environments contain
 newtype TypeEnv tyname = TypeEnv
@@ -38,20 +39,32 @@ normalizeTypeStep = do
         Nothing -> pure ()
 
 -- | Run a 'NormalizeTypeM' computation.
-runNormalizeTypeM :: (MonadQuote m, AsTypeError e a, MonadError e m) => GasInit -> NormalizeTypeM tyname a b -> m b
-runNormalizeTypeM mn a = throwingEither _TypeError =<< (liftQuote $ runExceptT $ runReaderT (evalStateT a mn) (TypeEnv mempty))
+runNormalizeTypeM
+    :: (MonadQuote m, AsTypeError e a, MonadError e m)
+    => GasInit
+    -> NormalizeTypeM tyname a b
+    -> m b
+runNormalizeTypeM mn a =
+    throwingEither _TypeError
+        =<< (liftQuote $ runExceptT $ runReaderT (evalStateT a mn)
+                                                 (TypeEnv mempty)
+            )
 
 -- | Locally extend a 'TypeEnv' in a 'NormalizeTypeM' computation.
 withExtendedTypeEnv
     :: HasUnique (tyname ()) TypeUnique
-    => tyname () -> NormalizedType tyname () -> NormalizeTypeM tyname ann a -> NormalizeTypeM tyname ann a
+    => tyname ()
+    -> NormalizedType tyname ()
+    -> NormalizeTypeM tyname ann a
+    -> NormalizeTypeM tyname ann a
 withExtendedTypeEnv name ty =
     local (TypeEnv . IntMap.insert (name ^. unique . coerced) ty . unTypeEnv)
 
 -- | Look up a @tyname@ in a 'TypeEnv'.
 lookupTyName
     :: HasUnique (tyname ()) TypeUnique
-    => tyname () -> NormalizeTypeM tyname a (Maybe (NormalizedType tyname ()))
+    => tyname ()
+    -> NormalizeTypeM tyname a (Maybe (NormalizedType tyname ()))
 lookupTyName name = asks $ IntMap.lookup (name ^. unique . coerced) . unTypeEnv
 
 {- Note [Normalization]
@@ -83,28 +96,29 @@ of reductions.
 -- | Normalize a 'Type' in the 'NormalizeTypeM' monad.
 normalizeTypeM
     :: HasUnique (tyname ()) TypeUnique
-    => Type tyname () -> NormalizeTypeM tyname a (NormalizedType tyname ())
+    => Type tyname ()
+    -> NormalizeTypeM tyname a (NormalizedType tyname ())
 normalizeTypeM (TyForall ann name kind body) =
     TyForall ann name kind <<$>> normalizeTypeM body
-normalizeTypeM (TyFix ann name pat)          =
-    TyFix ann name <<$>> normalizeTypeM pat
-normalizeTypeM (TyFun ann dom cod)           =
+normalizeTypeM (TyFix ann name pat) = TyFix ann name <<$>> normalizeTypeM pat
+normalizeTypeM (TyFun ann dom cod) =
     TyFun ann <<$>> normalizeTypeM dom <<*>> normalizeTypeM cod
-normalizeTypeM (TyLam ann name kind body)    =
+normalizeTypeM (TyLam ann name kind body) =
     TyLam ann name kind <<$>> normalizeTypeM body
-normalizeTypeM (TyApp ann fun arg)           = do
+normalizeTypeM (TyApp ann fun arg) = do
     vFun <- normalizeTypeM fun
     vArg <- normalizeTypeM arg
     case getNormalizedType vFun of
-        TyLam _ nArg _ body -> normalizeTypeStep *> substituteNormalizeTypeM vArg nArg body
-        _                   -> pure $ TyApp ann <$> vFun <*> vArg
-normalizeTypeM var@(TyVar _ name)            = do
+        TyLam _ nArg _ body ->
+            normalizeTypeStep *> substituteNormalizeTypeM vArg nArg body
+        _ -> pure $ TyApp ann <$> vFun <*> vArg
+normalizeTypeM var@(TyVar _ name) = do
     mayTy <- lookupTyName name
     case mayTy of
         Nothing -> pure $ NormalizedType var
         Just ty -> traverse rename ty
-normalizeTypeM size@TyInt{}                  = pure $ NormalizedType size
-normalizeTypeM builtin@TyBuiltin{}           = pure $ NormalizedType builtin
+normalizeTypeM size@TyInt{}        = pure $ NormalizedType size
+normalizeTypeM builtin@TyBuiltin{} = pure $ NormalizedType builtin
 
 {- Note [Normalizing substitution]
 @substituteNormalize[M]@ is only ever used as normalizing substitution that receives two already
@@ -126,17 +140,28 @@ substituteNormalizeTypeM ty name = withExtendedTypeEnv name ty . normalizeTypeM
 -- See Note [Normalization].
 -- | Normalize a 'Type'.
 normalizeType
-    :: (HasUnique (tyname ()) TypeUnique, MonadQuote m, AsTypeError e a, MonadError e m)
-    => GasInit -> Type tyname () -> m (NormalizedType tyname ())
+    :: ( HasUnique (tyname ()) TypeUnique
+       , MonadQuote m
+       , AsTypeError e a
+       , MonadError e m
+       )
+    => GasInit
+    -> Type tyname ()
+    -> m (NormalizedType tyname ())
 normalizeType n = runNormalizeTypeM n . normalizeTypeM
 
 -- See Note [Normalizing substitution].
 -- | Substitute a type for a variable in a type and normalize.
 substituteNormalizeType
-    :: (HasUnique (tyname ()) TypeUnique, MonadQuote m, AsTypeError e a, MonadError e m)
+    :: ( HasUnique (tyname ()) TypeUnique
+       , MonadQuote m
+       , AsTypeError e a
+       , MonadError e m
+       )
     => GasInit
     -> NormalizedType tyname ()      -- ^ @ty@
     -> tyname ()                     -- ^ @name@
     -> Type tyname ()                -- ^ @body@
     -> m (NormalizedType tyname ())  -- ^ @NORM ([ty / name] body)@
-substituteNormalizeType gas ty name = runNormalizeTypeM gas . substituteNormalizeTypeM ty name
+substituteNormalizeType gas ty name =
+    runNormalizeTypeM gas . substituteNormalizeTypeM ty name

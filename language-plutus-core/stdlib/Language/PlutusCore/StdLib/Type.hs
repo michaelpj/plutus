@@ -6,7 +6,8 @@ module Language.PlutusCore.StdLib.Type
     , RecursiveType(..)
     , holedTyApp
     , holedToRecursive
-    ) where
+    )
+where
 
 import           Language.PlutusCore.Type
 
@@ -35,7 +36,8 @@ data RecursiveType tyname a = RecursiveType
 
 -- | Apply a 'HoledType' to a 'Type'.
 holedTyApp :: HoledType tyname () -> Type tyname () -> HoledType tyname ()
-holedTyApp (HoledType name cont) arg = HoledType name $ \hole -> TyApp () (cont hole) arg
+holedTyApp (HoledType name cont) arg =
+    HoledType name $ \hole -> TyApp () (cont hole) arg
 
 -- | Convert a 'HoledType' to the corresponding 'RecursiveType'.
 holedToRecursive :: HoledType tyname () -> RecursiveType tyname ()

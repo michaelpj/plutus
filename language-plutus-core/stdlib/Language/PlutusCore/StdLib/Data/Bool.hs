@@ -7,7 +7,8 @@ module Language.PlutusCore.StdLib.Data.Bool
     , getBuiltinTrue
     , getBuiltinFalse
     , getBuiltinIf
-    ) where
+    )
+where
 
 import           Language.PlutusCore.MkPlc
 import           Language.PlutusCore.Name
@@ -25,7 +26,7 @@ getBuiltinBool = rename =<< do
     a <- freshTyName () "a"
     return
         . TyForall () a (Type ())
-        $ mkIterTyFun () [ TyVar () a, TyVar () a ]
+        $ mkIterTyFun () [TyVar () a, TyVar () a]
         $ TyVar () a
 
 -- | 'True' as a PLC term.
@@ -37,12 +38,9 @@ getBuiltinTrue = rename =<< do
     x <- freshName () "x"
     y <- freshName () "y"
     return
-       . TyAbs () a (Type ())
-       $ mkIterLamAbs () [
-          VarDecl () x (TyVar () a),
-          VarDecl () y (TyVar () a)
-          ]
-       $ Var () x
+        . TyAbs () a (Type ())
+        $ mkIterLamAbs () [VarDecl () x (TyVar () a), VarDecl () y (TyVar () a)]
+        $ Var () x
 
 -- | 'False' as a PLC term.
 --
@@ -53,33 +51,31 @@ getBuiltinFalse = rename =<< do
     x <- freshName () "x"
     y <- freshName () "y"
     return
-       . TyAbs () a (Type ())
-       $ mkIterLamAbs () [
-          VarDecl () x (TyVar () a),
-          VarDecl () y (TyVar () a)
-          ]
-       $ Var () y
+        . TyAbs () a (Type ())
+        $ mkIterLamAbs () [VarDecl () x (TyVar () a), VarDecl () y (TyVar () a)]
+        $ Var () y
 
 -- | @if_then_else_@ as a PLC term.
 --
 -- > /\(A :: *) -> \(b : Bool) (x y : () -> A) -> b {() -> A} x y ()
 getBuiltinIf :: Quote (Value TyName Name ())
 getBuiltinIf = rename =<< do
-    unit <- getBuiltinUnit
-    unitval <- getBuiltinUnitval
+    unit        <- getBuiltinUnit
+    unitval     <- getBuiltinUnitval
     builtinBool <- getBuiltinBool
-    a <- freshTyName () "a"
-    b <- freshName () "b"
-    x <- freshName () "x"
-    y <- freshName () "y"
+    a           <- freshTyName () "a"
+    b           <- freshName () "b"
+    x           <- freshName () "x"
+    y           <- freshName () "y"
     let unitFunA = TyFun () unit (TyVar () a)
     return
-       . TyAbs () a (Type ())
-      $ mkIterLamAbs () [
-          VarDecl () b builtinBool,
-          VarDecl () x unitFunA,
-          VarDecl () y unitFunA
-          ]
-      $ mkIterApp ()
-          (TyInst () (Var () b) unitFunA)
-          [Var () x, Var () y, unitval]
+        . TyAbs () a (Type ())
+        $ mkIterLamAbs
+              ()
+              [ VarDecl () b builtinBool
+              , VarDecl () x unitFunA
+              , VarDecl () y unitFunA
+              ]
+        $ mkIterApp ()
+                    (TyInst () (Var () b) unitFunA)
+                    [Var () x, Var () y, unitval]

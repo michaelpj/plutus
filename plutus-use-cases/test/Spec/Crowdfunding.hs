@@ -4,42 +4,50 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns -fno-warn-unused-do-bind #-}
-module Spec.Crowdfunding(tests) where
+module Spec.Crowdfunding (tests) where
 
-import           Control.Monad                                       (void)
-import           Data.Either                                         (isRight)
-import           Data.Foldable                                       (traverse_)
-import qualified Data.Map                                            as Map
-import           Hedgehog                                            (Property, forAll, property)
+import           Control.Monad                  ( void )
+import           Data.Either                    ( isRight )
+import           Data.Foldable                  ( traverse_ )
+import qualified Data.Map                      as Map
+import           Hedgehog                       ( Property
+                                                , forAll
+                                                , property
+                                                )
 import qualified Hedgehog
 import           Test.Tasty
-import           Test.Tasty.Hedgehog                                 (testProperty)
+import           Test.Tasty.Hedgehog            ( testProperty )
 
-import           Wallet.API                                          (PubKey (..))
-import           Wallet.Emulator                                     hiding (Value)
-import qualified Wallet.Generators                                   as Gen
+import           Wallet.API                     ( PubKey(..) )
+import           Wallet.Emulator         hiding ( Value )
+import qualified Wallet.Generators             as Gen
 
-import           Language.Plutus.Coordination.Contracts.CrowdFunding (Campaign (..), contribute)
-import qualified Language.Plutus.Coordination.Contracts.CrowdFunding as CF
-import qualified Language.Plutus.Runtime                             as Runtime
-import qualified Wallet.UTXO                                         as UTXO
+import           Language.Plutus.Coordination.Contracts.CrowdFunding
+                                                ( Campaign(..)
+                                                , contribute
+                                                )
+import qualified Language.Plutus.Coordination.Contracts.CrowdFunding
+                                               as CF
+import qualified Language.Plutus.Runtime       as Runtime
+import qualified Wallet.UTXO                   as UTXO
 
 tests :: TestTree
-tests = testGroup "crowdfunding" [
-        testProperty "make a contribution" makeContribution,
-        testProperty "make contributions and collect" successfulCampaign,
-        testProperty "cannot collect money too early" cantCollectEarly,
-        testProperty "cannot collect money too late" cantCollectLate,
-        testProperty "cannot collect unless notified" cantCollectUnlessNotified,
-        testProperty "can claim a refund" canRefund
-        ]
+tests = testGroup
+    "crowdfunding"
+    [ testProperty "make a contribution"            makeContribution
+    , testProperty "make contributions and collect" successfulCampaign
+    , testProperty "cannot collect money too early" cantCollectEarly
+    , testProperty "cannot collect money too late"  cantCollectLate
+    , testProperty "cannot collect unless notified" cantCollectUnlessNotified
+    , testProperty "can claim a refund"             canRefund
+    ]
 
 -- | Make a contribution to the campaign from a wallet. Returns the reference
 --   to the transaction output that is locked by the campaign's validator
 --   script (and can be collected by the campaign owner)
 contrib :: Wallet -> Runtime.Value -> Trace MockWallet ()
-contrib w v = void $ walletAction w (contribute cmp v) where
-    cmp = cfCampaign scenario1
+contrib w v = void $ walletAction w (contribute cmp v)
+    where cmp = cfCampaign scenario1
 
 -- | Make a contribution from wallet 2
 contrib2 :: Runtime.Value -> Trace MockWallet ()
@@ -57,18 +65,20 @@ collect w = void $ walletAction w $ CF.collect $ cfCampaign scenario1
 --   definition and the initial distribution of funds to the wallets
 --   that are involved in the campaign.
 scenario1 :: CFScenario
-scenario1 = CFScenario{..} where
-    cfCampaign = Campaign {
-        campaignDeadline = Runtime.Height 10,
-        campaignTarget   = 1000,
-        campaignCollectionDeadline = Runtime.Height 15,
-        campaignOwner              = PubKey 1
+scenario1 = CFScenario {..}
+  where
+    cfCampaign = Campaign
+        { campaignDeadline           = Runtime.Height 10
+        , campaignTarget             = 1000
+        , campaignCollectionDeadline = Runtime.Height 15
+        , campaignOwner              = PubKey 1
         }
-    cfWallets = [w1, w2, w3]
-    cfInitialBalances = Map.fromList [
-        (PubKey 1, startingBalance),
-        (PubKey 2, startingBalance),
-        (PubKey 3, startingBalance)]
+    cfWallets         = [w1, w2, w3]
+    cfInitialBalances = Map.fromList
+        [ (PubKey 1, startingBalance)
+        , (PubKey 2, startingBalance)
+        , (PubKey 3, startingBalance)
+        ]
 
 w1, w2, w3 :: Wallet
 w1 = Wallet 1
@@ -80,7 +90,7 @@ w3 = Wallet 3
 --         will be run when the funds are retrieved
 makeContribution :: Property
 makeContribution = checkCFTrace scenario1 $ do
-    let w = Wallet 2
+    let w    = Wallet 2
         rest = startingBalance - 600
     contrib2 600
     processPending >>= notifyBlock
@@ -109,7 +119,12 @@ successfulCampaign = checkCFTrace scenario1 $ do
     -- At the end we verify that the funds owned by wallets 2 and 3 have
     -- decreased by the amount of their contributions. Wallet 1, which started
     -- out with 0 funds, now has the total of all contributions.
-    traverse_ (uncurry assertOwnFundsEq) [(w2, startingBalance - 600), (w3, startingBalance - 800), (w1, startingBalance + 600 + 800)]
+    traverse_
+        (uncurry assertOwnFundsEq)
+        [ (w2, startingBalance - 600)
+        , (w3, startingBalance - 800)
+        , (w1, startingBalance + 600 + 800)
+        ]
 
 -- | Check that the campaign owner cannot collect the monies before the campaign deadline
 cantCollectEarly :: Property
@@ -123,7 +138,12 @@ cantCollectEarly = checkCFTrace scenario1 $ do
     collect w1
     processPending >>= notifyBlock
 
-    traverse_ (uncurry assertOwnFundsEq) [(w2, startingBalance - 600), (w3, startingBalance - 800), (w1, startingBalance)]
+    traverse_
+        (uncurry assertOwnFundsEq)
+        [ (w2, startingBalance - 600)
+        , (w3, startingBalance - 800)
+        , (w1, startingBalance)
+        ]
 
 -- | Check that a campaign results in a refund if the `collect` trigger is
 --   registered too late (that is, after the contributions have already been
@@ -150,10 +170,12 @@ cantCollectUnlessNotified = checkCFTrace scenario1 $ do
     -- of the first contribution, so its `collectFunds` trigger never fires and
     -- the funds remain locked. (They can be claimed back by w2 and w3 later,
     -- as demonstrated in `canRefund`)
-    traverse_ (uncurry assertOwnFundsEq) [
-        (w1, startingBalance),
-        (w2, startingBalance - 600),
-        (w3, startingBalance - 800)]
+    traverse_
+        (uncurry assertOwnFundsEq)
+        [ (w1, startingBalance)
+        , (w2, startingBalance - 600)
+        , (w3, startingBalance - 800)
+        ]
 
 
 -- | Check that the campaign owner cannot collect the monies after the
@@ -173,7 +195,9 @@ cantCollectLate = checkCFTrace scenario1 $ do
     addBlocks 15 >>= notifyBlocks
     processPending >>= notifyBlock
 
-    traverse_ (uncurry assertOwnFundsEq) [(w2, startingBalance), (w3, startingBalance), (w1, startingBalance)]
+    traverse_
+        (uncurry assertOwnFundsEq)
+        [(w2, startingBalance), (w3, startingBalance), (w1, startingBalance)]
 
 -- | Run a successful campaign that ends with a refund
 canRefund :: Property
@@ -191,10 +215,9 @@ canRefund = checkCFTrace scenario1 $ do
     -- NB On the real blockchain they would have slightly less than their
     -- starting balances because of transaction fees. In the mockchain we
     -- currently set all fees to 0.
-    traverse_ (uncurry assertOwnFundsEq) [
-        (w2, startingBalance),
-        (w3, startingBalance),
-        (w1, startingBalance)]
+    traverse_
+        (uncurry assertOwnFundsEq)
+        [(w2, startingBalance), (w3, startingBalance), (w1, startingBalance)]
 
 -- | Crowdfunding scenario with test parameters
 data CFScenario = CFScenario {
@@ -210,9 +233,10 @@ startingBalance = 1000
 -- | Run a trace with the given scenario and check that the emulator finished
 --   successfully with an empty transaction pool.
 checkCFTrace :: CFScenario -> Trace MockWallet () -> Property
-checkCFTrace CFScenario{cfInitialBalances} t = property $ do
+checkCFTrace CFScenario { cfInitialBalances } t = property $ do
     let model = Gen.generatorModel { Gen.gmInitialBalance = cfInitialBalances }
-    (result, st) <- forAll $ Gen.runTraceOn model (processPending >>= notifyBlock >> t)
+    (result, st) <- forAll
+        $ Gen.runTraceOn model (processPending >>= notifyBlock >> t)
     Hedgehog.assert (isRight result)
     Hedgehog.assert ([] == _txPool st)
 

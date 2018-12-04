@@ -3,9 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Language.PlutusCore.Constant.Dynamic.Instances
-    ( PlcList (..)
-    ) where
+module Language.PlutusCore.Constant.Dynamic.Instances (PlcList(..)) where
 
 import           Language.PlutusCore.Constant.Dynamic.Emit
 import           Language.PlutusCore.Constant.Dynamic.Pretty
@@ -21,10 +19,10 @@ import           Language.PlutusCore.StdLib.Type
 import           Language.PlutusCore.Type
 
 import           Data.Char
-import           Data.Functor.Compose                        (Compose (..))
+import           Data.Functor.Compose           ( Compose(..) )
 import           Data.Proxy
-import qualified Data.Text.Prettyprint.Doc                   as Doc
-import           System.IO.Unsafe                            (unsafePerformIO)
+import qualified Data.Text.Prettyprint.Doc     as Doc
+import           System.IO.Unsafe               ( unsafePerformIO )
 
 argumentProxy :: proxy (f a) -> Proxy a
 argumentProxy _ = Proxy
