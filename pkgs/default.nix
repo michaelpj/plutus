@@ -55613,8 +55613,10 @@ license = stdenv.lib.licenses.bsd3;
 , language-plutus-core
 , optparse-applicative
 , plutus-core-interpreter
+, prettyprinter
 , stdenv
 , text
+, transformers
 }:
 mkDerivation {
 
@@ -55629,7 +55631,9 @@ bytestring
 language-plutus-core
 optparse-applicative
 plutus-core-interpreter
+prettyprinter
 text
+transformers
 ];
 doHaddock = false;
 description = "Executable for Plutus Core tools";
@@ -55703,6 +55707,7 @@ license = stdenv.lib.licenses.bsd3;
 , plutus-core-interpreter
 , plutus-ir
 , plutus-tx-plugin
+, prettyprinter
 , stdenv
 , tasty
 , template-haskell
@@ -55728,6 +55733,7 @@ mtl
 plutus-core-interpreter
 plutus-ir
 plutus-tx-plugin
+prettyprinter
 tasty
 template-haskell
 ];

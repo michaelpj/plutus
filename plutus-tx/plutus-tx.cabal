@@ -75,6 +75,7 @@ test-suite plutus-tx-tutorial-doctests
         plutus-tx-plugin -any,
         language-plutus-core -any,
         markdown-unlit -any,
+        prettyprinter -any,
         doctest -any
     build-tool-depends: markdown-unlit:markdown-unlit
     ghc-options: -pgmL markdown-unlit -threaded

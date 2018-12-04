@@ -1,3 +1,7 @@
+{-# LANGUAGE UndecidableInstances #-}
+-- There is really no way to avoid these being orphans without a cycle
+-- between the pretty printing and AST modules.
+{-# OPTIONS_GHC -Wno-orphans -Wno-simplifiable-class-constraints #-}
 module Language.PlutusCore.Pretty
     (
     -- * Basic types and functions
@@ -55,6 +59,7 @@ import           Language.PlutusCore.Name            as Export
 import           Language.PlutusCore.Pretty.Classic  as Export
 import           Language.PlutusCore.Pretty.Plc      as Export
 import           Language.PlutusCore.Pretty.Readable as Export
+import           Language.PlutusCore.Type
 import           PlutusPrelude
 
 import           Data.Text                           (Text)
@@ -77,5 +82,23 @@ prettyPlcCondensedErrorClassicString =
     docString . prettyPlcCondensedErrorBy defPrettyConfigPlcClassic
 
 -- | A command suitable for use in GHCi as an interactive printer.
-interactivePrint :: PrettyPlc a => a -> IO ()
-interactivePrint = print . prettyPlcDef
+interactivePrint :: Pretty a => a -> IO ()
+interactivePrint = print . pretty
+
+{- Note [Default pretty instances for PLC]
+While the flexible pretty-printing infrastructure is useful when you want it,
+it's helpful to have an implementation of the default Pretty typeclass that
+does the default thing.
+-}
+instance Pretty (Kind a) where
+    pretty = prettyPlcDef
+instance Pretty (Constant a) where
+    pretty = prettyPlcDef
+instance Pretty (Builtin a) where
+    pretty = prettyPlcDef
+instance PrettyPlc (Type tyname a) => Pretty (Type tyname a) where
+    pretty = prettyPlcDef
+instance PrettyPlc (Term tyname name a) => Pretty (Term tyname name a) where
+    pretty = prettyPlcDef
+instance PrettyPlc (Program tyname name a) => Pretty (Program tyname name a) where
+    pretty = prettyPlcDef
