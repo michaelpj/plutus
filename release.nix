@@ -21,11 +21,15 @@ let
   plutusPkgs = import ./. { };
   pkgs = import fixedNixpkgs { };
   haskellPackages = map (name: lib.nameValuePair name supportedSystems) fixedLib.plutusPkgList;
+  purescript = map (name: lib.nameValuePair name supportedSystems) ["plutus-playground-client"];
   # don't need to build the docs on anything other than one platform
   docs = map (name: lib.nameValuePair name [ "x86_64-linux" ]) (builtins.attrNames plutusPkgs.docs);
+  tests = map (name: lib.nameValuePair name [ "x86_64-linux" ]) (builtins.attrNames plutusPkgs.tests);
   platforms = {
     inherit haskellPackages;
+    inherit purescript;
     inherit docs;
+    inherit tests;
   };
   mapped = mapTestOn platforms;
   makePlutusTestRuns = system:
@@ -37,7 +41,6 @@ let
       f = name: value: if value ? testdata then value.testrun else value;
     in pkgs.lib.mapAttrs f (lib.filterAttrs pred plutusPkgs.haskellPackages);
 in pkgs.lib.fix (jobsets:  mapped // {
-  inherit (plutusPkgs) tests docs plutus-playground-client;
   all-plutus-tests = builtins.listToAttrs (map (arch: { name = arch; value = makePlutusTestRuns arch; }) supportedSystems);
   required = pkgs.lib.hydraJob (pkgs.releaseTools.aggregate {
     name = "plutus-required-checks";
@@ -48,6 +51,6 @@ in pkgs.lib.fix (jobsets:  mapped // {
       in
     [
       (builtins.concatLists (map lib.attrValues (all jobsets.all-plutus-tests)))
-    ] ++ (builtins.attrValues jobsets.tests) ++ (builtins.attrValues jobsets.docs) ++ [jobsets.plutus-playground-client];
+    ] ++ (builtins.attrValues jobsets.tests) ++ (builtins.attrValues jobsets.docs) ++ (all jobsets.purescript);
   });
 })
