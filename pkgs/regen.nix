@@ -6,7 +6,7 @@
 
 # Update this if you need a package version recently uploaded to hackage.
 # Any timestamp works.
-, hackageSnapshot ? "2018-11-08T09:58:14Z"
+, hackageSnapshot ? "2018-12-08T09:58:14Z"
 }:
 
 with pkgs;

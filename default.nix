@@ -162,6 +162,14 @@ let
       };
     };
     inherit (pkgs) stack2nix;
+    
+    all-haddock = pkgs.stdenv.mkDerivation {
+      inherit src;
+      name ="all-haddock"; 
+      buildInputs=[ haskellPackages.cabal-install pkgs.git ];
+      buildPhase = ''HOME=$(pwd); cabal new-haddock --offline'';
+      installPhase = "";
+    };
   });
 
 in
