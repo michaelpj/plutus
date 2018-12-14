@@ -166,7 +166,7 @@ let
     all-haddock = pkgs.stdenv.mkDerivation {
       inherit src;
       name ="all-haddock"; 
-      buildInputs=[ haskellPackages.cabal-install pkgs.git ];
+      buildInputs=[ haskellPackages.cabal-install pkgs.git ] ++ (builtins.attrValues localPackages);
       buildPhase = ''HOME=$(pwd); cabal new-haddock --offline'';
       installPhase = "";
     };
