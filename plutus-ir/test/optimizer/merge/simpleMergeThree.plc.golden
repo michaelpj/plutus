@@ -1,0 +1,13 @@
+(let
+  (nonrec)
+  (termbind
+    (vardecl unitval (all a (type) (fun a a))) (abs a (type) (lam x a x))
+  )
+  (termbind
+    (vardecl unitval2 (all a (type) (fun a a))) (abs a (type) (lam x a x))
+  )
+  (termbind
+    (vardecl unitval3 (all a (type) (fun a a))) (abs a (type) (lam x a x))
+  )
+  unitval3
+)

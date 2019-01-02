@@ -9,6 +9,7 @@ import           Language.PlutusCore.Quote
 import           Language.PlutusIR
 import           Language.PlutusIR.MkPir
 import           Language.PlutusIR.Optimizer.DeadCode
+import           Language.PlutusIR.Optimizer.Merge
 
 import qualified Language.PlutusCore                  as PLC
 
@@ -17,6 +18,7 @@ import qualified Language.PlutusCore.StdLib.Data.Unit as Unit
 optimizer :: TestNested
 optimizer = testNested "optimizer" [
     deadCode
+    , merge
     ]
 
 deadCode :: TestNested
@@ -164,5 +166,74 @@ recBindingComplex = removeDeadBindings <$> do
     unitVal <- embedIntoIR <$> Unit.getBuiltinUnitval
     pure $ Let () Rec [
         TypeBind () (TyVarDecl () u (PLC.Type ())) unit,
+        TermBind () (VarDecl () uv unit) unitVal
+        ] (Var () uv)
+
+merge :: TestNested
+merge = testNested "merge" [
+    goldenPir "simpleMerge" (runQuote simpleMerge)
+    , goldenPir "simpleMergeThree" (runQuote simpleMergeThree)
+    , goldenPir "dependent" (runQuote dependent)
+    , goldenPir "recursiveBlock" (runQuote recursiveBlock)
+    ]
+
+simpleMerge :: Quote (Term TyName Name ())
+simpleMerge = mergeLets <$> do
+    uv <- freshName () "unitval"
+    uv2 <- freshName () "unitval2"
+    unit <- Unit.getBuiltinUnit
+    unitVal <- embedIntoIR <$> Unit.getBuiltinUnitval
+    pure $
+        Let () NonRec [
+        TermBind () (VarDecl () uv unit) unitVal
+        ] $
+        Let () NonRec [
+        TermBind () (VarDecl () uv2 unit) unitVal
+        ] (Var () uv2)
+
+simpleMergeThree :: Quote (Term TyName Name ())
+simpleMergeThree = mergeLets <$> do
+    uv <- freshName () "unitval"
+    uv2 <- freshName () "unitval2"
+    uv3 <- freshName () "unitval3"
+    unit <- Unit.getBuiltinUnit
+    unitVal <- embedIntoIR <$> Unit.getBuiltinUnitval
+    pure $
+        Let () NonRec [
+        TermBind () (VarDecl () uv unit) unitVal
+        ] $
+        Let () NonRec [
+        TermBind () (VarDecl () uv2 unit) unitVal
+        ] $
+        Let () NonRec [
+        TermBind () (VarDecl () uv3 unit) unitVal
+        ] (Var () uv3)
+
+dependent :: Quote (Term TyName Name ())
+dependent = mergeLets <$> do
+    uv <- freshName () "unitval"
+    uv2 <- freshName () "unitval2"
+    unit <- Unit.getBuiltinUnit
+    unitVal <- embedIntoIR <$> Unit.getBuiltinUnitval
+    pure $
+        Let () NonRec [
+        TermBind () (VarDecl () uv unit) unitVal
+        ] $
+        Let () NonRec [
+        TermBind () (VarDecl () uv2 unit) (Var () uv)
+        ] (Var () uv2)
+
+recursiveBlock :: Quote (Term TyName Name ())
+recursiveBlock = mergeLets <$> do
+    u <- freshTyName () "unit"
+    uv <- freshName () "unitval"
+    unit <- Unit.getBuiltinUnit
+    unitVal <- embedIntoIR <$> Unit.getBuiltinUnitval
+    pure $
+        Let () NonRec [
+        TypeBind () (TyVarDecl () u (PLC.Type ())) unit
+        ] $
+        -- spurious recursivity blocks merging
+        Let () Rec [
         TermBind () (VarDecl () uv unit) unitVal
         ] (Var () uv)

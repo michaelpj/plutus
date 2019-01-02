@@ -31,7 +31,9 @@ library
         Language.PlutusIR.Compiler.Definitions
         Language.PlutusIR.MkPir
         Language.PlutusIR.Value
+        Language.PlutusIR.Optimizer
         Language.PlutusIR.Optimizer.DeadCode
+        Language.PlutusIR.Optimizer.Merge
     hs-source-dirs: src
     other-modules:
         Language.PlutusIR.Analysis.Dependencies
