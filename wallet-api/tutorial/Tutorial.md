@@ -7,7 +7,6 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# OPTIONS -fplugin=Language.PlutusTx.Plugin -fplugin-opt Language.PlutusTx.Plugin:dont-typecheck #-}
 module Tutorial where
 ```
 
