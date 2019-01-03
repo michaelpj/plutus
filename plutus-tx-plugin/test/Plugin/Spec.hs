@@ -5,6 +5,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# OPTIONS -fplugin Language.PlutusTx.Plugin -fplugin-opt Language.PlutusTx.Plugin:defer-errors -fplugin-opt Language.PlutusTx.Plugin:strip-context #-}
 -- the simplifier messes with things otherwise
 {-# OPTIONS_GHC   -O0 #-}
@@ -178,6 +179,7 @@ monoData = testNested "monomorphic" [
   , goldenEval "monoConstDestDefault" [ getProgram $ monoCase, getProgram $ monoConstructed ]
   , goldenPir "monoRecord" monoRecord
   , goldenPir "recordNewtype" recordNewtype
+  , goldenPir "recordNewtypeMatch" recordNewtypeMatch
   , goldenPir "nonValueCase" nonValueCase
   , goldenPir "synonym" synonym
   ]
@@ -219,6 +221,9 @@ data RecordNewtype = RecordNewtype { newtypeField :: MyNewtype }
 
 recordNewtype :: CompiledCode (RecordNewtype -> RecordNewtype)
 recordNewtype = plc @"recordNewtype" (\(x :: RecordNewtype) -> x)
+
+recordNewtypeMatch :: CompiledCode (RecordNewtype -> MyNewtype)
+recordNewtypeMatch = plc @"recordNewtypeMatch" (\RecordNewtype{..} -> newtypeField)
 
 -- must be compiled with a lazy case
 nonValueCase :: CompiledCode (MyEnum -> Int)
