@@ -45,8 +45,6 @@ mergeTerm
     -> m (Term tyname name a)
 mergeTerm = \case
     Let x NonRec bs t -> do
-        t' <- mergeTerm t
-
         deps <- ask
         let dependents :: Set.Set PLC.Unique
             dependents = Set.fromList $ do
@@ -63,11 +61,11 @@ mergeTerm = \case
                 -}
                 mapMaybe Deps.nodeUnique $ Set.toList $ T.preSet (Deps.Variable u) deps
 
-        let (mergeableBindings, inner) = extractMergeable dependents t'
+        (mergeableBindings, newInner) <- extractMergeable dependents <$> mergeTerm t
 
         mergedOwnBindings <- traverse mergeBinding bs
 
-        pure $ Let x NonRec (mergedOwnBindings ++ mergeableBindings) inner
+        pure $ Let x NonRec (mergedOwnBindings ++ mergeableBindings) newInner
     Let x Rec bs t -> Let x Rec <$> traverse mergeBinding bs <*> mergeTerm t
     TyAbs x tn k t -> TyAbs x tn k <$> mergeTerm t
     LamAbs x n ty t -> LamAbs x n ty <$> mergeTerm t
