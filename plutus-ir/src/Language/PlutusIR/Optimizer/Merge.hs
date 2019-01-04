@@ -71,7 +71,7 @@ mergeTerm = \case
     LamAbs x n ty t -> LamAbs x n ty <$> mergeTerm t
     Apply x t1 t2 -> Apply x <$> mergeTerm t1 <*> mergeTerm t2
     TyInst x t ty -> TyInst x <$> mergeTerm t <*> pure ty
-    Wrap x n ty t -> Wrap x n ty <$> mergeTerm t
+    IWrap x pat arg t -> IWrap x pat arg <$> mergeTerm t
     Unwrap x t -> Unwrap x <$> mergeTerm t
     t@Constant{} -> pure t
     t@Builtin{} -> pure t
