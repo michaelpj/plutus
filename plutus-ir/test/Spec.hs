@@ -63,6 +63,7 @@ compileAndMaybeTypecheck doTypecheck pir = flip runReaderT NoProvenance $ runQuo
 tests :: TestNested
 tests = testGroup "plutus-ir" <$> sequence [
     prettyprinting,
+    lets,
     datatypes,
     recursion,
     serialization,
@@ -99,6 +100,27 @@ maybePir = do
                 DatatypeBind () mb
             ] $
         Apply () (TyInst () (mkVar () just) unit) unitval
+
+multiple :: Quote (Term TyName Name ())
+multiple = do
+    unit <- Unit.getBuiltinUnit
+    unitval <- embedIntoIR <$> Unit.getBuiltinUnitval
+
+    a <- freshName () "a"
+    b <- freshName () "b"
+    pure $
+        Let ()
+            NonRec
+            [
+                TermBind () (VarDecl () a unit) unitval,
+                TermBind () (VarDecl () b unit) unitval
+            ] $
+        Var () a
+
+lets :: TestNested
+lets = testNested "lets" [
+    goldenPlc "multiple" multiple
+    ]
 
 listMatch :: Quote (Term TyName Name ())
 listMatch = do
