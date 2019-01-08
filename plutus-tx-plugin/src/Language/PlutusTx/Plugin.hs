@@ -106,6 +106,7 @@ data PluginOptions = PluginOptions {
     poDoTypecheck    :: Bool
     , poDeferErrors  :: Bool
     , poStripContext :: Bool
+    , poOptimizePir :: Bool
     }
 
 plugin :: GHC.Plugin
@@ -118,6 +119,7 @@ install args todo =
             poDoTypecheck = notElem "dont-typecheck" args
             , poDeferErrors = elem "defer-errors" args
             , poStripContext = elem "strip-context" args
+            , poOptimizePir = notElem "dont-optimize" args
             }
     in
         pure (GHC.CoreDoPluginPass "Core to PLC" (pluginPass opts) : todo)
@@ -261,7 +263,8 @@ convertExpr opts locStr codeTy origE = do
     -- We need to do this out here, since it has to run in CoreM
     nameInfo <- makePrimitiveNameInfo builtinNames
     let result = withContextM (sdToTxt $ "Converting expr at" GHC.<+> GHC.text locStr) $ do
-              (pirP::PIRProgram) <- PIR.Program () . PIR.optimize <$> (PIR.runDefT () $ convExprWithDefs origE)
+              (pirT::PIRTerm) <- PIR.runDefT () $ convExprWithDefs origE
+              let (pirP::PIRProgram) = PIR.Program () $ if poOptimizePir opts then PIR.optimize pirT else pirT
               (plcP::PLCProgram) <- void <$> (flip runReaderT PIR.NoProvenance $ PIR.compileProgram pirP)
               when (poDoTypecheck opts) $ do
                   annotated <- PLC.annotateProgram plcP
