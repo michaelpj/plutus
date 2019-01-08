@@ -16,10 +16,8 @@ import           TestTH
 
 import           Language.PlutusTx.TH
 import qualified Language.PlutusTx.Builtins as Builtins
-import           Language.PlutusTx.Prelude
+import qualified Language.PlutusTx.Prelude  as P
 import           Language.PlutusTx.Evaluation
-
-import qualified Language.PlutusIR          as PIR
 
 import           Language.PlutusCore.Pretty
 import           Language.PlutusCore
@@ -27,7 +25,6 @@ import           Language.PlutusCore
 import           Control.Monad.Except
 import           Control.Exception
 
-import Data.Text.Prettyprint.Doc
 import           Test.Tasty
 
 main :: IO ()
@@ -76,24 +73,24 @@ powerPlc :: CompiledCode (Int -> Int)
 powerPlc = $$(compile [|| $$(power (4::Int)) ||])
 
 andPlc :: CompiledCode Bool
-andPlc = $$(compile [|| $$(andTH) True False ||])
+andPlc = $$(compile [|| $$(P.and) True False ||])
 
 convertString :: CompiledCode Builtins.String
-convertString = $$(compile [|| $$(toPlutusString) "test" ||])
+convertString = $$(compile [|| $$(P.toPlutusString) "test" ||])
 
 traceDirect :: CompiledCode ()
-traceDirect = $$(compile [|| Builtins.trace ($$(toPlutusString) "test") ||])
+traceDirect = $$(compile [|| Builtins.trace ($$(P.toPlutusString) "test") ||])
 
 tracePrelude :: CompiledCode Int
-tracePrelude = $$(compile [|| $$(trace) ($$(toPlutusString) "test") (1::Int) ||])
+tracePrelude = $$(compile [|| $$(P.trace) ($$(P.toPlutusString) "test") (1::Int) ||])
 
 traceRepeatedly :: CompiledCode Int
 traceRepeatedly = $$(compile
      [||
                -- This will in fact print the third log first, and then the others, but this
                -- is the same behaviour as Debug.trace
-               let i1 = $$(traceH) "Making my first int" (1::Int)
-                   i2 = $$(traceH) "Making my second int" (2::Int)
-                   i3 = $$(traceH) "Adding them up" (i1 + i2)
+               let i1 = $$(P.traceH) "Making my first int" (1::Int)
+                   i2 = $$(P.traceH) "Making my second int" (2::Int)
+                   i3 = $$(P.traceH) "Adding them up" (i1 + i2)
               in i3
     ||])
