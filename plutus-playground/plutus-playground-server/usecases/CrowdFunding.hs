@@ -5,6 +5,8 @@
 -- Note [Transactions in the crowdfunding campaign] explains the structure of 
 -- this contract on the blockchain.
 module Language.PlutusTx.Coordination.Contracts.CrowdFunding where
+{-# OPTIONS -fplugin=Language.PlutusTx.Plugin -fplugin-opt Language.PlutusTx.Plugin:dont-optimize #-}
+{-# OPTIONS_GHC -O0 #-}
 
 import qualified Language.PlutusTx            as PlutusTx
 import qualified Language.PlutusTx.Prelude    as P

@@ -19,9 +19,21 @@ import           Wallet                                                (PubKey (
 import           Wallet.Emulator
 import qualified Wallet.Generators                                     as Gen
 
+import Language.PlutusTx
+
 import           Language.PlutusTx.Coordination.Contracts.CrowdFunding (Campaign (..), contribute)
 import qualified Language.PlutusTx.Coordination.Contracts.CrowdFunding as CF
+import qualified Language.PlutusTx.Coordination.Contracts.CrowdFunding2 as CF2
 import qualified Ledger
+
+import Common
+import Data.Text.Prettyprint.Doc
+
+goldenPir :: String -> CompiledCode a -> TestTree
+goldenPir name value = goldenVsDoc name (name ++ ".pir") $ pretty $ getPir value
+
+goldenPlc :: String -> CompiledCode a -> TestTree
+goldenPlc name value = goldenVsDoc name (name ++ ".plc") $ pretty $ getPlc value
 
 tests :: TestTree
 tests = testGroup "crowdfunding" [
@@ -30,7 +42,9 @@ tests = testGroup "crowdfunding" [
         testProperty "cannot collect money too early" cantCollectEarly,
         testProperty "cannot collect money too late" cantCollectLate,
         testProperty "cannot collect unless notified" cantCollectUnlessNotified,
-        testProperty "can claim a refund" canRefund
+        testProperty "can claim a refund" canRefund,
+        goldenPir "cf2" CF2.contributionScript,
+        goldenPlc "cf2" CF2.contributionScript
         ]
 
 -- | Make a contribution to the campaign from a wallet. Returns the reference

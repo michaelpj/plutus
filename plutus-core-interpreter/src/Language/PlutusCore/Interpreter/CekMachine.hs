@@ -208,7 +208,11 @@ evaluateCekCatchIn cekEnv = runCekM cekEnv . computeCek []
 -- | Evaluate a term using the CEK machine.
 evaluateCekCatch
     :: DynamicBuiltinNameMeanings -> Plain Term -> Either CekMachineException EvaluationResult
-evaluateCekCatch means = evaluateCekCatchIn (CekEnv means $ VarEnv IntMap.empty)
+evaluateCekCatch means term = first munge $ evaluateCekCatchIn (CekEnv means $ VarEnv IntMap.empty) term
+    where
+        munge :: CekMachineException -> CekMachineException
+        munge e = case e of
+            MachineException{} -> e {_machineExceptionCause=term}
 
 -- | Evaluate a term using the CEK machine. May throw a 'CekMachineException'.
 evaluateCek :: DynamicBuiltinNameMeanings -> Term TyName Name () -> EvaluationResult
