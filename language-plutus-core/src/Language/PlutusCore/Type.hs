@@ -6,6 +6,7 @@
 {-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE LambdaCase  #-}
 
 module Language.PlutusCore.Type ( Term (..)
                                 , Value
@@ -38,12 +39,23 @@ module Language.PlutusCore.Type ( Term (..)
                                 , NormalizedType
                                 , pattern NormalizedType
                                 , getNormalizedType
+                                -- * DeBruijn
+                                , deBruijnTyM
+                                , deBruijnTy
+                                , deBruijnTermM
+                                , deBruijnTerm
+                                -- * Stripping names
+                                , stripNamesTy
+                                , stripNamesTerm
                                 ) where
 
 import           Control.Lens
+import           Control.Monad.Reader
 import qualified Data.ByteString.Lazy               as BSL
 import           Data.Functor.Foldable
+import           Data.Maybe
 import qualified Data.Map                           as M
+import qualified Data.IntMap                           as IM
 import           Data.Text.Prettyprint.Doc.Internal (enclose)
 import           Instances.TH.Lift                  ()
 import           Language.Haskell.TH.Syntax         (Lift)
@@ -382,3 +394,73 @@ instance ( HasPrettyConfigName config
         | showsAttached = enclose "<" ">" $ prettyBy config name <+> ":" <+> prettyBy config ty
         | otherwise     = prettyBy config name
         where PrettyConfigName _ showsAttached = toPrettyConfigName config
+
+type Ix = Natural
+data Levels = Levels Ix (IM.IntMap Ix)
+
+scope :: (MonadReader Levels m) => Unique -> m a -> m a
+scope (Unique u) = local $ \(Levels current ls) -> Levels (current+1) $ IM.insert u current ls
+
+getIndex :: (MonadReader Levels m) => Unique -> m Ix
+getIndex (Unique u) = asks $ \(Levels current ls) -> current - fromJust (IM.lookup u ls)
+
+deBruijnTy :: Type TyName a -> Type TyDeBruijn a
+deBruijnTy = flip runReader (Levels 0 IM.empty) . deBruijnTyM
+
+deBruijnTerm :: Term TyName Name a -> Term TyDeBruijn DeBruijn a
+deBruijnTerm = flip runReader (Levels 0 IM.empty) . deBruijnTermM
+
+deBruijnTyM :: (MonadReader Levels m) => Type TyName a -> m (Type TyDeBruijn a)
+deBruijnTyM = \case
+    TyVar x (TyName (Name x' str u)) -> TyVar x . TyDeBruijn . DeBruijn x' str <$> getIndex u
+    TyFun x i o -> TyFun x <$> deBruijnTyM i <*> deBruijnTyM o
+    TyApp x fun arg -> TyApp x <$> deBruijnTyM fun <*> deBruijnTyM arg
+    TyIFix x pat arg -> TyIFix x <$> deBruijnTyM pat <*> deBruijnTyM arg
+    TyForall x (TyName (Name x' str u)) k ty -> scope u $ do
+        let tn' = TyDeBruijn $ DeBruijn x' str 0
+        TyForall x tn' k <$> deBruijnTyM ty
+    TyLam x (TyName (Name x' str u)) k ty -> scope u $ do
+        let tn' = TyDeBruijn $ DeBruijn x' str 0
+        TyLam x tn' k <$> deBruijnTyM ty
+    TyBuiltin x bn -> pure $ TyBuiltin x bn
+    TyInt x nat -> pure $ TyInt x nat
+
+deBruijnTermM :: (MonadReader Levels m) => Term TyName Name a -> m (Term TyDeBruijn DeBruijn a)
+deBruijnTermM = \case
+    Var x (Name x' str u) -> Var x . DeBruijn x' str <$> getIndex u
+    TyAbs x (TyName (Name x' str u)) k t -> scope u $ do
+        let tn' = TyDeBruijn $ DeBruijn x' str 0
+        TyAbs x tn' k <$> deBruijnTermM t
+    LamAbs x (Name x' str u) ty t -> scope u $ do
+        let n' = DeBruijn x' str 0
+        LamAbs x n' <$> deBruijnTyM ty <*> deBruijnTermM t
+    Apply x t1 t2 -> Apply x <$> deBruijnTermM t1 <*> deBruijnTermM t2
+    Constant x con -> pure $ Constant x con
+    Builtin x bn -> pure $ Builtin x bn
+    TyInst x t ty -> TyInst x <$> deBruijnTermM t <*> deBruijnTyM ty
+    Unwrap x t -> Unwrap x <$> deBruijnTermM t
+    IWrap x pat arg t -> IWrap x <$> deBruijnTyM pat <*> deBruijnTyM arg <*> deBruijnTermM t
+    Error x ty -> Error x <$> deBruijnTyM ty
+
+stripName :: Name a -> Name a
+stripName (Name x _ u) = Name x "" u
+
+stripTyName :: TyName a -> TyName a
+stripTyName (TyName n) = TyName $ stripName n
+
+stripNamesTy :: Type TyName a -> Type TyName a
+stripNamesTy = cata $ \case
+    TyVarF x tn -> TyVar x $ stripTyName tn
+    TyForallF x tn k ty -> TyForall x (stripTyName tn) k ty
+    TyLamF x tn k ty -> TyLam x (stripTyName tn) k ty
+    x -> embed x
+
+stripNamesTerm :: Term TyName Name a -> Term TyName Name a
+stripNamesTerm = cata $ \case
+    VarF x n -> Var x $ stripName n
+    TyAbsF x tn k t -> TyAbs x (stripTyName tn) k t
+    LamAbsF x n ty t -> LamAbs x (stripName n) (stripNamesTy ty) t
+    TyInstF x t ty -> TyInst x t (stripNamesTy ty)
+    IWrapF x pat arg t -> IWrap x (stripNamesTy pat) (stripNamesTy arg) t
+    ErrorF x ty -> Error x (stripNamesTy ty)
+    x -> embed x

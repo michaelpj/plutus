@@ -226,3 +226,11 @@ instance (Serialise a, Serialise (tyname a), Serialise (name a)) => Serialise (P
     decode = Program <$> decode <*> decode <*> decode
 
 instance Serialise AlexPosn
+
+instance Serialise a => Serialise (DeBruijn a) where
+    encode (DeBruijn x bs i) = encode x <> encodeBytes (BSL.toStrict bs) <> encode i
+    decode = DeBruijn <$> decode <*> fmap BSL.fromStrict decodeBytes <*> decode
+
+instance Serialise a => Serialise (TyDeBruijn a) where
+    encode (TyDeBruijn n) = encode n
+    decode = TyDeBruijn <$> decode

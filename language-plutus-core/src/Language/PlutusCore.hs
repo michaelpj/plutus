@@ -114,8 +114,14 @@ module Language.PlutusCore
     , EvaluationResult
     -- * Combining programs
     , applyProgram
+    , testCases
     ) where
 
+import           System.Directory
+import           Language.PlutusCore.StdLib.Everything
+import           Language.PlutusCore.Examples.Everything
+import           Language.PlutusCore.FsTree
+import           Codec.Serialise
 import           Control.Monad.Except
 import qualified Data.ByteString.Lazy                     as BSL
 import qualified Data.Text                                as T
@@ -238,3 +244,41 @@ defaultTypecheckerCfg = TypeConfig False mempty defaultTypecheckerGas
 applyProgram :: Program tyname name () -> Program tyname name () -> Program tyname name ()
 -- TODO: some kind of version checking
 applyProgram (Program _ _ t1) (Program _ _ t2) = Program () (defaultVersion ()) (Apply () t1 t2)
+
+prefix :: FilePath
+prefix = "/tmp/compression-experiments"
+
+handleTerm :: String -> Term TyName Name () -> IO ()
+handleTerm n t =
+    let
+        normal = show $ serialise t
+        stripped = show $ serialise $ stripNamesTerm t
+        debruijn = show $ serialise $ deBruijnTerm t
+        both = show $ serialise $ deBruijnTerm $ stripNamesTerm t
+        folder = prefix ++ "/" ++ n ++ "/"
+    in do
+        createDirectoryIfMissing True folder
+        writeFile (folder ++ "normal.bin") normal
+        writeFile (folder ++ "stripped.bin") stripped
+        writeFile (folder ++ "debruijn.bin") debruijn
+        writeFile (folder ++ "both.bin") both
+
+handleType :: String -> Type TyName () -> IO ()
+handleType n t =
+    let
+        normal = show $ serialise t
+        stripped = show $ serialise $ stripNamesTy t
+        debruijn = show $ serialise $ deBruijnTy t
+        both = show $ serialise $ deBruijnTy $ stripNamesTy t
+        folder = prefix ++ "/" ++ n ++ "/"
+    in do
+        createDirectoryIfMissing True folder
+        writeFile (folder ++ "normal.bin") normal
+        writeFile (folder ++ "stripped.bin") stripped
+        writeFile (folder ++ "debruijn.bin") debruijn
+        writeFile (folder ++ "both.bin") both
+
+testCases :: IO ()
+testCases = do
+    sequence_ $ foldPlcFolderContents (\_ subs -> sequence_ subs) (\n ty -> handleType n (runQuote ty)) (\n t -> handleTerm n (runQuote t)) stdLib
+    sequence_ $ foldPlcFolderContents (\_ subs -> sequence_ subs) (\n ty -> handleType n (runQuote ty)) (\n t -> handleTerm n (runQuote t)) examples

@@ -25,6 +25,8 @@ module Language.PlutusCore.Name ( -- * Types
                                 , HasPrettyConfigName (..)
                                 , defPrettyConfigName
                                 , debugPrettyConfigName
+                                , DeBruijn (..)
+                                , TyDeBruijn (..)
                                 ) where
 
 import           PlutusPrelude
@@ -240,3 +242,8 @@ defPrettyConfigName = PrettyConfigName False False
 -- | The 'PrettyConfigName' used for debugging: print 'Unique's, but not name attachments.
 debugPrettyConfigName :: PrettyConfigName
 debugPrettyConfigName = PrettyConfigName True False
+
+data DeBruijn a = DeBruijn { dbnAttribute :: a, dbnString :: BSL.ByteString, dbnIndex :: Natural }
+    deriving (Show, Functor, Generic)
+newtype TyDeBruijn a = TyDeBruijn (DeBruijn a)
+    deriving (Show, Functor, Generic)
