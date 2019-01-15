@@ -133,7 +133,7 @@ There is no standard library of functions that are automatically in scope for on
 Next, we pattern match on the structure of the `PendingTx` value `p` to get the Validation information we care about:
 
 ```haskell
-                  PendingTx ins outs _ _ (Slot currentSlot) _ = p -- p is bound to the pending transaction
+                  PendingTx ins outs _ _ _ (Slot currentSlot) _ = p -- p is bound to the pending transaction
 ```
 
 This binds `ins` to the list of all inputs of the current transaction, `outs` to the list of all its outputs, and `currentSlot` to the current slot (that is, to the current date).
