@@ -177,7 +177,9 @@ convExpr e = withContextM (sdToTxt $ "Converting expr:" GHC.<+> GHC.ppr e) $ do
         GHC.Var (lookupName top . GHC.getName -> Just (PIR.VarDecl _ name _)) -> pure $ PIR.Var () name
         -- Special kinds of id
         GHC.Var (GHC.idDetails -> GHC.PrimOpId po) -> convPrimitiveOp po
+        -- TODO: I suspect this is not quite the right way to handle workers and wrappers for data constructors
         GHC.Var (GHC.idDetails -> GHC.DataConWorkId dc) -> convDataConRef dc
+        GHC.Var (GHC.idDetails -> GHC.DataConWrapId dc) -> convDataConRef dc
         -- TODO: support record selectors. AFAICT GHC doesn't make a pattern-matching function that we can call, so we'd
         -- have to make the pattern match ourselves
         GHC.Var (GHC.idDetails -> GHC.RecSelId{}) -> throwPlain $ UnsupportedError "Record selectors, use pattern matching"

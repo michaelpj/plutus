@@ -24,7 +24,6 @@ import           Language.PlutusTx.Plugin
 
 import           Data.ByteString.Lazy
 import           Data.Text.Prettyprint.Doc
-import           GHC.Generics
 
 -- this module does lots of weird stuff deliberately
 {-# ANN module ("HLint: ignore"::String) #-}
@@ -296,6 +295,7 @@ recursiveTypes = testNested "recursiveTypes" [
     , goldenEval "ptreeFirstEval" [ getProgram $ ptreeFirst, getProgram $ ptreeConstruct ]
     , goldenEval "sameEmptyRoseEval" [ getProgram $ sameEmptyRose, getProgram $ emptyRoseConstruct ]
     , goldenPlc "sameEmptyRose" sameEmptyRose
+    , goldenPlc "emptyRoseId2" emptyRoseId2
   ]
 
 listConstruct :: CompiledCode [Int]
@@ -426,8 +426,8 @@ emptyRoseId1 = plc @"emptyRoseId1" (
 --
 -- > Used but not defined in the current conversion: Variable EmptyRose
 -- > [DataConWrapper]
--- emptyRoseId2 :: CompiledCode (EmptyRose -> EmptyRose)
--- emptyRoseId2 = plc @"emptyRoseId2" (
---     let (.) g f = \x -> g (f x)
---         unEmptyRose (EmptyRose xs) = xs
---     in EmptyRose . unEmptyRose)
+emptyRoseId2 :: CompiledCode (EmptyRose -> EmptyRose)
+emptyRoseId2 = plc @"emptyRoseId2" (
+     let (.) g f = \x -> g (f x)
+         unEmptyRose (EmptyRose xs) = xs
+     in EmptyRose . unEmptyRose)
