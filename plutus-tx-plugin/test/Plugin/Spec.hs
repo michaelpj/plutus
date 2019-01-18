@@ -356,6 +356,12 @@ sameEmptyRose = plc @"sameEmptyRose" (
         go = EmptyRose |. (map go .| unEmptyRose)
     in go)
 
+emptyRoseId2 :: CompiledCode (EmptyRose -> EmptyRose)
+emptyRoseId2 = plc @"emptyRoseId2" (
+     let (.) g f = \x -> g (f x)
+         unEmptyRose (EmptyRose xs) = xs
+     in EmptyRose . unEmptyRose)
+
 recursion :: TestNested
 recursion = testNested "recursiveFunctions" [
     -- currently broken, will come back to this later
@@ -421,13 +427,3 @@ emptyRoseId1 = plc @"emptyRoseId1" (
         map f (x:xs) = f x : map f xs
         go (EmptyRose xs) = EmptyRose (map go xs)
     in go)
-
--- Unexpectedly results in
---
--- > Used but not defined in the current conversion: Variable EmptyRose
--- > [DataConWrapper]
-emptyRoseId2 :: CompiledCode (EmptyRose -> EmptyRose)
-emptyRoseId2 = plc @"emptyRoseId2" (
-     let (.) g f = \x -> g (f x)
-         unEmptyRose (EmptyRose xs) = xs
-     in EmptyRose . unEmptyRose)
