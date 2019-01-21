@@ -27,7 +27,6 @@ withContextM :: (MonadError (WithContext c e) m) => m c -> m a -> m a
 throwPlain :: MonadError (WithContext c e) m => e -> m a
 stripContext :: WithContext c e -> e
 instance Language.PlutusTx.Compiler.Error.AsError (Language.PlutusTx.Compiler.Error.Error a) a
-instance Language.PlutusCore.Error.AsRenameError Language.PlutusTx.Compiler.Error.ConvError ()
 instance Language.PlutusCore.Error.AsTypeError Language.PlutusTx.Compiler.Error.ConvError ()
 instance Language.PlutusIR.Compiler.Error.AsError Language.PlutusTx.Compiler.Error.ConvError (Language.PlutusIR.Compiler.Provenance.Provenance ())
 instance Data.Text.Prettyprint.Doc.Internal.Pretty a => Data.Text.Prettyprint.Doc.Internal.Pretty (Language.PlutusTx.Compiler.Error.Error a)

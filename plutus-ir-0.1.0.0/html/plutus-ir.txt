@@ -267,11 +267,11 @@ UnsupportedError :: a -> Text -> Error a
 -- | An error from running some PLC function, lifted into this error type
 --   for convenience.
 PLCError :: (Error a) -> Error a
-class AsError r_aHtc a_aHg3 | r_aHtc -> a_aHg3
-_Error :: AsError r_aHtc a_aHg3 => Prism' r_aHtc (Error a_aHg3)
-_CompilationError :: AsError r_aHtc a_aHg3 => Prism' r_aHtc (a_aHg3, Text)
-_UnsupportedError :: AsError r_aHtc a_aHg3 => Prism' r_aHtc (a_aHg3, Text)
-_PLCError :: AsError r_aHtc a_aHg3 => Prism' r_aHtc (Error a_aHg3)
+class AsError r_aHnn a_aHae | r_aHnn -> a_aHae
+_Error :: AsError r_aHnn a_aHae => Prism' r_aHnn (Error a_aHae)
+_CompilationError :: AsError r_aHnn a_aHae => Prism' r_aHnn (a_aHae, Text)
+_UnsupportedError :: AsError r_aHnn a_aHae => Prism' r_aHnn (a_aHae, Text)
+_PLCError :: AsError r_aHnn a_aHae => Prism' r_aHnn (Error a_aHae)
 
 -- | Indicates where a value comes from.
 --   

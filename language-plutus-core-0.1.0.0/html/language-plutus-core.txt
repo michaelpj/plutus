@@ -1045,6 +1045,65 @@ instance Language.PlutusCore.Quote.MonadQuote m => Language.PlutusCore.Quote.Mon
 instance Language.PlutusCore.Quote.MonadQuote m => Language.PlutusCore.Quote.MonadQuote (Hedgehog.Internal.Gen.GenT m)
 instance Language.PlutusCore.Quote.MonadQuote m => Language.PlutusCore.Quote.MonadQuote (Hedgehog.Internal.Property.PropertyT m)
 
+
+-- | <tt>unit</tt> and related functions.
+module Language.PlutusCore.StdLib.Data.Unit
+
+-- | '()' as a PLC type.
+--   
+--   <pre>
+--   all (A :: *). A -&gt; A
+--   </pre>
+getBuiltinUnit :: Quote (Type TyName ())
+
+-- | '()' as a PLC term.
+--   
+--   <pre>
+--   /\(A :: *) -&gt; \(x : A) -&gt; x
+--   </pre>
+getBuiltinUnitval :: Quote (Value TyName Name ())
+
+
+-- | Normalization of PLC entities.
+module Language.PlutusCore.Normalize
+
+-- | The monad transformer that type normalization runs in.
+data NormalizeTypeT m tyname ann a
+
+-- | Run a <tt>NormalizeTypeM</tt> computation.
+runNormalizeTypeM :: m () -> NormalizeTypeT m tyname ann a -> m a
+
+-- | Run a <tt>NormalizeTypeM</tt> computation without dealing with gas.
+runNormalizeTypeDownM :: MonadQuote m => NormalizeTypeT m tyname ann a -> m a
+
+-- | Run a gas-consuming <tt>NormalizeTypeM</tt> computation. Count a
+--   single substitution step by subtracting <tt>1</tt> from available gas
+--   or fail when there is no available gas.
+runNormalizeTypeGasM :: MonadQuote m => Gas -> NormalizeTypeT (StateT Gas (MaybeT m)) tyname ann a -> m (Maybe a)
+
+-- | Locally extend a <a>TypeVarEnv</a> in a <tt>NormalizeTypeM</tt>
+--   computation.
+withExtendedTypeVarEnv :: (HasUnique (tyname ann) TypeUnique, Monad m) => tyname ann -> NormalizedType tyname ann -> NormalizeTypeT m tyname ann a -> NormalizeTypeT m tyname ann a
+
+-- | Normalize a <a>Type</a> in the <tt>NormalizeTypeM</tt> monad.
+normalizeTypeM :: (HasUnique (tyname ann) TypeUnique, MonadQuote m) => Type tyname ann -> NormalizeTypeT m tyname ann (NormalizedType tyname ann)
+normalizeTypeDown :: (HasUnique (tyname ann) TypeUnique, MonadQuote m) => Type tyname ann -> m (NormalizedType tyname ann)
+
+-- | Substitute a type for a variable in a type and normalize in the
+--   <tt>NormalizeTypeM</tt> monad.
+substituteNormalizeTypeM :: (HasUnique (tyname ann) TypeUnique, MonadQuote m) => NormalizedType tyname ann -> tyname ann -> Type tyname ann -> NormalizeTypeT m tyname ann (NormalizedType tyname ann)
+
+-- | Normalize every <a>Type</a> in a <a>Term</a>.
+normalizeTypesIn :: (HasUnique (tyname ann) TypeUnique, MonadQuote m) => Term tyname name ann -> NormalizeTypeT m tyname ann (Term tyname name ann)
+instance Language.PlutusCore.Quote.MonadQuote m => Language.PlutusCore.Quote.MonadQuote (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
+instance Control.Monad.State.Class.MonadState s m => Control.Monad.State.Class.MonadState s (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
+instance GHC.Base.Monad m => Control.Monad.Reader.Class.MonadReader (Language.PlutusCore.Normalize.NormalizeTypeEnv m tyname ann) (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
+instance GHC.Base.MonadPlus m => GHC.Base.MonadPlus (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
+instance GHC.Base.Monad m => GHC.Base.Monad (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
+instance GHC.Base.Alternative m => GHC.Base.Alternative (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
+instance GHC.Base.Applicative m => GHC.Base.Applicative (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
+instance GHC.Base.Functor m => GHC.Base.Functor (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
+
 module Language.PlutusCore.MkPlc
 
 -- | A "variable declaration", i.e. a name and a type for a variable.
@@ -1179,6 +1238,139 @@ instance GHC.Generics.Generic (Language.PlutusCore.MkPlc.VarDecl tyname name a)
 instance (GHC.Classes.Ord (tyname a), GHC.Classes.Eq a, GHC.Classes.Eq (name a)) => GHC.Classes.Eq (Language.PlutusCore.MkPlc.VarDecl tyname name a)
 instance (GHC.Show.Show a, GHC.Show.Show (name a), GHC.Show.Show (tyname a)) => GHC.Show.Show (Language.PlutusCore.MkPlc.VarDecl tyname name a)
 instance (GHC.Base.Functor name, GHC.Base.Functor tyname) => GHC.Base.Functor (Language.PlutusCore.MkPlc.VarDecl tyname name)
+
+
+-- | <tt>tuple</tt>s of various sizees and related functions.
+module Language.PlutusCore.StdLib.Meta.Data.Tuple
+
+-- | A Plutus Core tuple.
+data Tuple ann
+Tuple :: [Type TyName ann] -> Term TyName Name ann -> Tuple ann
+
+-- | The types of elements of a tuple.
+[_tupleElementTypes] :: Tuple ann -> [Type TyName ann]
+
+-- | A term representation of the tuple.
+[_tupleTerm] :: Tuple ann -> Term TyName Name ann
+
+-- | Get the type of a <a>Tuple</a>.
+--   
+--   <pre>
+--   getTupleType _ (Tuple [a1, ... , an] _) = all r. (a1 -&gt; ... -&gt; an -&gt; r) -&gt; r
+--   </pre>
+getTupleType :: MonadQuote m => ann -> Tuple ann -> m (Type TyName ann)
+
+-- | Get the type of the ith element of a <a>Tuple</a> along with the
+--   element itself.
+--   
+--   <pre>
+--   tupleTypeTermAt _ i (Tuple [a0, ... , an] term) =
+--       (ai, term {ai} (\(x0 : a0) ... (xn : an) -&gt; xi))
+--   </pre>
+tupleTypeTermAt :: MonadQuote m => ann -> Int -> Tuple ann -> m (Type TyName ann, Term TyName Name ann)
+
+-- | Get the ith element of a <a>Tuple</a>.
+tupleTermAt :: MonadQuote m => ann -> Int -> Tuple ann -> m (Term TyName Name ann)
+
+-- | Get the ith element of a <a>Tuple</a> as a <a>TermDef</a>.
+tupleDefAt :: MonadQuote m => ann -> Int -> Name ann -> Tuple ann -> m (TermDef TyName Name ann)
+
+-- | Bind all elements of a <a>Tuple</a> inside a <a>Term</a>.
+--   
+--   <pre>
+--   bindTuple _ [x_1, ... , x_n] (Tuple [a1, ... , an] term) body =
+--       (\(tup : all r. (a_1 -&gt; ... -&gt; a_n -&gt; r) -&gt; r) -&gt;
+--         let x_1 = _1 tup
+--             ...
+--             x_n = _n tup
+--           in body
+--       ) term
+--   </pre>
+bindTuple :: MonadQuote m => ann -> [Name ann] -> Tuple ann -> Term TyName Name ann -> m (Term TyName Name ann)
+
+-- | Given an arity <tt>n</tt>, create the n-ary product type.
+--   
+--   <pre>
+--   (T_1 :: *) .. (T_n :: *) . all (R :: *) . (T_1 -&gt; .. -&gt; T_n -&gt; R) -&gt; R
+--   </pre>
+getBuiltinProdN :: MonadQuote m => Int -> m (Type TyName ())
+
+-- | Given an arity <tt>n</tt>, create the constructor for n-ary products.
+--   
+--   <pre>
+--   /(T_1 :: *) .. (T_n :: *) .
+--       (arg_1 : T_1) .. (arg_n : T_n) .
+--           /(R :: *).
+--               (case : T_1 -&gt; .. -&gt; T_n -&gt; R) -&gt; case arg_1 .. arg_n
+--   </pre>
+getBuiltinProdNConstructor :: MonadQuote m => Int -> m (Term TyName Name ())
+
+-- | Given an arity <tt>n</tt> and an index <tt>i</tt>, create a function
+--   for accessing the i'th component of a n-tuple.
+--   
+--   <pre>
+--   /(T_1 :: *) .. (T_n :: *) .
+--       (tuple : all (R :: *) . (T_1 -&gt; .. -&gt; T_n -&gt; R) -&gt; R)) .
+--           tuple {T_i} ((arg_1 : T_1) .. (arg_n : T_n) . arg_i)
+--   </pre>
+getBuiltinProdNAccessor :: MonadQuote m => Int -> Int -> m (Term TyName Name ())
+
+
+-- | Church-encoded <tt>nat</tt> and related functions.
+module Language.PlutusCore.StdLib.Data.ChurchNat
+
+-- | Church-encoded <tt>Nat</tt> as a PLC type.
+--   
+--   <pre>
+--   all (r :: *). r -&gt; (r -&gt; r) -&gt; r
+--   </pre>
+getBuiltinChurchNat :: Quote (Type TyName ())
+
+-- | Church-encoded '0' as a PLC term.
+--   
+--   <pre>
+--   /\(r :: *) -&gt; \(z : r) (f : r -&gt; r) -&gt; z
+--   </pre>
+getBuiltinChurchZero :: Quote (Term TyName Name ())
+
+-- | Church-encoded <a>succ</a> as a PLC term.
+--   
+--   <pre>
+--   \(n : nat) -&gt; /\(r :: *) -&gt; \(z : r) (f : r -&gt; r) -&gt; f (n {r} z f)
+--   </pre>
+getBuiltinChurchSucc :: Quote (Term TyName Name ())
+
+
+-- | <tt>boolean</tt> and related functions.
+module Language.PlutusCore.StdLib.Data.Bool
+
+-- | <a>Bool</a> as a PLC type.
+--   
+--   <pre>
+--   all (A :: *). A -&gt; A -&gt; A
+--   </pre>
+getBuiltinBool :: Quote (Type TyName ())
+
+-- | <a>True</a> as a PLC term.
+--   
+--   <pre>
+--   /\(A :: *) -&gt; \(x y : A) -&gt; x
+--   </pre>
+getBuiltinTrue :: Quote (Value TyName Name ())
+
+-- | <a>False</a> as a PLC term.
+--   
+--   <pre>
+--   /\(A :: *) -&gt; \(x y : A) -&gt; y
+--   </pre>
+getBuiltinFalse :: Quote (Value TyName Name ())
+
+-- | <tt>if_then_else_</tt> as a PLC term.
+--   
+--   <pre>
+--   /\(A :: *) -&gt; \(b : Bool) (x y : () -&gt; A) -&gt; b {() -&gt; A} x y ()
+--   </pre>
+getBuiltinIf :: Quote (Value TyName Name ())
 
 
 -- | Machinery defined in this module allows to export mulptiple Plutus
@@ -1449,172 +1641,6 @@ instance GHC.Show.Show Language.PlutusCore.StdLib.Type.IndicesLengthsMismatchExc
 instance GHC.Exception.Exception Language.PlutusCore.StdLib.Type.IndicesLengthsMismatchException
 
 
--- | This module defines a common type various evaluation machine use to
---   return their results.
-module Language.PlutusCore.Evaluation.Result
-
--- | The parameterized type of results various evaluation engines return.
-data EvaluationResultF a
-EvaluationSuccess :: a -> EvaluationResultF a
-EvaluationFailure :: EvaluationResultF a
-
--- | The type of results various evaluation engines return.
-type EvaluationResult = EvaluationResultF (Value TyName Name ())
-
--- | Map <a>EvaluationSuccess</a> to <a>Just</a> and
---   <a>EvaluationFailure</a> to <a>Nothing</a>.
-evaluationResultToMaybe :: EvaluationResult -> Maybe (Value TyName Name ())
-
--- | Map <a>Just</a> to <a>EvaluationSuccess</a> and <a>Nothing</a> to
---   <a>EvaluationFailure</a>.
-maybeToEvaluationResult :: Maybe (Value TyName Name ()) -> EvaluationResult
-instance Data.Traversable.Traversable Language.PlutusCore.Evaluation.Result.EvaluationResultF
-instance Data.Foldable.Foldable Language.PlutusCore.Evaluation.Result.EvaluationResultF
-instance GHC.Base.Functor Language.PlutusCore.Evaluation.Result.EvaluationResultF
-instance GHC.Classes.Eq a => GHC.Classes.Eq (Language.PlutusCore.Evaluation.Result.EvaluationResultF a)
-instance GHC.Show.Show a => GHC.Show.Show (Language.PlutusCore.Evaluation.Result.EvaluationResultF a)
-instance PlutusPrelude.PrettyBy config (Language.PlutusCore.Type.Value Language.PlutusCore.Name.TyName Language.PlutusCore.Name.Name ()) => PlutusPrelude.PrettyBy config Language.PlutusCore.Evaluation.Result.EvaluationResult
-instance Data.Text.Prettyprint.Doc.Internal.Pretty Language.PlutusCore.Evaluation.Result.EvaluationResult
-instance GHC.Base.Applicative Language.PlutusCore.Evaluation.Result.EvaluationResultF
-instance GHC.Base.Monad Language.PlutusCore.Evaluation.Result.EvaluationResultF
-
-module Common
-
--- | A <a>TestTree</a> of tests under some name prefix.
-type TestNested = Reader [String] TestTree
-
--- | Run a <a>TestTree</a> of tests with a given name prefix.
-runTestNestedIn :: [String] -> TestNested -> TestTree
-
--- | Run a <a>TestTree</a> of tests with an empty prefix.
-runTestNested :: TestNested -> TestTree
-
--- | Descend into a name prefix.
-testNested :: String -> [TestNested] -> TestNested
-
--- | Check the contents of a file against a <a>Text</a>.
-goldenVsText :: TestName -> FilePath -> Text -> TestTree
-
--- | Check the contents of a file against a <a>Text</a>.
-goldenVsTextM :: TestName -> FilePath -> IO Text -> TestTree
-
--- | Check the contents of a file against a <a>Doc</a>.
-goldenVsDoc :: TestName -> FilePath -> Doc ann -> TestTree
-
--- | Check the contents of a file against a <a>Doc</a>.
-goldenVsDocM :: TestName -> FilePath -> IO (Doc ann) -> TestTree
-
--- | Check the contents of a file under a name prefix against a
---   <a>Text</a>.
-nestedGoldenVsText :: TestName -> Text -> TestNested
-
--- | Check the contents of a file under a name prefix against a
---   <a>Text</a>.
-nestedGoldenVsTextM :: TestName -> IO Text -> TestNested
-
--- | Check the contents of a file under a name prefix against a
---   <a>Text</a>.
-nestedGoldenVsDoc :: TestName -> Doc ann -> TestNested
-
--- | Check the contents of a file under a name prefix against a
---   <a>Text</a>.
-nestedGoldenVsDocM :: TestName -> IO (Doc ann) -> TestNested
-
-
--- | <tt>tuple</tt>s of various sizees and related functions.
-module Language.PlutusCore.StdLib.Meta.Data.Tuple
-
--- | A Plutus Core tuple.
-data Tuple ann
-Tuple :: [Type TyName ann] -> Term TyName Name ann -> Tuple ann
-
--- | The types of elements of a tuple.
-[_tupleElementTypes] :: Tuple ann -> [Type TyName ann]
-
--- | A term representation of the tuple.
-[_tupleTerm] :: Tuple ann -> Term TyName Name ann
-
--- | Get the type of a <a>Tuple</a>.
---   
---   <pre>
---   getTupleType _ (Tuple [a1, ... , an] _) = all r. (a1 -&gt; ... -&gt; an -&gt; r) -&gt; r
---   </pre>
-getTupleType :: MonadQuote m => ann -> Tuple ann -> m (Type TyName ann)
-
--- | Get the type of the ith element of a <a>Tuple</a> along with the
---   element itself.
---   
---   <pre>
---   tupleTypeTermAt _ i (Tuple [a0, ... , an] term) =
---       (ai, term {ai} (\(x0 : a0) ... (xn : an) -&gt; xi))
---   </pre>
-tupleTypeTermAt :: MonadQuote m => ann -> Int -> Tuple ann -> m (Type TyName ann, Term TyName Name ann)
-
--- | Get the ith element of a <a>Tuple</a>.
-tupleTermAt :: MonadQuote m => ann -> Int -> Tuple ann -> m (Term TyName Name ann)
-
--- | Get the ith element of a <a>Tuple</a> as a <a>TermDef</a>.
-tupleDefAt :: MonadQuote m => ann -> Int -> Name ann -> Tuple ann -> m (TermDef TyName Name ann)
-
--- | Bind all elements of a <a>Tuple</a> inside a <a>Term</a>.
---   
---   <pre>
---   bindTuple _ [x_1, ... , x_n] (Tuple [a1, ... , an] term) body =
---       (\(tup : all r. (a_1 -&gt; ... -&gt; a_n -&gt; r) -&gt; r) -&gt;
---         let x_1 = _1 tup
---             ...
---             x_n = _n tup
---           in body
---       ) term
---   </pre>
-bindTuple :: MonadQuote m => ann -> [Name ann] -> Tuple ann -> Term TyName Name ann -> m (Term TyName Name ann)
-
--- | Given an arity <tt>n</tt>, create the n-ary product type.
---   
---   <pre>
---   (T_1 :: *) .. (T_n :: *) . all (R :: *) . (T_1 -&gt; .. -&gt; T_n -&gt; R) -&gt; R
---   </pre>
-getBuiltinProdN :: MonadQuote m => Int -> m (Type TyName ())
-
--- | Given an arity <tt>n</tt>, create the constructor for n-ary products.
---   
---   <pre>
---   /(T_1 :: *) .. (T_n :: *) .
---       (arg_1 : T_1) .. (arg_n : T_n) .
---           /(R :: *).
---               (case : T_1 -&gt; .. -&gt; T_n -&gt; R) -&gt; case arg_1 .. arg_n
---   </pre>
-getBuiltinProdNConstructor :: MonadQuote m => Int -> m (Term TyName Name ())
-
--- | Given an arity <tt>n</tt> and an index <tt>i</tt>, create a function
---   for accessing the i'th component of a n-tuple.
---   
---   <pre>
---   /(T_1 :: *) .. (T_n :: *) .
---       (tuple : all (R :: *) . (T_1 -&gt; .. -&gt; T_n -&gt; R) -&gt; R)) .
---           tuple {T_i} ((arg_1 : T_1) .. (arg_n : T_n) . arg_i)
---   </pre>
-getBuiltinProdNAccessor :: MonadQuote m => Int -> Int -> m (Term TyName Name ())
-
-
--- | <tt>unit</tt> and related functions.
-module Language.PlutusCore.StdLib.Data.Unit
-
--- | '()' as a PLC type.
---   
---   <pre>
---   all (A :: *). A -&gt; A
---   </pre>
-getBuiltinUnit :: Quote (Type TyName ())
-
--- | '()' as a PLC term.
---   
---   <pre>
---   /\(A :: *) -&gt; \(x : A) -&gt; x
---   </pre>
-getBuiltinUnitval :: Quote (Value TyName Name ())
-
-
 -- | Combinators.
 module Language.PlutusCore.StdLib.Data.Function
 
@@ -1693,102 +1719,76 @@ FunctionDef :: ann -> name ann -> FunctionType tyname ann -> Term tyname name an
 getBuiltinMutualFixOf :: ann -> [FunctionDef TyName Name ann] -> Quote (Tuple ann)
 
 
--- | Church-encoded <tt>nat</tt> and related functions.
-module Language.PlutusCore.StdLib.Data.ChurchNat
+-- | This module defines a common type various evaluation machine use to
+--   return their results.
+module Language.PlutusCore.Evaluation.Result
 
--- | Church-encoded <tt>Nat</tt> as a PLC type.
---   
---   <pre>
---   all (r :: *). r -&gt; (r -&gt; r) -&gt; r
---   </pre>
-getBuiltinChurchNat :: Quote (Type TyName ())
+-- | The parameterized type of results various evaluation engines return.
+data EvaluationResultF a
+EvaluationSuccess :: a -> EvaluationResultF a
+EvaluationFailure :: EvaluationResultF a
 
--- | Church-encoded '0' as a PLC term.
---   
---   <pre>
---   /\(r :: *) -&gt; \(z : r) (f : r -&gt; r) -&gt; z
---   </pre>
-getBuiltinChurchZero :: Quote (Term TyName Name ())
+-- | The type of results various evaluation engines return.
+type EvaluationResult = EvaluationResultF (Value TyName Name ())
 
--- | Church-encoded <a>succ</a> as a PLC term.
---   
---   <pre>
---   \(n : nat) -&gt; /\(r :: *) -&gt; \(z : r) (f : r -&gt; r) -&gt; f (n {r} z f)
---   </pre>
-getBuiltinChurchSucc :: Quote (Term TyName Name ())
+-- | Map <a>EvaluationSuccess</a> to <a>Just</a> and
+--   <a>EvaluationFailure</a> to <a>Nothing</a>.
+evaluationResultToMaybe :: EvaluationResult -> Maybe (Value TyName Name ())
 
+-- | Map <a>Just</a> to <a>EvaluationSuccess</a> and <a>Nothing</a> to
+--   <a>EvaluationFailure</a>.
+maybeToEvaluationResult :: Maybe (Value TyName Name ()) -> EvaluationResult
+instance Data.Traversable.Traversable Language.PlutusCore.Evaluation.Result.EvaluationResultF
+instance Data.Foldable.Foldable Language.PlutusCore.Evaluation.Result.EvaluationResultF
+instance GHC.Base.Functor Language.PlutusCore.Evaluation.Result.EvaluationResultF
+instance GHC.Classes.Eq a => GHC.Classes.Eq (Language.PlutusCore.Evaluation.Result.EvaluationResultF a)
+instance GHC.Show.Show a => GHC.Show.Show (Language.PlutusCore.Evaluation.Result.EvaluationResultF a)
+instance PlutusPrelude.PrettyBy config (Language.PlutusCore.Type.Value Language.PlutusCore.Name.TyName Language.PlutusCore.Name.Name ()) => PlutusPrelude.PrettyBy config Language.PlutusCore.Evaluation.Result.EvaluationResult
+instance Data.Text.Prettyprint.Doc.Internal.Pretty Language.PlutusCore.Evaluation.Result.EvaluationResult
+instance GHC.Base.Applicative Language.PlutusCore.Evaluation.Result.EvaluationResultF
+instance GHC.Base.Monad Language.PlutusCore.Evaluation.Result.EvaluationResultF
 
--- | <tt>boolean</tt> and related functions.
-module Language.PlutusCore.StdLib.Data.Bool
+module Common
 
--- | <a>Bool</a> as a PLC type.
---   
---   <pre>
---   all (A :: *). A -&gt; A -&gt; A
---   </pre>
-getBuiltinBool :: Quote (Type TyName ())
+-- | A <a>TestTree</a> of tests under some name prefix.
+type TestNested = Reader [String] TestTree
 
--- | <a>True</a> as a PLC term.
---   
---   <pre>
---   /\(A :: *) -&gt; \(x y : A) -&gt; x
---   </pre>
-getBuiltinTrue :: Quote (Value TyName Name ())
+-- | Run a <a>TestTree</a> of tests with a given name prefix.
+runTestNestedIn :: [String] -> TestNested -> TestTree
 
--- | <a>False</a> as a PLC term.
---   
---   <pre>
---   /\(A :: *) -&gt; \(x y : A) -&gt; y
---   </pre>
-getBuiltinFalse :: Quote (Value TyName Name ())
+-- | Run a <a>TestTree</a> of tests with an empty prefix.
+runTestNested :: TestNested -> TestTree
 
--- | <tt>if_then_else_</tt> as a PLC term.
---   
---   <pre>
---   /\(A :: *) -&gt; \(b : Bool) (x y : () -&gt; A) -&gt; b {() -&gt; A} x y ()
---   </pre>
-getBuiltinIf :: Quote (Value TyName Name ())
+-- | Descend into a name prefix.
+testNested :: String -> [TestNested] -> TestNested
 
+-- | Check the contents of a file against a <a>Text</a>.
+goldenVsText :: TestName -> FilePath -> Text -> TestTree
 
--- | Normalization of PLC entities.
-module Language.PlutusCore.Normalize
+-- | Check the contents of a file against a <a>Text</a>.
+goldenVsTextM :: TestName -> FilePath -> IO Text -> TestTree
 
--- | The monad transformer that type normalization runs in.
-data NormalizeTypeT m tyname ann a
+-- | Check the contents of a file against a <a>Doc</a>.
+goldenVsDoc :: TestName -> FilePath -> Doc ann -> TestTree
 
--- | Run a <tt>NormalizeTypeM</tt> computation.
-runNormalizeTypeM :: m () -> NormalizeTypeT m tyname ann a -> m a
+-- | Check the contents of a file against a <a>Doc</a>.
+goldenVsDocM :: TestName -> FilePath -> IO (Doc ann) -> TestTree
 
--- | Run a <tt>NormalizeTypeM</tt> computation without dealing with gas.
-runNormalizeTypeDownM :: MonadQuote m => NormalizeTypeT m tyname ann a -> m a
+-- | Check the contents of a file under a name prefix against a
+--   <a>Text</a>.
+nestedGoldenVsText :: TestName -> Text -> TestNested
 
--- | Run a gas-consuming <tt>NormalizeTypeM</tt> computation. Count a
---   single substitution step by subtracting <tt>1</tt> from available gas
---   or fail when there is no available gas.
-runNormalizeTypeGasM :: MonadQuote m => Gas -> NormalizeTypeT (StateT Gas (MaybeT m)) tyname ann a -> m (Maybe a)
+-- | Check the contents of a file under a name prefix against a
+--   <a>Text</a>.
+nestedGoldenVsTextM :: TestName -> IO Text -> TestNested
 
--- | Locally extend a <a>TypeVarEnv</a> in a <tt>NormalizeTypeM</tt>
---   computation.
-withExtendedTypeVarEnv :: (HasUnique (tyname ann) TypeUnique, Monad m) => tyname ann -> NormalizedType tyname ann -> NormalizeTypeT m tyname ann a -> NormalizeTypeT m tyname ann a
+-- | Check the contents of a file under a name prefix against a
+--   <a>Text</a>.
+nestedGoldenVsDoc :: TestName -> Doc ann -> TestNested
 
--- | Normalize a <a>Type</a> in the <tt>NormalizeTypeM</tt> monad.
-normalizeTypeM :: (HasUnique (tyname ann) TypeUnique, MonadQuote m) => Type tyname ann -> NormalizeTypeT m tyname ann (NormalizedType tyname ann)
-normalizeTypeDown :: (HasUnique (tyname ann) TypeUnique, MonadQuote m) => Type tyname ann -> m (NormalizedType tyname ann)
-
--- | Substitute a type for a variable in a type and normalize in the
---   <tt>NormalizeTypeM</tt> monad.
-substituteNormalizeTypeM :: (HasUnique (tyname ann) TypeUnique, MonadQuote m) => NormalizedType tyname ann -> tyname ann -> Type tyname ann -> NormalizeTypeT m tyname ann (NormalizedType tyname ann)
-
--- | Normalize every <a>Type</a> in a <a>Term</a>.
-normalizeTypesIn :: (HasUnique (tyname ann) TypeUnique, MonadQuote m) => Term tyname name ann -> NormalizeTypeT m tyname ann (Term tyname name ann)
-instance Language.PlutusCore.Quote.MonadQuote m => Language.PlutusCore.Quote.MonadQuote (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
-instance Control.Monad.State.Class.MonadState s m => Control.Monad.State.Class.MonadState s (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
-instance GHC.Base.Monad m => Control.Monad.Reader.Class.MonadReader (Language.PlutusCore.Normalize.NormalizeTypeEnv m tyname ann) (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
-instance GHC.Base.MonadPlus m => GHC.Base.MonadPlus (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
-instance GHC.Base.Monad m => GHC.Base.Monad (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
-instance GHC.Base.Alternative m => GHC.Base.Alternative (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
-instance GHC.Base.Applicative m => GHC.Base.Applicative (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
-instance GHC.Base.Functor m => GHC.Base.Functor (Language.PlutusCore.Normalize.NormalizeTypeT m tyname ann)
+-- | Check the contents of a file under a name prefix against a
+--   <a>Text</a>.
+nestedGoldenVsDocM :: TestName -> IO (Doc ann) -> TestNested
 
 module Language.PlutusCore.Check.Uniques
 checkProgram :: (Ord a, HasUnique (name a) TermUnique, HasUnique (tyname a) TypeUnique, AsUniqueError e a, MonadError e m) => (UniqueError a -> Bool) -> Program tyname name a -> m ()
@@ -2694,39 +2694,6 @@ newtype Gas
 Gas :: Natural -> Gas
 [unGas] :: Gas -> Natural
 
--- | Annotate a PLC program, so that all names are annotated with their
---   types/kinds.
-annotateProgram :: (AsRenameError e a, MonadError e m) => Program TyName Name a -> m (Program TyNameWithKind NameWithType a)
-
--- | Annotate a PLC term, so that all names are annotated with their
---   types/kinds.
-annotateTerm :: (AsRenameError e a, MonadError e m) => Term TyName Name a -> m (Term TyNameWithKind NameWithType a)
-
--- | Annotate a PLC type, so that all names are annotated with their
---   types/kinds.
-annotateType :: (AsRenameError e a, MonadError e m) => Type TyName a -> m (Type TyNameWithKind a)
-
--- | A <a>RenameError</a> is thrown when a free variable is encountered
---   during rewriting.
-data RenameError a
-UnboundVar :: (Name a) -> RenameError a
-UnboundTyVar :: (TyName a) -> RenameError a
-class AsRenameError r_a1inh a_a1idN | r_a1inh -> a_a1idN
-_RenameError :: AsRenameError r_a1inh a_a1idN => Prism' r_a1inh (RenameError a_a1idN)
-_UnboundVar :: AsRenameError r_a1inh a_a1idN => Prism' r_a1inh (Name a_a1idN)
-_UnboundTyVar :: AsRenameError r_a1inh a_a1idN => Prism' r_a1inh (TyName a_a1idN)
-newtype TyNameWithKind a
-TyNameWithKind :: TyName (a, Kind a) -> TyNameWithKind a
-[unTyNameWithKind] :: TyNameWithKind a -> TyName (a, Kind a)
-newtype NameWithType a
-NameWithType :: (Name (a, RenamedType a)) -> NameWithType a
-data TypeState a
-TypeState :: IntMap (RenamedType a) -> IntMap (Kind a) -> TypeState a
-[_terms] :: TypeState a -> IntMap (RenamedType a)
-[_types] :: TypeState a -> IntMap (Kind a)
-type RenamedType a = Type TyNameWithKind a
-type RenamedTerm a = Term TyNameWithKind NameWithType a
-
 -- | Rename <a>Unique</a>s so that they're globally unique. In case there
 --   are any free variables, they must be left untouched. Must always
 --   assign new names to bound variables, so that <tt>rename</tt> can be
@@ -2745,13 +2712,13 @@ isTypeValue :: Type tyname a -> Bool
 isTermValue :: Term tyname name a -> Bool
 
 -- | Type-check a program, returning a normalized type.
-typecheckProgram :: (AsTypeError e a, MonadError e m, MonadQuote m) => TypeConfig -> Program TyNameWithKind NameWithType a -> m (NormalizedType TyNameWithKind ())
+typecheckProgram :: (AsTypeError e a, MonadError e m, MonadQuote m) => TypeConfig -> Program TyName Name a -> m (NormalizedType TyName ())
 
 -- | Type-check a term, returning a normalized type.
-typecheckTerm :: (AsTypeError e a, MonadError e m, MonadQuote m) => TypeConfig -> Term TyNameWithKind NameWithType a -> m (NormalizedType TyNameWithKind ())
+typecheckTerm :: (AsTypeError e a, MonadError e m, MonadQuote m) => TypeConfig -> Term TyName Name a -> m (NormalizedType TyName ())
 
 -- | Kind-check a PLC type.
-kindCheck :: (AsTypeError e a, MonadError e m, MonadQuote m) => TypeConfig -> Type TyNameWithKind a -> m (Kind ())
+kindCheck :: (AsTypeError e a, MonadError e m, MonadQuote m) => TypeConfig -> Type TyName a -> m (Kind ())
 
 -- | Extract the <a>TypeScheme</a> from a <a>DynamicBuiltinNameMeaning</a>
 --   and convert it to the corresponding <tt>Type TyName</tt> for each row
@@ -2768,35 +2735,41 @@ fileNormalizeType :: Bool -> FilePath -> IO Text
 fileTypeCfg :: PrettyConfigPlc -> FilePath -> IO Text
 
 -- | Print the type of a program contained in a <tt>ByteString</tt>
-printType :: (AsParseError e AlexPosn, AsUniqueError e AlexPosn, AsRenameError e AlexPosn, AsTypeError e AlexPosn, MonadError e m) => ByteString -> m Text
+printType :: (AsParseError e AlexPosn, AsUniqueError e AlexPosn, AsTypeError e AlexPosn, MonadError e m) => ByteString -> m Text
 
 -- | Print the type of a program contained in a <tt>ByteString</tt>
-printNormalizeType :: (AsParseError e AlexPosn, AsUniqueError e AlexPosn, AsRenameError e AlexPosn, AsTypeError e AlexPosn, MonadError e m) => Bool -> ByteString -> m Text
+printNormalizeType :: (AsParseError e AlexPosn, AsUniqueError e AlexPosn, AsTypeError e AlexPosn, MonadError e m) => Bool -> ByteString -> m Text
 
 -- | An internal error occurred during type checking.
 data InternalTypeError a
 OpenTypeOfBuiltin :: (Type TyName ()) -> (Builtin ()) -> InternalTypeError a
 data TypeError a
-KindMismatch :: a -> (Type TyNameWithKind ()) -> (Kind ()) -> (Kind ()) -> TypeError a
-TypeMismatch :: a -> (Term TyNameWithKind NameWithType ()) -> (Type TyNameWithKind ()) -> (NormalizedType TyNameWithKind ()) -> TypeError a
+KindMismatch :: a -> (Type TyName ()) -> (Kind ()) -> (Kind ()) -> TypeError a
+TypeMismatch :: a -> (Term TyName Name ()) -> (Type TyName ()) -> (NormalizedType TyName ()) -> TypeError a
 UnknownDynamicBuiltinName :: a -> UnknownDynamicBuiltinNameError -> TypeError a
 InternalTypeErrorE :: a -> (InternalTypeError a) -> TypeError a
+FreeTypeVariableE :: (TyName a) -> TypeError a
+FreeVariableE :: (Name a) -> TypeError a
 OutOfGas :: TypeError a
-class AsTypeError r_a1iTb a_a1iAz | r_a1iTb -> a_a1iAz
-_TypeError :: AsTypeError r_a1iTb a_a1iAz => Prism' r_a1iTb (TypeError a_a1iAz)
-_KindMismatch :: AsTypeError r_a1iTb a_a1iAz => Prism' r_a1iTb (a_a1iAz, Type TyNameWithKind (), Kind (), Kind ())
-_TypeMismatch :: AsTypeError r_a1iTb a_a1iAz => Prism' r_a1iTb (a_a1iAz, Term TyNameWithKind NameWithType (), Type TyNameWithKind (), NormalizedType TyNameWithKind ())
-_UnknownDynamicBuiltinName :: AsTypeError r_a1iTb a_a1iAz => Prism' r_a1iTb (a_a1iAz, UnknownDynamicBuiltinNameError)
-_InternalTypeErrorE :: AsTypeError r_a1iTb a_a1iAz => Prism' r_a1iTb (a_a1iAz, InternalTypeError a_a1iAz)
-_OutOfGas :: AsTypeError r_a1iTb a_a1iAz => Prism' r_a1iTb ()
+class AsTypeError r_a1rxj a_a1rbl | r_a1rxj -> a_a1rbl
+_TypeError :: AsTypeError r_a1rxj a_a1rbl => Prism' r_a1rxj (TypeError a_a1rbl)
+_KindMismatch :: AsTypeError r_a1rxj a_a1rbl => Prism' r_a1rxj (a_a1rbl, Type TyName (), Kind (), Kind ())
+_TypeMismatch :: AsTypeError r_a1rxj a_a1rbl => Prism' r_a1rxj (a_a1rbl, Term TyName Name (), Type TyName (), NormalizedType TyName ())
+_UnknownDynamicBuiltinName :: AsTypeError r_a1rxj a_a1rbl => Prism' r_a1rxj (a_a1rbl, UnknownDynamicBuiltinNameError)
+_InternalTypeErrorE :: AsTypeError r_a1rxj a_a1rbl => Prism' r_a1rxj (a_a1rbl, InternalTypeError a_a1rbl)
+_FreeTypeVariableE :: AsTypeError r_a1rxj a_a1rbl => Prism' r_a1rxj (TyName a_a1rbl)
+_FreeVariableE :: AsTypeError r_a1rxj a_a1rbl => Prism' r_a1rxj (Name a_a1rbl)
+_OutOfGas :: AsTypeError r_a1rxj a_a1rbl => Prism' r_a1rxj ()
 
 -- | Configuration of the type checker.
 data TypeConfig
-TypeConfig :: Bool -> DynamicBuiltinNameTypes -> Maybe Gas -> TypeConfig
+TypeConfig :: Bool -> DynamicBuiltinNameTypes -> TyVarKinds -> VarTypes -> Maybe Gas -> TypeConfig
 
 -- | Whether to normalize type annotations.
 [_typeConfigNormalize] :: TypeConfig -> Bool
 [_typeConfigDynBuiltinNameTypes] :: TypeConfig -> DynamicBuiltinNameTypes
+[_typeConfigTyVarKinds] :: TypeConfig -> TyVarKinds
+[_typeConfigVarTypes] :: TypeConfig -> VarTypes
 
 -- | The upper limit on the length of type reductions. If set to
 --   <a>Nothing</a>, type reductions will be unbounded.
@@ -2804,21 +2777,21 @@ TypeConfig :: Bool -> DynamicBuiltinNameTypes -> Maybe Gas -> TypeConfig
 
 -- | Mapping from <a>DynamicBuiltinName</a>s to their <a>Type</a>s.
 newtype DynamicBuiltinNameTypes
-DynamicBuiltinNameTypes :: Map DynamicBuiltinName (Quote (Type TyName ())) -> DynamicBuiltinNameTypes
-[unDynamicBuiltinNameTypes] :: DynamicBuiltinNameTypes -> Map DynamicBuiltinName (Quote (Type TyName ()))
+DynamicBuiltinNameTypes :: Map DynamicBuiltinName (NormalizedType TyName ()) -> DynamicBuiltinNameTypes
+[unDynamicBuiltinNameTypes] :: DynamicBuiltinNameTypes -> Map DynamicBuiltinName (NormalizedType TyName ())
 
--- | The type checking monad contains the <tt>BuiltinTable</tt> and it lets
---   us throw <a>TypeError</a>s.
+-- | The type checking monad contains the <a>TypeConfig</a> and it lets us
+--   throw <a>TypeError</a>s.
 type TypeCheckM ann = ReaderT TypeConfig (ExceptT (TypeError ann) Quote)
 
 -- | Parse a program and typecheck it.
-parseTypecheck :: (AsParseError e AlexPosn, AsUniqueError e AlexPosn, AsNormalizationError e TyName Name AlexPosn, AsRenameError e AlexPosn, AsTypeError e AlexPosn, MonadError e m, MonadQuote m) => TypeConfig -> ByteString -> m (NormalizedType TyNameWithKind ())
+parseTypecheck :: (AsParseError e AlexPosn, AsUniqueError e AlexPosn, AsNormalizationError e TyName Name AlexPosn, AsTypeError e AlexPosn, MonadError e m, MonadQuote m) => TypeConfig -> ByteString -> m (NormalizedType TyName ())
 
 -- | Run the type checker with a default context.
 runTypeCheckM :: TypeConfig -> TypeCheckM a b -> ExceptT (TypeError a) Quote b
 
 -- | Typecheck a program.
-typecheckPipeline :: (AsNormalizationError e TyName Name a, AsRenameError e a, AsTypeError e a, MonadError e m, MonadQuote m) => TypeConfig -> Program TyName Name a -> m (NormalizedType TyNameWithKind ())
+typecheckPipeline :: (AsNormalizationError e TyName Name a, AsTypeError e a, MonadError e m, MonadQuote m) => TypeConfig -> Program TyName Name a -> m (NormalizedType TyName ())
 
 -- | The default amount of gas to run the typechecker with.
 defaultTypecheckerGas :: Maybe Gas
@@ -2826,16 +2799,14 @@ defaultTypecheckerCfg :: TypeConfig
 data Error a
 ParseErrorE :: (ParseError a) -> Error a
 UniqueCoherencyErrorE :: (UniqueError a) -> Error a
-RenameErrorE :: (RenameError a) -> Error a
 TypeErrorE :: (TypeError a) -> Error a
 NormalizationErrorE :: (NormalizationError TyName Name a) -> Error a
-class AsError r_a1jbz a_a1iTS | r_a1jbz -> a_a1iTS
-_Error :: AsError r_a1jbz a_a1iTS => Prism' r_a1jbz (Error a_a1iTS)
-_ParseErrorE :: AsError r_a1jbz a_a1iTS => Prism' r_a1jbz (ParseError a_a1iTS)
-_UniqueCoherencyErrorE :: AsError r_a1jbz a_a1iTS => Prism' r_a1jbz (UniqueError a_a1iTS)
-_RenameErrorE :: AsError r_a1jbz a_a1iTS => Prism' r_a1jbz (RenameError a_a1iTS)
-_TypeErrorE :: AsError r_a1jbz a_a1iTS => Prism' r_a1jbz (TypeError a_a1iTS)
-_NormalizationErrorE :: AsError r_a1jbz a_a1iTS => Prism' r_a1jbz (NormalizationError TyName Name a_a1iTS)
+class AsError r_a1rQw a_a1ry7 | r_a1rQw -> a_a1ry7
+_Error :: AsError r_a1rQw a_a1ry7 => Prism' r_a1rQw (Error a_a1ry7)
+_ParseErrorE :: AsError r_a1rQw a_a1ry7 => Prism' r_a1rQw (ParseError a_a1ry7)
+_UniqueCoherencyErrorE :: AsError r_a1rQw a_a1ry7 => Prism' r_a1rQw (UniqueError a_a1ry7)
+_TypeErrorE :: AsError r_a1rQw a_a1ry7 => Prism' r_a1rQw (TypeError a_a1ry7)
+_NormalizationErrorE :: AsError r_a1rQw a_a1ry7 => Prism' r_a1rQw (NormalizationError TyName Name a_a1ry7)
 
 -- | This error is returned whenever scope resolution of a
 --   <a>DynamicBuiltinName</a> fails.
@@ -3003,10 +2974,10 @@ TypeEvalCheckErrorIllEvaled :: (Value TyName Name ()) -> (Value TyName Name ()) 
 
 -- | Type-eval checking of a term results in a value of this type.
 data TypeEvalCheckResult
-TypeEvalCheckResult :: NormalizedType TyNameWithKind () -> EvaluationResult -> TypeEvalCheckResult
+TypeEvalCheckResult :: NormalizedType TyName () -> EvaluationResult -> TypeEvalCheckResult
 
 -- | The type of the term.
-[_termCheckResultType] :: TypeEvalCheckResult -> NormalizedType TyNameWithKind ()
+[_termCheckResultType] :: TypeEvalCheckResult -> NormalizedType TyName ()
 
 -- | The result of evaluation of the term.
 [_termCheckResultValue] :: TypeEvalCheckResult -> EvaluationResult
@@ -3316,10 +3287,10 @@ TypeEvalCheckErrorIllEvaled :: (Value TyName Name ()) -> (Value TyName Name ()) 
 
 -- | Type-eval checking of a term results in a value of this type.
 data TypeEvalCheckResult
-TypeEvalCheckResult :: NormalizedType TyNameWithKind () -> EvaluationResult -> TypeEvalCheckResult
+TypeEvalCheckResult :: NormalizedType TyName () -> EvaluationResult -> TypeEvalCheckResult
 
 -- | The type of the term.
-[_termCheckResultType] :: TypeEvalCheckResult -> NormalizedType TyNameWithKind ()
+[_termCheckResultType] :: TypeEvalCheckResult -> NormalizedType TyName ()
 
 -- | The result of evaluation of the term.
 [_termCheckResultValue] :: TypeEvalCheckResult -> EvaluationResult
