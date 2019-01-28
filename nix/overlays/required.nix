@@ -19,6 +19,7 @@ self: super: {
     language-plutus-core = addRealTimeTestLogs super.language-plutus-core;
     # cabal doctest doesn't seem to be clever enough to pick these up from the cabal file
     plutus-tx = doctest "-pgmL markdown-unlit -XTemplateHaskell -XDeriveFunctor -XScopedTypeVariables" super.plutus-tx;
+    wallet-api = doctest "-pgmL markdown-unlit -XTemplateHaskell -XDeriveFunctor -XScopedTypeVariables" super.wallet-api;
 
     ########################################################################
     # The base Haskell package builder
