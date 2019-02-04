@@ -53,34 +53,52 @@ Two problems arise:
 
 instance (PLC.HasUnique (tyname ann) PLC.TypeUnique, PLC.HasUnique (name ann) PLC.TermUnique) =>
         PLC.Rename (Term tyname name ann) where
-    rename = PLC.runScopedRenameM . renameTermM
+    rename = PLC.runScopedRenameM . flip runContT pure . renameTermM
 
 -- | Rename a 'Datatype' in the CPS-transformed 'ScopedRenameM' monad.
 renameDatatypeCM
     :: (PLC.HasUnique (tyname ann) PLC.TypeUnique, PLC.HasUnique (name ann) PLC.TermUnique)
     => Datatype tyname name ann
-    -> ContT c PLC.ScopedRenameM (PLC.ScopedRenameM (Datatype tyname name ann))
+    -> ContT c PLC.ScopedRenameM (Datatype tyname name ann)
 renameDatatypeCM (Datatype x dataDecl params matchName constrs) = do
+    -- TODO: too lazy to change this
     dataDeclFr <- ContT $ PLC.withFreshenedTyVarDecl dataDecl
     paramsFr <- traverse (ContT . PLC.withFreshenedTyVarDecl) params
     matchNameFr <- ContT $ PLC.withFreshenedName matchName
     constrsRen <- traverse (ContT . PLC.withFreshenedVarDecl) constrs
     pure $ Datatype x dataDeclFr paramsFr matchNameFr <$> sequence constrsRen
 
+-- | Rename a 'Datatype' in the CPS-transformed 'ScopedRenameM' monad.
+collectDatatypeCM
+    :: (PLC.HasUnique (tyname ann) PLC.TypeUnique, PLC.HasUnique (name ann) PLC.TermUnique)
+    => Datatype tyname name ann
+    -> ContT c PLC.ScopedRenameM ()
+collectDatatypeCM (Datatype x dataDecl params matchName constrs) = do
+    dataDeclFr <- ContT $ PLC.withFreshenedTyVarDecl dataDecl
+    paramsFr <- traverse (ContT . PLC.withFreshenedTyVarDecl) params
+    matchNameFr <- ContT $ PLC.withFreshenedName matchName
+    constrsRen <- traverse (ContT . PLC.withFreshenedVarDecl) constrs
+    pure ()
+
 -- | Rename a 'Binding' in the CPS-transformed 'ScopedRenameM' monad.
 renameBindingCM
     :: (PLC.HasUnique (tyname ann) PLC.TypeUnique, PLC.HasUnique (name ann) PLC.TermUnique)
     => Binding tyname name ann
-    -> ContT c PLC.ScopedRenameM (PLC.ScopedRenameM (Binding tyname name ann))
+    -> ContT c PLC.ScopedRenameM (Binding tyname name ann)
 renameBindingCM = \case
-    TermBind x var term -> do
-        varRen <- ContT $ PLC.withFreshenedVarDecl var
-        pure $ TermBind x <$> varRen <*> renameTermM term
-    TypeBind x var ty -> do
-        varFr <- ContT $ PLC.withFreshenedTyVarDecl var
-        pure $ TypeBind x varFr <$> PLC.renameTypeM ty
-    DatatypeBind x datatype ->
-        fmap (DatatypeBind x) <$> renameDatatypeCM datatype
+    -- TODO: needs a "rename var decl" function
+    TermBind x var term -> TermBind x <$> (lift $ PLC.renameNameM var) <*> renameTermM term
+    TypeBind x var ty -> TypeBind x <$> (lift $ PLC.renameNameM var) <*> (lift $ PLC.renameTypeM ty)
+    DatatypeBind x datatype -> DatatypeBind x <$> renameDatatypeCM datatype
+
+collectBindingCM
+    :: (PLC.HasUnique (tyname ann) PLC.TypeUnique, PLC.HasUnique (name ann) PLC.TermUnique)
+    => Binding tyname name ann
+    -> ContT c PLC.ScopedRenameM ()
+collectBindingCM = \case
+    TermBind x var term -> void $ ContT $ PLC.withFreshenedVarDecl var
+    TypeBind x var ty -> void $ ContT $ PLC.withFreshenedTyVarDecl var
+    DatatypeBind x datatype -> void $ renameDatatypeCM datatype
 
 -- | Replace the uniques in the names stored in a bunch of bindings by new uniques,
 -- save the mapping from the old uniques to the new ones, rename the RHSs and
@@ -89,43 +107,41 @@ withFreshenedBindings
     :: (PLC.HasUnique (tyname ann) PLC.TypeUnique, PLC.HasUnique (name ann) PLC.TermUnique)
     => Recursivity
     -> [Binding tyname name ann]
-    -> ([Binding tyname name ann] -> PLC.ScopedRenameM c)
-    -> PLC.ScopedRenameM c
-withFreshenedBindings recy binds cont = case recy of
+    -> ContT c PLC.ScopedRenameM [Binding tyname name ann]
+withFreshenedBindings recy binds = case recy of
     -- Bring each binding in scope, rename its RHS straight away, collect all the results and
     -- supply them to the continuation.
-    NonRec -> runContT (traverse (renameBindingCM >=> lift) binds) cont
+
+    -- note: wrong
+    NonRec -> do
+        traverse collectBindingCM binds
+        traverse renameBindingCM binds
     -- First bring all bindinds in scope and only then rename their RHSs and
     -- supply the results to the continuation.
-    Rec    -> runContT (traverse renameBindingCM binds) $ sequence >=> cont
+    Rec    -> do
+        traverse collectBindingCM binds
+        traverse renameBindingCM binds
 
 -- | Rename a 'Term' in the 'ScopedRenameM' monad.
 renameTermM
     :: (PLC.HasUnique (tyname ann) PLC.TypeUnique, PLC.HasUnique (name ann) PLC.TermUnique)
-    => Term tyname name ann -> PLC.ScopedRenameM (Term tyname name ann)
+    => Term tyname name ann -> ContT c PLC.ScopedRenameM (Term tyname name ann)
 renameTermM = \case
-    Let x recy binds term ->
-        withFreshenedBindings recy binds $ \bindsFr ->
-            Let x recy bindsFr <$> renameTermM term
-    Var x name ->
-        Var x <$> PLC.renameNameM name
-    TyAbs x name kind body ->
-        PLC.withFreshenedName name $ \nameFr ->
-            TyAbs x nameFr kind <$> renameTermM body
-    LamAbs x name ty body ->
-        PLC.withFreshenedName name $ \nameFr ->
-            LamAbs x nameFr <$> PLC.renameTypeM ty <*> renameTermM body
-    Apply x fun arg ->
-        Apply x <$> renameTermM fun <*> renameTermM arg
-    Constant x con ->
-        pure $ Constant x con
-    Builtin x bi ->
-        pure $ Builtin x bi
-    TyInst x term ty ->
-        TyInst x <$> renameTermM term <*> PLC.renameTypeM ty
-    Error x ty ->
-        Error x <$> PLC.renameTypeM ty
+    Let x recy binds term -> do
+        bindsFr <- withFreshenedBindings recy binds
+        Let x recy bindsFr <$> renameTermM term
+    Var x name -> Var x <$> (lift $ PLC.renameNameM name)
+    TyAbs x name kind body -> do
+        nameFr <- ContT $ PLC.withFreshenedName name
+        TyAbs x nameFr kind <$> renameTermM body
+    LamAbs x name ty body -> do
+        nameFr <- ContT $ PLC.withFreshenedName name
+        LamAbs x nameFr <$> (lift $ PLC.renameTypeM ty) <*> renameTermM body
+    Apply x fun arg -> Apply x <$> renameTermM fun <*> renameTermM arg
+    Constant x con -> pure $ Constant x con
+    Builtin x bi -> pure $ Builtin x bi
+    TyInst x term ty -> TyInst x <$> renameTermM term <*> (lift $ PLC.renameTypeM ty)
+    Error x ty -> Error x <$> (lift $ PLC.renameTypeM ty)
     IWrap x pat arg term ->
-        IWrap x <$> PLC.renameTypeM pat <*> PLC.renameTypeM arg <*> renameTermM term
-    Unwrap x term ->
-        Unwrap x <$> renameTermM term
+        IWrap x <$> (lift $ PLC.renameTypeM pat) <*> (lift $ PLC.renameTypeM arg) <*> renameTermM term
+    Unwrap x term -> Unwrap x <$> renameTermM term
