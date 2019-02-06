@@ -223,23 +223,26 @@ deriving anyclass instance ToJSON Address
 deriving anyclass instance FromJSON Address
 
 -- | Script
-newtype Script = Script { getSerialized :: BSL.ByteString }
-  deriving newtype (Serialise, Eq, Ord)
+newtype Script = Script { getPlc :: PLC.Program PLC.TyName PLC.Name () }
+  deriving newtype (Serialise)
 
-  -- TODO: possibly this belongs with CompiledCode
+instance Eq Script where
+    a == b = serialise a == serialise b
+
+instance Ord Script where
+    a `compare` b = serialise a `compare` serialise b
+
+-- TODO: possibly this belongs with CompiledCode
 fromCompiledCode :: CompiledCode a -> Script
-fromCompiledCode = Script . getSerializedPlc
+fromCompiledCode = Script . deserialise . getSerializedPlc
 
 -- | Compile a quoted Haskell expression to a 'Script'
 compileScript :: TH.Q (TH.TExp a) -> TH.Q (TH.TExp Script)
-compileScript a = [|| Script $ getSerializedPlc $ $$(compile a) ||]
-
-getPlc :: Script -> PLC.Program PLC.TyName PLC.Name ()
-getPlc = deserialise . getSerialized
+compileScript a = [|| fromCompiledCode $$(compile a) ||]
 
 applyScript :: Script -> Script -> Script
 -- TODO: this is a bit inefficient
-applyScript (getPlc -> s1) (getPlc -> s2) = Script $ serialise $ s1 `PLC.applyProgram` s2
+applyScript (getPlc -> s1) (getPlc -> s2) = Script $ s1 `PLC.applyProgram` s2
 
 evaluateScript :: Script -> ([String], Bool)
 evaluateScript (getPlc -> s) = (isJust . evaluationResultToMaybe) <$> evaluateCekTrace s
@@ -257,7 +260,7 @@ instance FromJSON Script where
       Right v -> pure v
 
 lifted :: Lift a => a -> Script
-lifted = Script . serialise . unsafeLiftProgram
+lifted = Script . unsafeLiftProgram
 
 -- | A validator is a PLC script.
 newtype ValidatorScript = ValidatorScript { getValidator :: Script }
