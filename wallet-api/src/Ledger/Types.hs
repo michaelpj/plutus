@@ -107,16 +107,19 @@ import qualified Data.ByteString                          as BSS
 import qualified Data.ByteString.Base64                   as Base64
 import qualified Data.ByteString.Char8                    as BS8
 import qualified Data.ByteString.Lazy                     as BSL
+import qualified Data.Hashable as H
 import           Data.Map                                 (Map)
 import qualified Data.Map                                 as Map
 import           Data.Maybe                               (isJust, listToMaybe)
 import           Data.Proxy                               (Proxy(Proxy))
 import qualified Data.Set                                 as Set
 import qualified Data.Text.Encoding                       as TE
+import Control.Exception
 import           GHC.Generics                             (Generic)
 import           Data.Swagger.Internal.Schema             (ToSchema(declareNamedSchema), plain, paramSchemaToSchema)
 import qualified Language.Haskell.TH                      as TH
 import qualified Language.PlutusCore                      as PLC
+import qualified Language.PlutusCore.DeBruijn                      as PLC
 import           Language.PlutusTx.Evaluation             (evaluateCekTrace)
 import           Language.PlutusCore.Evaluation.Result
 import           Language.PlutusTx.Lift                   (makeLift, unsafeLiftProgram)
@@ -222,15 +225,34 @@ deriving newtype instance Serialise Address
 deriving anyclass instance ToJSON Address
 deriving anyclass instance FromJSON Address
 
+
+deriving instance H.Hashable (PLC.Kind ())
+deriving instance H.Hashable (PLC.DeBruijn ())
+deriving newtype instance H.Hashable (PLC.TyDeBruijn ())
+deriving newtype instance H.Hashable (PLC.Index)
+deriving instance H.Hashable (PLC.Constant ())
+deriving instance H.Hashable (PLC.Builtin ())
+deriving instance H.Hashable (PLC.TypeBuiltin)
+deriving instance H.Hashable (PLC.BuiltinName)
+deriving newtype instance H.Hashable (PLC.DynamicBuiltinName)
+deriving instance H.Hashable (PLC.Type PLC.TyDeBruijn ())
+deriving instance H.Hashable (PLC.Term PLC.TyDeBruijn PLC.DeBruijn ())
+deriving instance H.Hashable (PLC.Version ())
+deriving instance H.Hashable (PLC.Program PLC.TyDeBruijn PLC.DeBruijn ())
 -- | Script
 newtype Script = Script { getPlc :: PLC.Program PLC.TyName PLC.Name () }
   deriving newtype (Serialise)
 
+instance H.Hashable Script where
+    hashWithSalt salt (Script prog) = case PLC.deBruijnProgram prog of
+        Right db -> H.hashWithSalt salt db
+        Left err -> throw err
+
 instance Eq Script where
-    a == b = serialise a == serialise b
+    a == b = H.hash a == H.hash b
 
 instance Ord Script where
-    a `compare` b = serialise a `compare` serialise b
+    a `compare` b = H.hash a `compare` H.hash b
 
 -- TODO: possibly this belongs with CompiledCode
 fromCompiledCode :: CompiledCode a -> Script
