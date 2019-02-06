@@ -57,6 +57,10 @@ instance (PLC.HasUnique (tyname ann) PLC.TypeUnique, PLC.HasUnique (name ann) PL
         PLC.Rename (Term tyname name ann) where
     rename = PLC.runScopedRenameM . renameTermM
 
+instance (PLC.HasUnique (tyname ann) PLC.TypeUnique, PLC.HasUnique (name ann) PLC.TermUnique) =>
+        PLC.Rename (Program tyname name ann) where
+    rename (Program x t) = PLC.runScopedRenameM $ Program x <$> renameTermM t
+
 -- See Note [Renaming of mutually recursive bindings].
 -- | Rename a 'Datatype' in the CPS-transformed 'ScopedRenameM' monad.
 renameDatatypeCM
