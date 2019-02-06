@@ -102,7 +102,7 @@ data StagedBuiltinName = StaticStagedBuiltinName  BuiltinName
 
 -- | Version of Plutus Core to be used for the program.
 data Version a = Version a Natural Natural Natural
-               deriving (Show, Eq, Functor, Generic, NFData, Lift)
+               deriving (Show, Eq, Ord, Functor, Generic, NFData, Lift)
 
 -- | A keyword in Plutus Core.
 data Keyword = KwAbs

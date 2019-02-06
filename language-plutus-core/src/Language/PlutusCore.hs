@@ -34,6 +34,10 @@ module Language.PlutusCore
     , getNormalizedType
     , defaultVersion
     , allBuiltinNames
+    , alphaEqKind
+    , alphaEqTy
+    , alphaEqTerm
+    , alphaEqProg
     , termLoc
     , tyLoc
     -- * Lexer

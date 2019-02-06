@@ -312,7 +312,7 @@ checkKindM :: ann -> Type TyName ann -> Kind () -> TypeCheckM ann ()
 -- [check| G !- ty : k]
 checkKindM ann ty k = do
     tyK <- inferKindM ty
-    when (tyK /= k) $ throwError (KindMismatch ann (void ty) k tyK)
+    unless (tyK `alphaEqKind` k) $ throwError (KindMismatch ann (void ty) k tyK)
 
 -- | Check that the kind of a pattern functor is @(k -> *) -> k -> *@.
 checkKindOfPatternFunctorM
@@ -472,4 +472,5 @@ checkTypeM :: ann -> Term TyName Name ann -> NormalizedType TyName () -> TypeChe
 -- [check| G !- term : vTy]
 checkTypeM ann term vTy = do
     vTermTy <- inferTypeM term
-    when (vTermTy /= vTy) $ throwError (TypeMismatch ann (void term) (getNormalizedType vTermTy) vTy)
+    unless (getNormalizedType vTermTy `alphaEqTy` getNormalizedType vTy) $
+          throwError (TypeMismatch ann (void term) (getNormalizedType vTermTy) vTy)

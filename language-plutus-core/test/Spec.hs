@@ -75,11 +75,16 @@ compareType _ _                                       = False
 compareProgram :: Eq a => Program TyName Name a -> Program TyName Name a -> Bool
 compareProgram (Program _ v t) (Program _ v' t') = v == v' && compareTerm t t'
 
--- | A 'Program' which we compare using textual equality of names rather than alpha-equivalence.
+-- | A 'Program' which we compare using textual equality of names.
 newtype TextualProgram a = TextualProgram { unTextualProgram :: Program TyName Name a } deriving Show
 
 instance Eq a => Eq (TextualProgram a) where
     (TextualProgram p1) == (TextualProgram p2) = compareProgram p1 p2
+
+newtype AlphaTerm a = AlphaTerm { unAlphaTerm :: Term TyName Name a } deriving Show
+
+instance Eq a => Eq (AlphaTerm a) where
+    (AlphaTerm t1) == (AlphaTerm t2) = t1 `alphaEqTerm` t2
 
 propCBOR :: Property
 propCBOR = property $ do
@@ -97,16 +102,19 @@ propParser = property $ do
 propRename :: Property
 propRename = property $ do
     prog <- forAll genProgram
-    Hedgehog.assert $ runQuote (rename prog) == prog
+    let renamed = runQuote (rename prog)
+    annotateShow renamed
+    Hedgehog.assert $ renamed `alphaEqProg` prog
 
 propDeBruijn :: GenT Quote (TermOf (TypedBuiltinValue size a)) -> Property
 propDeBruijn gen = property . hoist (return . runQuote) $ do
     (TermOf body _) <- forAllNoShowT gen
+    let term = AlphaTerm body
     let
         forward = deBruijnTerm
         backward :: Except FreeVariableError (Term TyDeBruijn DeBruijn a) -> Except FreeVariableError (Term TyName Name a)
         backward e = e >>= (\t -> runQuoteT $ unDeBruijnTerm t)
-    Hedgehog.tripping body forward backward
+    Hedgehog.tripping term (forward . unAlphaTerm) (fmap AlphaTerm . backward)
 
 allTests :: [FilePath] -> [FilePath] -> [FilePath] -> [FilePath] -> [FilePath] -> TestTree
 allTests plcFiles rwFiles typeFiles typeNormalizeFiles typeErrorFiles = testGroup "all tests"
@@ -200,7 +208,7 @@ testEqTerm =
         term1 = Apply () lamY varX
 
     in
-        term0 == term1
+        term0 `alphaEqTerm` term1
 
 testRebindShadowedVariable :: Bool
 testRebindShadowedVariable =
@@ -218,7 +226,7 @@ testRebindShadowedVariable =
         -- (all x (type) (fun (all x (type) x) x))
         type1 = TyForall () xName typeKind (TyFun () (TyForall () xName typeKind varX) varX)
     in
-        type0 == type1
+        type0 `alphaEqTy` type1
 
 testRebindCapturedVariable :: Bool
 testRebindCapturedVariable =
@@ -253,7 +261,7 @@ testRebindCapturedVariable =
                 (TyForall () xName typeKind $ TyForall () yName typeKind (TyFun () varX varY))
                 varX
     in
-        [typeL1, typeL2] == [typeR1, typeR2]
+        typeL1 `alphaEqTy` typeR1 && typeL2 `alphaEqTy` typeR2
 
 tests :: TestTree
 tests = testCase "example programs" $ fold
