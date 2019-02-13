@@ -20,7 +20,9 @@ module Language.PlutusIR (
     Binding (..),
     Term (..),
     Program (..),
-    embedIntoIR
+    embedIntoIR,
+    subTerms,
+    subTermsBinding
     ) where
 
 import           PlutusPrelude
@@ -32,6 +34,7 @@ import           Language.PlutusCore.MkPlc  (TyVarDecl (..), VarDecl (..))
 import qualified Language.PlutusCore.Pretty as PLC
 
 import           Codec.Serialise            (Serialise)
+import           Control.Lens
 import qualified Data.Text                  as T
 import           GHC.Generics               (Generic)
 
@@ -117,6 +120,26 @@ data Term tyname name a =
                         deriving (Functor, Show, Eq, Generic)
 
 instance (Serialise a, Serialise (tyname a), Serialise (name a)) => Serialise (Term tyname name a)
+
+subTermsBinding :: Traversal' (Binding tyname name a) (Term tyname name a)
+subTermsBinding f = \case
+    TermBind x d t -> TermBind x d <$> f t
+    TypeBind x d ty -> pure $ TypeBind x d ty
+    DatatypeBind x d -> pure $ DatatypeBind x d
+
+subTerms :: Traversal' (Term tyname name a) (Term tyname name a)
+subTerms f = \case
+    Let x r bs t -> Let x r <$> traverse (subTermsBinding f) bs <*> f t
+    Var x n -> pure $ Var x n
+    TyAbs x tn k t -> TyAbs x tn k <$> f t
+    LamAbs x n ty t -> LamAbs x n ty <$> f t
+    Apply x t1 t2 -> Apply x <$> f t1 <*> f t2
+    Constant x c -> pure $ Constant x c
+    Builtin x bi -> pure $ Builtin x bi
+    TyInst x t ty -> TyInst x <$> f t <*> pure ty
+    Error x ty -> pure $ Error x ty
+    IWrap x ty1 ty2 t -> IWrap x ty1 ty2 <$> f t
+    Unwrap x t -> Unwrap x <$> f t
 
 embedIntoIR :: PLC.Term tyname name a -> Term tyname name a
 embedIntoIR = \case
