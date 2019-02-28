@@ -70,10 +70,15 @@ refundRange :: Campaign -> SlotRange
 refundRange cmp =
     W.intervalFrom (campaignCollectionDeadline cmp)
 
-data CampaignAction = Collect Signature | Refund Signature
+data Action = Collect | Refund
     deriving Generic
 
-PlutusTx.makeLift ''CampaignAction
+PlutusTx.makeLift ''Action
+
+data Redeemer = Redeemer Action Signature
+    deriving Generic
+
+PlutusTx.makeLift ''Redeemer
 
 -- | Contribute funds to the campaign (contributor)
 --
@@ -104,7 +109,7 @@ collect cmp = register (collectFundsTrigger cmp) $ EventHandler $ \_ -> do
         let sig = signature keyPair
         let scr        = contributionScript cmp
             contributions = am ^. at (campaignAddress cmp) . to (Map.toList . fromMaybe Map.empty)
-            red        = Ledger.RedeemerScript $ Ledger.lifted $ Collect sig
+            red        = Ledger.RedeemerScript $ Ledger.lifted $ Redeemer Collect sig
             con (r, _) = scriptTxIn r scr red
             ins        = con <$> contributions
             value = foldl' $$(V.plus) $$(V.zero) $ Ledger.txOutValue . snd <$> contributions
@@ -140,7 +145,7 @@ contributionScript cmp  = ValidatorScript val where
 
     --   See note [Contracts and Validator Scripts] in
     --       Language.Plutus.Coordination.Contracts
-    inner = $$(Ledger.compileScript [|| (\Campaign{..} (act :: CampaignAction) (a :: CampaignActor) (p :: PendingTx) ->
+    inner = $$(Ledger.compileScript [|| (\Campaign{..} (act :: Redeemer) (a :: CampaignActor) (p :: PendingTx) ->
         let
 
             infixr 3 &&
@@ -167,7 +172,7 @@ contributionScript cmp  = ValidatorScript val where
                 in $$(PlutusTx.foldr) addToTotal $$(Ada.zero) ps
 
             isValid = case act of
-                Refund sig -> -- the "refund" branch
+                Redeemer Refund sig -> -- the "refund" branch
                     let
                         -- Check that all outputs are paid to the public key
                         -- of the contributor (that is, to the `a` argument of the data script)
@@ -182,7 +187,7 @@ contributionScript cmp  = ValidatorScript val where
                                         a `signedBy` sig
 
                     in refundable
-                Collect sig -> -- the "successful campaign" branch
+                Redeemer Collect sig -> -- the "successful campaign" branch
                     let
                         payToOwner = $$(Interval.contains) collRange range &&
                                     $$(Ada.geq) totalInputs campaignTarget &&
@@ -214,7 +219,7 @@ refund txid cmp = EventHandler $ \_ -> do
         utxo    = fromMaybe Map.empty $ am ^. at adr
         ourUtxo = Map.toList $ Map.filterWithKey (\k _ -> txid == Ledger.txOutRefId k) utxo
         scr   = contributionScript cmp
-        red   = Ledger.RedeemerScript $ Ledger.lifted $ Refund sig
+        red   = Ledger.RedeemerScript $ Ledger.lifted $ Redeemer Refund sig
         i ref = scriptTxIn ref scr red
         inputs = Set.fromList $ i . fst <$> ourUtxo
         value  = foldl' $$(V.plus) $$(V.zero) $ Ledger.txOutValue . snd <$> ourUtxo
