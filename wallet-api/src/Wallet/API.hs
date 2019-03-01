@@ -84,6 +84,7 @@ import           Data.Ord.Deriving          (deriveOrd1)
 import qualified Data.Set                   as Set
 import           Data.Text                  (Text)
 import           GHC.Generics               (Generic)
+import           KeyBytes
 import           Ledger                     (Address, DataScript, PubKey (..), RedeemerScript, Signature (..), Slot, SlotRange,
                                              Tx (..), TxId, TxIn, TxOut, TxOutOf (..), TxOutType (..), ValidatorScript,
                                              Value, pubKeyTxOut, scriptAddress, scriptTxIn, txOutRefId)
@@ -95,7 +96,7 @@ import           Wallet.Emulator.AddressMap (AddressMap)
 
 import           Prelude                    hiding (Ordering (..))
 
-newtype PrivateKey = PrivateKey { getPrivateKey :: Int }
+newtype PrivateKey = PrivateKey { getPrivateKey :: KeyBytes }
     deriving (Eq, Ord, Show)
     deriving newtype (FromJSON, ToJSON)
 
@@ -108,8 +109,8 @@ pubKey :: KeyPair -> PubKey
 pubKey = snd . getKeyPair
 
 -- | Create a [[KeyPair]] given a "private key"
-keyPair :: Int -> KeyPair
-keyPair i = KeyPair (PrivateKey i, PubKey i)
+keyPair :: KeyBytes -> KeyPair
+keyPair i = KeyPair (PrivateKey i, PubKey (privKeyTrim i))
 
 -- | Create a [[Signature]] signed by the private key of a
 --   [[KeyPair]]

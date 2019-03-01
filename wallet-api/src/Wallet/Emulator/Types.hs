@@ -83,6 +83,7 @@ import           Prelude                    as P
 import           Servant.API                (FromHttpApiData, ToHttpApiData)
 
 import           Data.Hashable              (Hashable)
+import           KeyBytes
 import           Ledger                     (Address, Block, Blockchain, Slot, Tx (..), TxId, TxOut, TxOutOf (..),
                                              TxOutRef, Value, hashTx, lastSlot, pubKeyAddress, pubKeyTxIn, pubKeyTxOut,
                                              txOutAddress)
@@ -95,7 +96,7 @@ import           Wallet.API                 (EventHandler (..), EventTrigger, Ke
 import qualified Wallet.Emulator.AddressMap as AM
 
 -- agents/wallets
-newtype Wallet = Wallet { getWallet :: Int }
+newtype Wallet = Wallet { getWallet :: KeyBytes }
     deriving (Show, Eq, Ord, Generic)
     deriving newtype (ToHttpApiData, FromHttpApiData, Hashable)
     deriving anyclass (Newtype, ToJSON, FromJSON, ToJSONKey)
