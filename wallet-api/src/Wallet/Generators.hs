@@ -1,6 +1,7 @@
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TemplateHaskell  #-}
-{-# LANGUAGE RecordWildCards  #-}
+{-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Wallet.Generators(
     -- * Mockchain
     Mockchain(..),
@@ -59,10 +60,17 @@ data GeneratorModel = GeneratorModel {
 -- | A generator model with some sensible defaults
 generatorModel :: GeneratorModel
 generatorModel = 
-    let vl = Ada.toValue $ Ada.fromInt 100000 in
+    let vl = Ada.toValue $ Ada.fromInt 100000
+        pubKeys = [ "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
+                  , "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c"
+                  , "fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025"
+                  , "e61a185bcef2613a6c7cb79763ce945d3b245d76114dd440bcf5f2dc1aa57057"
+                  , "c0dac102c4533186e25dc43128472353eaabdb878b152aeb8e001f92d90233a7"
+                  ]
+    in
     GeneratorModel 
-    { gmInitialBalance = Map.fromList $ first PubKey <$> zip [1..5] (repeat vl)
-    , gmPubKeys        = Set.fromList $ PubKey <$> [1..5]
+    { gmInitialBalance = Map.fromList $ first PubKey <$> zip pubKeys (repeat vl)
+    , gmPubKeys        = Set.fromList $ PubKey <$> pubKeys
     }
 
 -- | Estimate a transaction fee based on the number of its inputs and outputs.
