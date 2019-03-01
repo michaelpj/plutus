@@ -123,6 +123,7 @@ import           Language.PlutusTx.Lift                   (makeLift, unsafeLiftP
 import           Language.PlutusTx.Lift.Class             (Lift)
 import           Language.PlutusTx.TH                     (CompiledCode, compile, getSerializedPlc)
 
+import           KeyBytes
 import           Ledger.Interval                          (Slot(..), SlotRange)
 import           Ledger.Ada                               (Ada)
 import           Ledger.Value                             (Value)
@@ -152,7 +153,7 @@ especially because we only need one direction (to binary).
 -}
 
 -- | Public key
-newtype PubKey = PubKey { getPubKey :: Int }
+newtype PubKey = PubKey { getPubKey :: KeyBytes }
     deriving (Eq, Ord, Show)
     deriving stock (Generic)
     deriving anyclass (ToSchema, ToJSON, FromJSON, Newtype)
@@ -160,7 +161,7 @@ newtype PubKey = PubKey { getPubKey :: Int }
 
 makeLift ''PubKey
 
-newtype Signature = Signature { getSignature :: Int }
+newtype Signature = Signature { getSignature :: KeyBytes }
     deriving (Eq, Ord, Show)
     deriving stock (Generic)
     deriving anyclass (ToSchema, ToJSON, FromJSON)
