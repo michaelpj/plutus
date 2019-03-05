@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 module Language.PlutusTx.Map.TH (
-    Map(..),
+    Map,
     BST(..),
     Comparison,
     valid,
@@ -17,123 +17,100 @@ module Language.PlutusTx.Map.TH (
     union)
 where
 
-import Prelude hiding (lookup, all, length)
+import           Prelude                      hiding (lookup, all, length)
 import           Language.Haskell.TH          (Q, TExp)
-import Language.PlutusTx.Prelude (all, length)
+import           Language.PlutusTx.Prelude    (all, length)
+import           Language.PlutusTx.These
 
 type Comparison k = k -> k -> Ordering
 
 -- | A map, implemented as a binary search tree. Unlike @Data.Map@ from @containers@,
 -- this does not require an 'Ord' instance for keys, but rather the comparison function
--- is stored in the datastructure. This means we have less efficient 'union', however.
-data Map k v = Map (Comparison k) (BST k v)
-
+-- must be passed on each usage, with the user required to ensure consistency.
+type Map = BST
 data BST k v = Leaf | Branch (BST k v) k v (BST k v)
 
-valid :: Q (TExp (Map k v -> Bool))
-valid = [|| \(Map comp tree) -> $$(validT) comp tree ||]
-
-keys :: Q (TExp (Map k v -> [k]))
-keys = [|| $$(foldMappings) (\(k,_) ks -> k:ks) [] ||]
-
-size :: Q (TExp (Map k v -> Int))
-size = [|| \m -> $$(length) ($$(toList) m) ||]
-
-toList :: Q (TExp (Map k v -> [(k, v)]))
-toList = [|| $$(foldMappings) (\m ms -> m:ms) [] ||]
-
-nil :: Q (TExp (Comparison k -> Map k v))
-nil = [|| \comp -> Map comp $$(nilT) ||]
-
-insert :: Q (TExp (k -> v -> Map k v -> Map k v))
-insert = [|| \k v (Map comp tree) -> Map comp ($$(insertT) comp k v tree) ||]
-
-delete :: Q (TExp (k -> Map k v -> Map k v))
-delete = [|| \k (Map comp tree) -> Map comp ($$(deleteT) comp k tree) ||]
-
--- | Lookup a value in a map
-lookup :: Q (TExp (k -> Map k v -> Maybe v))
-lookup = [|| \k (Map comp tree) -> $$(lookupT) comp k tree ||]
-
--- | Union two maps together.
-union :: Q (TExp (Map k v -> Map k v -> Map k v))
-union = [|| \l r -> $$(foldMappings) (\(k, v) acc -> $$(insert) k v acc) r l ||]
-
-foldMappings :: Q (TExp (((k, v) -> b -> b) -> b -> Map k v -> b))
-foldMappings = [|| \f acc (Map _ t) -> $$(foldMappingsT) f acc t ||]
-
-validT :: Q (TExp (Comparison k -> BST k v -> Bool))
-validT =
+valid :: Q (TExp (Comparison k -> BST k v -> Bool))
+valid =
     [||
         let
-            validT comp = \case
+            valid comp = \case
                 Leaf -> True
                 Branch l k _ r ->
-                    validT comp l && validT comp r &&
-                    $$(all) (\k' -> comp k' k == LT) ($$(keysT) l) &&
-                    $$(all) (\k' -> comp k' k == GT) ($$(keysT) r)
-        in validT
+                    valid comp l && valid comp r &&
+                    $$(all) (\k' -> comp k' k == LT) ($$(keys) l) &&
+                    $$(all) (\k' -> comp k' k == GT) ($$(keys) r)
+        in valid
     ||]
 
-keysT :: Q (TExp (BST k v -> [k]))
-keysT = [|| $$(foldMappingsT) (\(k,_) ks -> k:ks) [] ||]
+toList :: Q (TExp (BST k v -> [(k, v)]))
+toList = [|| $$(foldMappings) (\m ms -> m:ms) [] ||]
 
-nilT :: Q (TExp (BST k v))
-nilT = [|| Leaf ||]
+keys :: Q (TExp (BST k v -> [k]))
+keys = [|| $$(foldMappings) (\(k,_) ks -> k:ks) [] ||]
 
-insertT :: Q (TExp (Comparison k -> k -> v -> BST k v -> BST k v))
-insertT =
+size :: Q (TExp (BST k v -> Int))
+size = [|| $$(length) . $$(keys) ||]
+
+nil :: Q (TExp (BST k v))
+nil = [|| Leaf ||]
+
+union :: Q (TExp (Comparison k -> BST k v -> BST k v -> BST k v))
+union = [|| \comp t1 t2 -> $$(foldMappings) (\(k, v) t -> $$(insert) comp k v t) t1 t2 ||]
+
+insert :: Q (TExp (Comparison k -> k -> v -> BST k v -> BST k v))
+insert =
     [||
         let
-            insertT comp k v = \case
-                Leaf -> Branch $$(nilT) k v $$(nilT)
+            insert comp k v = \case
+                Leaf -> Branch $$(nil) k v $$(nil)
                 Branch l k' v' r -> case comp k k' of
-                    LT -> Branch (insertT comp k v l) k' v' r
-                    GT -> Branch l k' v' (insertT comp k v r)
+                    LT -> Branch (insert comp k v l) k' v' r
+                    GT -> Branch l k' v' (insert comp k v r)
                     EQ -> Branch l k' v r
-        in insertT
+        in insert
     ||]
 
-deleteT :: Q (TExp (Comparison k -> k -> BST k v -> BST k v))
-deleteT =
+delete :: Q (TExp (Comparison k -> k -> BST k v -> BST k v))
+delete =
     [||
         let
-            deleteT comp k = \case
+            delete comp k = \case
                 Leaf -> Leaf
                 Branch l k' v' r -> case comp k k' of
-                    LT -> Branch (deleteT comp k l) k' v' r
-                    GT -> Branch l k' v' (deleteT comp k r)
-                    EQ -> joinT l r
-            joinT :: BST k v -> BST k v -> BST k v
-            joinT Leaf r = r
-            joinT l Leaf = l
-            joinT (Branch l k v r) (Branch l' k' v' r') = Branch l k v (Branch (joinT r l') k' v' r')
-        in deleteT
+                    LT -> Branch (delete comp k l) k' v' r
+                    GT -> Branch l k' v' (delete comp k r)
+                    EQ -> join l r
+            join :: BST k v -> BST k v -> BST k v
+            join Leaf r = r
+            join l Leaf = l
+            join (Branch l k v r) (Branch l' k' v' r') = Branch l k v (Branch (join r l') k' v' r')
+        in delete
     ||]
 
-lookupT :: Q (TExp (Comparison k -> k -> BST k v -> Maybe v))
-lookupT =
+lookup :: Q (TExp (Comparison k -> k -> BST k v -> Maybe v))
+lookup =
     [||
         let
-            lookupT comp k = \case
+            lookup comp k = \case
                 Leaf -> Nothing
                 Branch l k' v r -> case comp k k' of
-                    LT -> lookupT comp k l
-                    GT -> lookupT comp k r
+                    LT -> lookup comp k l
+                    GT -> lookup comp k r
                     EQ -> Just v
-        in lookupT
+        in lookup
     ||]
 
-foldMappingsT :: Q (TExp (((k, v) -> b -> b) -> b -> BST k v -> b))
-foldMappingsT =
+foldMappings :: Q (TExp (((k, v) -> b -> b) -> b -> BST k v -> b))
+foldMappings =
     [||
-        let foldMappingsT f acc = \case
+        let foldMappings f acc = \case
                 Leaf -> acc
                 Branch l k v r ->
                     let
-                        right = foldMappingsT f acc r
+                        right = foldMappings f acc r
                         center = f (k, v) right
-                        left = foldMappingsT f center l
+                        left = foldMappings f center l
                     in left
-        in foldMappingsT
+        in foldMappings
     ||]

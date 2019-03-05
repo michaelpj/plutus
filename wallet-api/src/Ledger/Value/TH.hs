@@ -32,6 +32,7 @@ import           Data.Swagger.Internal.Schema (ToSchema)
 import           GHC.Generics                 (Generic)
 import           Language.PlutusTx.Lift       (makeLift)
 import qualified Language.PlutusTx.Prelude    as P
+import qualified Language.PlutusTx.Map        as Map
 import           Language.Haskell.TH          (Q, TExp)
 import           Prelude                      hiding (all, lookup, negate)
 
@@ -47,7 +48,7 @@ currencySymbol = [|| CurrencySymbol ||]
 
 -- | Cryptocurrency value
 --   See note [Currencies]
-newtype Value = Value { getValue :: [(CurrencySymbol, Int)] }
+newtype Value = Value { getValue :: Map.Map CurrencySymbol Int }
     deriving (Show)
     deriving stock (Generic)
     deriving anyclass (ToSchema, ToJSON, FromJSON)
