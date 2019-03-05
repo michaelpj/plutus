@@ -22,6 +22,7 @@ module Language.PlutusTx.Prelude (
     multiply,
     divide,
     remainder,
+    intCompare,
     -- * Numbers
     min,
     max,

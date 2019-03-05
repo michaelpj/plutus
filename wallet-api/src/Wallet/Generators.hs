@@ -58,9 +58,9 @@ data GeneratorModel = GeneratorModel {
 
 -- | A generator model with some sensible defaults
 generatorModel :: GeneratorModel
-generatorModel = 
+generatorModel =
     let vl = Ada.toValue $ Ada.fromInt 100000 in
-    GeneratorModel 
+    GeneratorModel
     { gmInitialBalance = Map.fromList $ first PubKey <$> zip [1..5] (repeat vl)
     , gmPubKeys        = Set.fromList $ PubKey <$> [1..5]
     }
@@ -188,7 +188,7 @@ genValue' valueRange = do
     let currencyRange = Range.linearBounded @Int
         sngl          = Value.singleton <$> (Value.currencySymbol <$> Gen.int currencyRange) <*> Gen.int valueRange
 
-        -- generate values with no more than 10 elements to avoid the tests 
+        -- generate values with no more than 10 elements to avoid the tests
         -- taking too long (due to the map-as-list-of-kv-pairs implementation)
         maxCurrencies = 10
 
@@ -203,7 +203,7 @@ genValue = genValue' Range.linearBounded
 -- | Generate a 'Value' with a coin value range of @0 .. maxBound@
 genValueNonNegative :: MonadGen m => m Value
 genValueNonNegative = genValue' (Range.linear 0 maxBound)
-    
+
 -- | Assert that a transaction is valid in a chain
 assertValid :: (MonadTest m, HasCallStack)
     => Tx

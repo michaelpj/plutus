@@ -56994,6 +56994,7 @@ license = stdenv.lib.licenses.asl20;
 , containers
 , doctest
 , ghc
+, hedgehog
 , language-plutus-core
 , lens
 , mtl
@@ -57003,6 +57004,7 @@ license = stdenv.lib.licenses.asl20;
 , serialise
 , stdenv
 , tasty
+, tasty-hedgehog
 , template-haskell
 , text
 , th-abstraction
@@ -57036,11 +57038,13 @@ doctest
 testHaskellDepends = [
 base
 bytestring
+hedgehog
 language-plutus-core
 mtl
 plutus-ir
 prettyprinter
 tasty
+tasty-hedgehog
 template-haskell
 ];
 doHaddock = false;

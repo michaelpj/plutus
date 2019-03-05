@@ -2,7 +2,7 @@ cabal-version: 2.2
 name: plutus-tx
 version: 0.1.0.0
 license: Apache-2.0
-license-files: 
+license-files:
   LICENSE
   NOTICE
 maintainer: michael.peyton-jones@iohk.io
@@ -41,6 +41,10 @@ library
         Language.PlutusTx.TH
         Language.PlutusTx.Prelude
         Language.PlutusTx.Evaluation
+        Language.PlutusTx.Map
+        Language.PlutusTx.Map.TH
+        Language.PlutusTx.RBTree
+        Language.PlutusTx.These
     reexported-modules:
         Language.PlutusTx.Lift,
         Language.PlutusTx.Lift.Class,
@@ -54,6 +58,7 @@ library
         base >=4.9 && <5,
         bytestring -any,
         template-haskell >=2.13.0.0,
+        serialise -any,
         language-plutus-core -any,
         plutus-core-interpreter -any,
         plutus-tx-compiler -any
@@ -108,6 +113,7 @@ test-suite plutus-tx-tests
         Plugin.Spec
         TH.Spec
         TH.TestTH
+        Map.Spec
     default-language: Haskell2010
     build-depends:
         base >=4.9 && <5,
@@ -118,4 +124,6 @@ test-suite plutus-tx-tests
         mtl -any,
         bytestring -any,
         template-haskell -any,
-        tasty -any
+        hedgehog -any,
+        tasty -any,
+        tasty-hedgehog -any
