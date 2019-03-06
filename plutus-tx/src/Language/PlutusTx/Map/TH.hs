@@ -170,7 +170,7 @@ correctBlackHeight =
                   where h' = h - 1
                 correct n (Branch B h l _ _ r) = n == h && correct n' l && correct n' r
                   where n' = n - 1
-            in correct (height t) t
+            in correct ($$height t) t
     ||]
 
 valid :: Q (TExp (Comparison k -> RBTree k v -> Bool))
