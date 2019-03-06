@@ -43,6 +43,7 @@ library
         Language.PlutusTx.Evaluation
         Language.PlutusTx.Map
         Language.PlutusTx.Map.TH
+        Language.PlutusTx.These
     reexported-modules:
         Language.PlutusTx.Lift,
         Language.PlutusTx.Lift.Class,
