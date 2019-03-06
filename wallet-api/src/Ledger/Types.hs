@@ -128,6 +128,7 @@ import           Ledger.Interval                          (Slot(..), SlotRange)
 import           Ledger.Ada                               (Ada)
 import           Ledger.Value                             (Value)
 import qualified Ledger.Value.TH                          as V
+import qualified Crypto.ECC.Ed25519Donna                  as ED25519
 
 {- Note [Serialisation and hashing]
 
@@ -181,7 +182,10 @@ type TxId = TxIdOf (Digest SHA256)
 -- | True if the signature matches the public key
 -- FIXME: implement this
 signedBy :: Signature -> PubKey -> TxId -> Bool
-signedBy (Signature k) (PubKey s) _ = k == s
+signedBy (Signature k) (PubKey s) txId =
+    let k' = ED25519.publicKey $ BSL.toStrict $ getKeyBytes k
+        s' = ED25519.signature $ BSL.toStrict $ getKeyBytes s
+    in ED25519.verify <$> k' <*> pure txId <*> s'
 
 deriving newtype instance Serialise TxId
 deriving anyclass instance ToJSON a => ToJSON (TxIdOf a)
