@@ -98,6 +98,12 @@ prop_UnionPost = property $ do
   t2 <- forAllWith showMap genIntMap
   lookup compare k (union compare t1 t2) === (lookup compare k t1 <|> lookup compare k t2)
 
+prop_UnionListPost :: Property
+prop_UnionListPost = property $ do
+  k <- forAll genIntKey
+  ts <- forAll (Gen.list (Range.linear 0 1000) genIntMap)
+  lookup compare k (foldr (\m1 m2 -> union compare m1 m2) nil ts) === foldr (\m res -> lookup compare k m <|> res) empty ts
+
 prop_SizeNil :: Property
 prop_SizeNil = property $ size (nil @Int @Int) === 0
 

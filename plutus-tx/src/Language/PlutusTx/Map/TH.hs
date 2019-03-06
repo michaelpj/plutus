@@ -85,7 +85,8 @@ unionWith = [|| \comp with l r -> $$map ($$mergeThese with) ($$unionThese comp l
 unionThese :: Q (TExp (Comparison k -> BST k a -> BST k b -> BST k (These a b)))
 unionThese =
     [|| \comp ->
-        let union Leaf r = $$map That r
+        let
+            union Leaf r = $$map That r
             union l Leaf = $$map This l
             union (Branch l k v r) t =
                 -- There are several ways to do a union of BSTs. This way has the
