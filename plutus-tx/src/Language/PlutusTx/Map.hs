@@ -13,7 +13,7 @@ module Language.PlutusTx.Map (
     foldr,
     nil,
     insert,
-    delete,
+    --delete,
     lookup,
     union,
     unionWith,
@@ -48,9 +48,11 @@ nil = $$(TH.nil)
 insert :: Comparison k -> k -> v -> Map k v -> Map k v
 insert = $$(TH.insert)
 
+{-
 -- | Delete a key from a map.
 delete :: Comparison k -> k -> Map k v -> Map k v
 delete = $$(TH.delete)
+-}
 
 -- | Lookup a value in a map
 lookup :: Comparison k -> k -> Map k v -> Maybe v
