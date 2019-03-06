@@ -137,9 +137,9 @@ checkSlotRange sl tx =
 --   (b) can be unlocked by the signatures or validator scripts of the inputs
 checkValidInputs :: ValidationMonad m => Tx -> m ()
 checkValidInputs tx = do
-    matches <- lkpOutputs tx >>= traverse (uncurry matchInputOutput)
+    matches <- lkpOutputs tx >>= traverse (uncurry (matchInputOutput tx))
     vld     <- validationData tx
-    traverse_ (checkMatch vld) matches
+    traverse_ (checkMatch tx vld) matches
 
 -- | Match each input of the transaction with its output
 lkpOutputs :: ValidationMonad m => Tx -> m [(TxIn, TxOut)]
@@ -153,17 +153,17 @@ data InOutMatch =
         Ledger.RedeemerScript
         DataScript
         (Ledger.AddressOf (Digest SHA256))
-    | PubKeyMatch PubKey Signature
+    | PubKeyMatch Tx PubKey Signature -- TODO: PendingTx should be signed? not Tx?
     deriving (Eq, Ord, Show)
 
 -- | Match a transaction input with the output that it consumes, ensuring that
 --   both are of the same type (pubkey or pay-to-script)
-matchInputOutput :: ValidationMonad m => TxIn -> TxOut -> m InOutMatch
-matchInputOutput i txo = case (txInType i, txOutType txo) of
+matchInputOutput :: ValidationMonad m => Tx -> TxIn -> TxOut -> m InOutMatch
+matchInputOutput tx i txo = case (txInType i, txOutType txo) of
     (Ledger.ConsumeScriptAddress v r, Ledger.PayToScript d) ->
         pure $ ScriptMatch i v r d (txOutAddress txo)
     (Ledger.ConsumePublicKeyAddress sig, Ledger.PayToPubKey pk) ->
-        pure $ PubKeyMatch pk sig
+        pure $ PubKeyMatch tx pk sig
     _ -> throwError $ InOutTypeMismatch i txo
 
 -- | Check that a matching pair of transaction input and transaction output is
@@ -171,8 +171,8 @@ matchInputOutput i txo = case (txInType i, txOutType txo) of
 --   correct and script evaluation has to terminate successfully. If this is a
 --   pay-to-pubkey output then the signature needs to match the public key that
 --   locks it.
-checkMatch :: ValidationMonad m => PendingTx -> InOutMatch -> m ()
-checkMatch v = \case
+checkMatch :: ValidationMonad m => Tx -> PendingTx -> InOutMatch -> m ()
+checkMatch tx v = \case
     ScriptMatch txin vl r d a
         | a /= Ledger.scriptAddress vl ->
                 throwError $ InvalidScriptHash d
@@ -185,8 +185,9 @@ checkMatch v = \case
             if success
             then pure ()
             else throwError $ ScriptFailure logOut
-    PubKeyMatch pk sig ->
-        if sig `Ledger.signedBy` pk
+    PubKeyMatch tx pk sig ->
+        let msg = Ledger.hashTx tx in
+        if Ledger.signedBy sig pk msg
         then pure ()
         else throwError $ InvalidSignature pk sig
 

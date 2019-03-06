@@ -169,10 +169,6 @@ newtype Signature = Signature { getSignature :: KeyBytes }
 
 makeLift ''Signature
 
--- | True if the signature matches the public key
-signedBy :: Signature -> PubKey -> Bool
-signedBy (Signature k) (PubKey s) = k == s
-
 -- | Transaction ID (double SHA256 hash of the transaction)
 newtype TxIdOf h = TxIdOf { getTxId :: h }
     deriving (Eq, Ord, Show)
@@ -181,6 +177,11 @@ newtype TxIdOf h = TxIdOf { getTxId :: h }
 makeLift ''TxIdOf
 
 type TxId = TxIdOf (Digest SHA256)
+
+-- | True if the signature matches the public key
+-- FIXME: implement this
+signedBy :: Signature -> PubKey -> TxId -> Bool
+signedBy (Signature k) (PubKey s) _ = k == s
 
 deriving newtype instance Serialise TxId
 deriving anyclass instance ToJSON a => ToJSON (TxIdOf a)
