@@ -246,7 +246,7 @@ selectCoin fnds vl =
                     $ T.unwords
                         [ "Total:", T.pack $ show total
                         , "expected:", T.pack $ show vl]
-        in  if total `Value.lt` vl
+        in  if not (total `Value.gt` vl)
             then err
             else
                 let
@@ -394,11 +394,11 @@ evalEmulated = \case
     WalletRecvNotification wallet trigger -> fst <$> liftMockWallet wallet (handleNotifications trigger)
     BlockchainProcessPending -> do
         emState <- get
-        let 
+        let
             currentSlot = lastSlot (_chainNewestFirst emState)
             idx         = _index emState
             pool        = _txPool emState
-            (ValidatedBlock block events rest idx') = 
+            (ValidatedBlock block events rest idx') =
                 validateBlock currentSlot idx pool
             newChain = block : _chainNewestFirst emState
         put emState {
@@ -423,18 +423,18 @@ data ValidatedBlock = ValidatedBlock
     -- ^ Update UTXO index
     }
 
--- | Validate a block given the current slot and UTXO set, returning the valid 
---   transactions, success/failure events, remaining transactions and the 
+-- | Validate a block given the current slot and UTXO set, returning the valid
+--   transactions, success/failure events, remaining transactions and the
 --   updated UTXO set.
 validateBlock :: Slot -> Index.UtxoIndex -> [Tx] -> ValidatedBlock
-validateBlock currentSlot idx txns = 
+validateBlock currentSlot idx txns =
     let
-        -- Select those transactions that can be validated in the 
+        -- Select those transactions that can be validated in the
         -- current slot
         (eligibleTxns, rest) = partition (canValidateNow currentSlot) txns
 
         -- Validate eligible transactions, updating the UTXO index each time
-        (processed, idx') = 
+        (processed, idx') =
             flip runState idx $ for eligibleTxns $ \t -> do
                 r <- validateEm currentSlot t
                 pure (t, r)
@@ -443,7 +443,7 @@ validateBlock currentSlot idx txns =
         -- successfully
         block = fst <$> filter (isNothing . snd) processed
 
-        -- Also return an `EmulatorEvent` for each transaction that was 
+        -- Also return an `EmulatorEvent` for each transaction that was
         -- processed
         events = uncurry mkEvent <$> processed
 
@@ -453,7 +453,7 @@ canValidateNow :: Slot -> Tx -> Bool
 canValidateNow currentSlot tx = $$(Interval.member) currentSlot (txValidRange tx)
 
 mkEvent :: Tx -> Maybe Index.ValidationError -> EmulatorEvent
-mkEvent t result = 
+mkEvent t result =
     case result of
         Nothing  -> TxnValidate (hashTx t)
         Just err -> TxnValidationFail (hashTx t) err

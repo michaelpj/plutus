@@ -1,6 +1,8 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 module Language.PlutusTx.Map.TH (
     Map,
@@ -8,6 +10,7 @@ module Language.PlutusTx.Map.TH (
     Comparison,
     valid,
     keys,
+    values,
     toList,
     size,
     map,
@@ -17,6 +20,7 @@ module Language.PlutusTx.Map.TH (
     delete,
     lookup,
     union,
+    unionWith,
     unionThese)
 where
 
@@ -25,6 +29,8 @@ import           Language.Haskell.TH          (Q, TExp)
 import           Language.PlutusTx.Prelude    (all, length)
 import           Language.PlutusTx.These
 import           Language.PlutusTx.Lift
+import           Codec.Serialise
+import           GHC.Generics
 
 type Comparison k = k -> k -> Ordering
 
@@ -33,6 +39,8 @@ type Comparison k = k -> k -> Ordering
 -- must be passed on each usage, with the user required to ensure consistency.
 type Map = BST
 data BST k v = Leaf | Branch (BST k v) k v (BST k v)
+    deriving stock (Show, Eq, Ord, Generic)
+    deriving anyclass (Serialise)
 
 makeLift ''BST
 
@@ -55,6 +63,9 @@ toList = [|| $$(foldr) (\m ms -> m:ms) [] ||]
 keys :: Q (TExp (BST k v -> [k]))
 keys = [|| $$foldr (\(k,_) ks -> k:ks) [] ||]
 
+values :: Q (TExp (BST k v -> [v]))
+values = [|| $$foldr (\(_,v) vs -> v:vs) [] ||]
+
 size :: Q (TExp (BST k v -> Int))
 size = [|| $$length . $$keys ||]
 
@@ -63,7 +74,12 @@ nil = [|| Leaf ||]
 
 -- | Left-biased union of two trees.
 union :: Q (TExp (Comparison k -> BST k a -> BST k a -> BST k a))
-union = [|| \comp l r -> $$map $$leftBiased ($$unionThese comp l r) ||]
+union = [|| \comp l r -> $$map ($$mergeThese (\a _ -> a)) ($$unionThese comp l r) ||]
+
+-- | Union two trees, using the given function to compute a value when a key has a
+-- mapping on both sides.
+unionWith :: Q (TExp (Comparison k -> (a -> a -> a) -> BST k a -> BST k a -> BST k a))
+unionWith = [|| \comp with l r -> $$map ($$mergeThese with) ($$unionThese comp l r) ||]
 
 -- | Union two trees, keeping both values for a key in case it appears on both sides.
 unionThese :: Q (TExp (Comparison k -> BST k a -> BST k b -> BST k (These a b)))

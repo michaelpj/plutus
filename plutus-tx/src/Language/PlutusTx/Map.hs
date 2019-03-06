@@ -5,14 +5,18 @@ module Language.PlutusTx.Map (
     Map,
     Comparison,
     keys,
+    values,
     toList,
     size,
     valid,
+    map,
+    foldr,
     nil,
     insert,
     delete,
     lookup,
     union,
+    unionWith,
     unionThese)
 where
 
@@ -26,6 +30,9 @@ valid = $$(TH.valid)
 
 keys :: Map k v -> [k]
 keys = $$(TH.keys)
+
+values :: Map k v -> [v]
+values = $$(TH.values)
 
 toList :: Map k v -> [(k, v)]
 toList = $$(TH.toList)
@@ -52,6 +59,11 @@ lookup = $$(TH.lookup)
 -- | Union two maps together, keeping the mapping on the left if a key appears in both sides.
 union :: Comparison k -> Map k a -> Map k a -> Map k a
 union = $$(TH.union)
+
+-- | Union two trees, using the given function to compute a value when a key has a
+-- mapping on both sides.
+unionWith :: Comparison k -> (a -> a -> a) -> Map k a -> Map k a -> Map k a
+unionWith = $$(TH.unionWith)
 
 -- | Union two maps together, keeping both values when there is mapping in both sides.
 unionThese :: Comparison k -> Map k a -> Map k b -> Map k (These a b)
