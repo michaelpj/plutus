@@ -161,24 +161,20 @@ isOrdered =
             in ordered $ $$keys t
     ||]
 
-blackHeight :: Q (TExp (RBTree k v -> Bool))
-blackHeight =
-    [|| let
-            bh n Leaf = n == 0
-            bh n (Branch R h l _ _ r) = n == h' && bh n l && bh n r
-              where
-                h' = h - 1
-            bh n (Branch B h l _ _ r) = n == h && bh n' l && bh n' r
-              where
-                n' = n - 1
-        in \case
-            Leaf -> True
-            t@(Branch B i _ _ _ _) -> bh i t
-            _ -> False
+correctBlackHeight :: Q (TExp (RBTree k v -> Bool))
+correctBlackHeight =
+    [|| \t ->
+            let
+                correct n Leaf = n == 0
+                correct n (Branch R h l _ _ r) = n == h' && correct n l && correct n r
+                  where h' = h - 1
+                correct n (Branch B h l _ _ r) = n == h && correct n' l && correct n' r
+                  where n' = n - 1
+            in correct (height t) t
     ||]
 
 valid :: Q (TExp (Comparison k -> RBTree k v -> Bool))
-valid = [|| \comp t -> $$isBalanced t && $$blackHeight t && $$isOrdered comp t ||]
+valid = [|| \comp t -> $$isBalanced t && $$correctBlackHeight t && $$isOrdered comp t ||]
 
 ------------------------------------------------------------
 -- Colour switching
