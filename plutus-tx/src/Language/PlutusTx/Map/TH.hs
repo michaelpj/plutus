@@ -206,12 +206,60 @@ insert =
         in $$turnB (go t)
     ||]
 
+{- Note [Balancing]
+There are four cases for balancing a subtree, each of which
+produces the same top-level pattern, visible on the right-hand sides
+of each of the cases below.
+
+The cases split into those that balance the left side, and those that
+balance the right side. Often we know that only one side can be unbalanced,
+so it is advantageous to run only one side.
+
+L1:
+          B3           R2
+         /  \         /  \
+        R2   T  ->   B1  B3
+       /  \         / \  / \
+      R1   T        T T  T T
+     /  \
+    T    T
+
+L2:
+        B3             R2
+       /  \           /  \
+      R1   T    ->   B1  B3
+     /  \           / \  / \
+    T    R2         T T  T T
+        /  \
+       T    T
+
+R1:
+      B1               R2
+     /  \             /  \
+    T   R2      ->   B1  B3
+       /  \         / \  / \
+      T   R1        T T  T T
+         /  \
+        T    T
+
+R2:
+      B1               R2
+     /  \             /  \
+    T   R2      ->   B1  B3
+       /  \         / \  / \
+      R1   T        T T  T T
+     /  \
+    T    T
+-}
+
 balanceL :: Q (TExp (RBTree k v -> RBTree k v))
 balanceL =
     [|| \t -> case t of
             Branch B h toSplit k3 v3 t4 -> case toSplit of
+                -- See note [Balancing], this is case L1
                 Branch R _ (Branch R _ t1 k1 v1 t2) k2 v2 t3 ->
                     Branch R (h+1) (Branch B h t1 k1 v1 t2) k2 v2 (Branch B h t3 k3 v3 t4)
+                -- See note [Balancing], this is case L2
                 Branch R _ t1 k1 v1 (Branch R _ t2 k2 v2 t3) ->
                     Branch R (h+1) (Branch B h t1 k1 v1 t2) k2 v2 (Branch B h t3 k3 v3 t4)
                 _ -> t
@@ -222,13 +270,19 @@ balanceR :: Q (TExp (RBTree k v-> RBTree k v))
 balanceR =
     [|| \t -> case t of
             Branch B h t1 k1 v1 toSplit -> case toSplit of
+                -- See note [Balancing], this is case R1
                 Branch R _ t2 k2 v2 (Branch R _ t3 k3 v3 t4) ->
                     Branch R (h+1) (Branch B h t1 k1 v1 t2) k2 v2 (Branch B h t3 k3 v3 t4)
+                -- See note [Balancing], this is case R2
                 Branch R _ (Branch R _ t2 k2 v2 t3) k3 v3 t4 ->
                     Branch R (h+1) (Branch B h t1 k1 v1 t2) k2 v2 (Branch B h t3 k3 v3 t4)
                 _ -> t
             _ -> t
     ||]
+
+------------------------------------------------------------
+-- Deletion
+------------------------------------------------------------
 
 ------------------------------------------------------------
 -- Joining and splitting
