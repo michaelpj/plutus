@@ -4,6 +4,9 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+-- | https://github.com/sweirich/dth/blob/master/examples/red-black/RedBlack.lhs
+-- http://hackage.haskell.org/package/llrbtree-0.1.1
 module Language.PlutusTx.Map.TH (
     Map,
     RBTree(..),
@@ -27,7 +30,7 @@ where
 
 import           Prelude                      hiding (lookup, all, length, map, foldr)
 import           Language.Haskell.TH          (Q, TExp)
-import           Language.PlutusTx.Prelude    (all, length)
+import           Language.PlutusTx.Prelude    (all, length, intCompare)
 import           Language.PlutusTx.These
 import           Language.PlutusTx.Lift
 import           Codec.Serialise
@@ -131,7 +134,9 @@ isBlackSame =
 blacks :: Q (TExp (RBTree k v -> [Int]))
 blacks =
     [||
-         let blacks' n = \case
+         let
+             blacks' :: Int -> RBTree k v -> [Int]
+             blacks' n = \case
                 Leaf -> [n+1]
                 Branch R _ l _ _ r -> blacks' n  l ++ blacks' n  r
                 Branch B _ l _ _ r -> blacks' (n+1) l ++ blacks' (n+1) r
@@ -284,21 +289,33 @@ balanceR =
 -- Deletion
 ------------------------------------------------------------
 
+
+{-
+delete :: Q (TExp (Comparison k -> k -> RBTree k v -> RBTree k v))
+delete =
+    [|| \comp k t ->
+            let
+                del Leaf = Leaf
+                del (Branch _ _ l k' v r) = case comp k k' of
+                    LT -> delLeft  l k b
+                    GT -> delRight l k b
+                    EQ -> merge a b
+            in $$turnB (del t)
+    ||]
+-}
+
 ------------------------------------------------------------
 -- Joining and splitting
 ------------------------------------------------------------
 
-cmpInt :: Q (TExp (Int -> Int -> Ordering))
-cmpInt = [|| \i1 i2 -> if i1<i2 then LT else if i1 == i2 then EQ else GT ||]
-
--- | Join two trees, with an optional key-value mapping in the middle. The keys in the
+-- | Join two trees, with a key-value mapping in the middle. The keys in the
 -- left tree are assumed to be less than the key in the middle, which is less than the
 -- keys in the right tree.
 join :: Q (TExp (Comparison k -> k -> v -> RBTree k v -> RBTree k v -> RBTree k v))
 join = [|| \comp k v ->
     let join Leaf t2 = $$insert comp k v t2
         join t1 Leaf = $$insert comp k v t1
-        join t1 t2 = case $$cmpInt h1 h2 of
+        join t1 t2 = case $$intCompare h1 h2 of
             LT -> $$turnB $ joinLT t1 t2 h1
             GT -> $$turnB $ joinGT t1 t2 h2
             EQ -> Branch B (h1+1) t1 k v t2

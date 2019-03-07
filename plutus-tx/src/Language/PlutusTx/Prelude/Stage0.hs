@@ -7,7 +7,7 @@
 module Language.PlutusTx.Prelude.Stage0 where
 
 import           Data.ByteString.Lazy       (ByteString)
-import           Prelude                    (Bool (..), Int, Maybe (..), String, (<), (>), (+))
+import           Prelude                    (Bool (..), Int, Maybe (..), String, (<), (>), (+), Ordering(..))
 import qualified Prelude                    as P
 
 import qualified Language.PlutusTx.Builtins as Builtins
@@ -144,6 +144,10 @@ divide = [|| Builtins.divideInteger ||]
 --
 remainder :: Q (TExp (Int -> Int -> Int))
 remainder = [|| Builtins.remainderInteger ||]
+
+-- | Compare two 'Int's.
+intCompare :: Q (TExp (Int -> Int -> Ordering))
+intCompare = [|| \i1 i2 -> if $$lt i1 i2 then LT else if $$eq i1 i2 then EQ else GT ||]
 
 -- | The smaller of two 'Int's
 --
