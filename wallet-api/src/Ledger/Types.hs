@@ -195,13 +195,14 @@ signedBy (Signature k) (PubKey s) txId =
         s' = ED25519.signature $ BSL.toStrict $ getKeyBytes s
     in throwCryptoError $ ED25519.verify <$> k' <*> pure (getTxId txId) <*> s' -- TODO: is this what we want
 
-sign :: Tx -> PrivateKey -> ED25519.Signature
+sign :: Tx -> PrivateKey -> Signature
 sign tx (PrivateKey privKey) =
     let k  = ED25519.secretKey $ BSL.toStrict $ getKeyBytes privKey
         pk = ED25519.toPublic <$> k
         salt :: BSS.ByteString
         salt = "" -- TODO: do we need better salt?
-    in throwCryptoError $ ED25519.sign <$> k <*> pure salt <*> pk <*> pure (getTxId $ hashTx tx)
+        convert = Signature . KeyBytes . BSL.pack . BA.unpack
+    in throwCryptoError $ fmap convert (ED25519.sign <$> k <*> pure salt <*> pk <*> pure (getTxId $ hashTx tx))
 
 deriving newtype instance Serialise TxId
 deriving anyclass instance ToJSON a => ToJSON (TxIdOf a)

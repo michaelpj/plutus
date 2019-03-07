@@ -17,7 +17,6 @@ module Wallet.API(
     PubKey(..),
     pubKey,
     keyPair,
-    signature,
     createPayment,
     createTxAndSubmit,
     payToScript,
