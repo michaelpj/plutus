@@ -95,7 +95,7 @@ values :: Q (TExp (RBTree k v -> [v]))
 values = [|| $$foldr (\(_,v) vs -> v:vs) [] ||]
 
 toList :: Q (TExp (RBTree k v -> [(k, v)]))
-toList = [|| $$(foldr) (\m ms -> m:ms) [] ||]
+toList = [|| $$foldr (\m ms -> m:ms) [] ||]
 
 map :: Q (TExp ((a -> b) -> RBTree k a -> RBTree k b))
 map =
@@ -284,25 +284,6 @@ balanceR =
     ||]
 
 ------------------------------------------------------------
--- Deletion
-------------------------------------------------------------
-
-
-{-
-delete :: Q (TExp (Comparison k -> k -> RBTree k v -> RBTree k v))
-delete =
-    [|| \comp k t ->
-            let
-                del Leaf = Leaf
-                del (Branch _ _ l k' v r) = case comp k k' of
-                    LT -> delLeft  l k b
-                    GT -> delRight l k b
-                    EQ -> merge a b
-            in $$turnB (del t)
-    ||]
--}
-
-------------------------------------------------------------
 -- Joining and splitting
 ------------------------------------------------------------
 
@@ -311,15 +292,17 @@ delete =
 -- keys in the right tree.
 join :: Q (TExp (Comparison k -> k -> v -> RBTree k v -> RBTree k v -> RBTree k v))
 join = [|| \comp k v ->
-    let join Leaf t2 = $$insert comp k v t2
-        join t1 Leaf = $$insert comp k v t1
+    let bh = $$blackHeight
+        ins = $$insert comp k v
+        join Leaf t2 = ins t2
+        join t1 Leaf = ins t1
         join t1 t2 = case $$intCompare h1 h2 of
             LT -> $$turnB $ joinLT t1 t2 h1
             GT -> $$turnB $ joinGT t1 t2 h2
             EQ -> Branch B (h1+1) t1 k v t2
           where
-            h1 = $$blackHeight t1
-            h2 = $$blackHeight t2
+            h1 = bh t1
+            h2 = bh t2
         joinLT t1 t2@(Branch c h l k' v' r) h1
           | h == h1   = Branch R (h+1) t1 k v t2
           | otherwise = $$balanceL (Branch c h (joinLT t1 l h1) k' v' r)
@@ -337,11 +320,12 @@ join = [|| \comp k v ->
 split :: Q (TExp (Comparison k -> k -> RBTree k v -> (RBTree k v, Maybe v, RBTree k v)))
 split =
     [|| \comp needle ->
-        let go = \case
+        let jn = $$join comp
+            go = \case
                 Leaf -> (Leaf, Nothing, Leaf)
                 Branch _ _ l k v r -> case comp needle k of
-                    LT -> let (l', mid, r') = go l in (l', mid, $$join comp k v r' ($$turnB r))
-                    GT -> let (l', mid, r') = go r in ($$join comp k v ($$turnB l) l', mid, r')
+                    LT -> let (l', mid, r') = go l in (l', mid, jn k v r' ($$turnB r))
+                    GT -> let (l', mid, r') = go r in (jn k v ($$turnB l) l', mid, r')
                     EQ -> ($$turnB l, Just v, $$turnB r)
         in go
     ||]
@@ -391,17 +375,9 @@ union :: Q (TExp (Comparison k -> RBTree k a -> RBTree k a -> RBTree k a))
 union = [|| \comp -> $$(unionWith) comp (\a _ -> a) ||]
 
 ------------------------------------------------------------
-
+-- Deletion
+------------------------------------------------------------
 {-
 delete :: Q (TExp (Comparison k -> k -> RBTree k v -> RBTree k v))
-delete =
-    [|| \comp k ->
-        let go = \case
-                Leaf -> Leaf
-                Branch l k' v' r -> case comp k k' of
-                    LT -> Branch (go l) k' v' r
-                    GT -> Branch l k' v' (go r)
-                    EQ -> $$join l Nothing r
-        in go
-    ||]
+delete = [|| \comp k t -> let (l, _, r) =  $$split comp k t in $$join comp l r ||]
 -}
