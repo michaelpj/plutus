@@ -23,7 +23,9 @@ module Ledger.Types(
     TxId,
     PubKey(..),
     Signature(..),
+    PrivateKey (..),
     signedBy,
+    sign,
     -- ** Addresses
     AddressOf(..),
     Address,
@@ -152,6 +154,14 @@ especially because we only need one direction (to binary).
 
 -}
 
+newtype PrivateKey = PrivateKey { getPrivateKey :: KeyBytes }
+    deriving (Eq, Ord, Show)
+    deriving stock (Generic)
+    deriving anyclass (ToSchema, ToJSON, FromJSON, Newtype)
+    deriving newtype (Serialise)
+
+makeLift ''PrivateKey
+
 -- | Public key
 newtype PubKey = PubKey { getPubKey :: KeyBytes }
     deriving (Eq, Ord, Show)
@@ -184,6 +194,14 @@ signedBy (Signature k) (PubKey s) txId =
     let k' = ED25519.publicKey $ BSL.toStrict $ getKeyBytes k
         s' = ED25519.signature $ BSL.toStrict $ getKeyBytes s
     in throwCryptoError $ ED25519.verify <$> k' <*> pure (getTxId txId) <*> s' -- TODO: is this what we want
+
+sign :: Tx -> PrivateKey -> ED25519.Signature
+sign tx (PrivateKey privKey) =
+    let k  = ED25519.secretKey $ BSL.toStrict $ getKeyBytes privKey
+        pk = ED25519.toPublic <$> k
+        salt :: BSS.ByteString
+        salt = "" -- TODO: do we need better salt?
+    in throwCryptoError $ ED25519.sign <$> k <*> pure salt <*> pk <*> pure (getTxId $ hashTx tx)
 
 deriving newtype instance Serialise TxId
 deriving anyclass instance ToJSON a => ToJSON (TxIdOf a)
@@ -442,7 +460,7 @@ txOutRefs t = mkOut <$> zip [0..] (txOutputs t) where
 -- | Type of transaction input.
 data TxInType =
       ConsumeScriptAddress !ValidatorScript !RedeemerScript
-    | ConsumePublicKeyAddress !Signature  -- TODO: is this correct?
+    | ConsumePublicKeyAddress !PrivateKey  -- TODO: is this correct?
     deriving (Show, Eq, Ord, Generic, Serialise, ToJSON, FromJSON)
 
 -- | Transaction input
@@ -468,7 +486,7 @@ inType = lens txInType s where
     s txi t = txi { txInType = t }
 
 -- FIXME: this is wrong
-pubKeyTxIn :: TxOutRefOf h -> Signature -> TxInOf h
+pubKeyTxIn :: TxOutRefOf h -> PrivateKey -> TxInOf h
 pubKeyTxIn r = TxInOf r . ConsumePublicKeyAddress
 
 scriptTxIn :: TxOutRefOf h -> ValidatorScript -> RedeemerScript -> TxInOf h

@@ -162,8 +162,8 @@ matchInputOutput :: ValidationMonad m => Tx -> TxIn -> TxOut -> m InOutMatch
 matchInputOutput tx i txo = case (txInType i, txOutType txo) of
     (Ledger.ConsumeScriptAddress v r, Ledger.PayToScript d) ->
         pure $ ScriptMatch i v r d (txOutAddress txo)
-    (Ledger.ConsumePublicKeyAddress sig, Ledger.PayToPubKey pk) ->
-        pure $ PubKeyMatch tx pk sig
+    (Ledger.ConsumePublicKeyAddress sk, Ledger.PayToPubKey pk) ->
+        pure $ PubKeyMatch tx pk (Ledger.sign tx sk)
     _ -> throwError $ InOutTypeMismatch i txo
 
 -- | Check that a matching pair of transaction input and transaction output is
@@ -177,7 +177,7 @@ checkMatch tx v = \case
         | a /= Ledger.scriptAddress vl ->
                 throwError $ InvalidScriptHash d
         | otherwise -> do
-            pTxIn <- mkIn txin
+            pTxIn <- mkIn tx txin
             let v' = ValidationData
                     $ lifted
                     $ v { pendingTxIn = pTxIn }
@@ -213,7 +213,7 @@ checkPositiveValues t =
 -- | Encode the current transaction and slot in PLC.
 validationData :: ValidationMonad m => Tx -> m PendingTx
 validationData tx = rump <$> ins where
-    ins = traverse mkIn $ Set.toList $ txInputs tx
+    ins = traverse (mkIn tx) $ Set.toList $ txInputs tx
 
     rump inputs = PendingTx
         { pendingTxInputs = inputs
@@ -235,8 +235,8 @@ mkOut t = Validation.PendingTxOut (txOutValue t) d tp where
                 (Just (validatorHash, dataScriptHash), Validation.DataTxOut)
         Ledger.PayToPubKey pk -> (Nothing, Validation.PubKeyTxOut pk)
 
-mkIn :: ValidationMonad m => TxIn -> m Validation.PendingTxIn
-mkIn i = Validation.PendingTxIn <$> pure ref <*> pure red <*> vl where
+mkIn :: ValidationMonad m => Tx -> TxIn -> m Validation.PendingTxIn
+mkIn tx i = Validation.PendingTxIn <$> pure ref <*> pure red <*> vl where
     ref =
         let hash = Validation.plcTxHash . Ledger.txOutRefId $ txInRef i
             idx  = Ledger.txOutRefIdx $ Ledger.txInRef i
@@ -246,8 +246,8 @@ mkIn i = Validation.PendingTxIn <$> pure ref <*> pure red <*> vl where
         Ledger.ConsumeScriptAddress v r  ->
             let h = Ledger.getAddress $ Ledger.scriptAddress v in
             Left (Validation.plcValidatorDigest h, Validation.plcRedeemerHash r)
-        Ledger.ConsumePublicKeyAddress sig ->
-            Right sig
+        Ledger.ConsumePublicKeyAddress sk ->
+            Right (Ledger.sign tx sk)
     vl = valueOf i
 
 valueOf :: ValidationMonad m => Ledger.TxIn -> m Value

@@ -94,7 +94,7 @@ import qualified Ledger.Interval            as Interval
 import qualified Ledger.Value               as Value
 import           Wallet.API                 (EventHandler (..), EventTrigger, KeyPair (..), WalletAPI (..),
                                              WalletAPIError (..), WalletDiagnostics (..), WalletLog (..), addresses,
-                                             annTruthValue, getAnnot, keyPair, pubKey, signature)
+                                             annTruthValue, getAnnot, keyPair, pubKey)
 import qualified Wallet.Emulator.AddressMap as AM
 
 -- agents/wallets
@@ -215,7 +215,7 @@ instance WalletAPI MockWallet where
         ws <- get
         let fnds = ws ^. ownFunds
             kp    = view ownKeyPair ws
-            sig   = signature kp
+            sig   = fst (getKeyPair kp)
         (spend, change) <- selectCoin (second txOutValue <$> Map.toList fnds) vl
         let
             txOutput = if Value.gt change Value.zero then Just (pubKeyTxOut change (pubKey kp)) else Nothing

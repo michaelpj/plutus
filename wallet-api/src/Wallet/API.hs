@@ -85,7 +85,7 @@ import           Data.Text                  (Text)
 import           GHC.Generics               (Generic)
 import           KeyBytes
 import           Ledger                     (Address, DataScript, PubKey (..), RedeemerScript, Signature (..), Slot, SlotRange,
-                                             Tx (..), TxId, TxIn, TxOut, TxOutOf (..), TxOutType (..), ValidatorScript,
+                                             Tx (..), TxId, TxIn, TxOut, TxOutOf (..), TxOutType (..), ValidatorScript, PrivateKey (..),
                                              Value, pubKeyTxOut, scriptAddress, scriptTxIn, txOutRefId)
 import qualified Ledger.Interval            as Interval
 import           Ledger.Interval            (Interval(..))
@@ -94,10 +94,6 @@ import           Text.Show.Deriving         (deriveShow1)
 import           Wallet.Emulator.AddressMap (AddressMap)
 
 import           Prelude                    hiding (Ordering (..))
-
-newtype PrivateKey = PrivateKey { getPrivateKey :: KeyBytes }
-    deriving (Eq, Ord, Show)
-    deriving newtype (FromJSON, ToJSON)
 
 newtype KeyPair = KeyPair { getKeyPair :: (PrivateKey, PubKey) }
     deriving (Eq, Ord, Show)
@@ -110,12 +106,6 @@ pubKey = snd . getKeyPair
 -- | Create a [[KeyPair]] given a "private key"
 keyPair :: KeyBytes -> KeyPair
 keyPair i = KeyPair (PrivateKey i, PubKey (privKeyTrim i))
-
--- FIXME: remove this
--- | Create a [[Signature]] signed by the private key of a
---   [[KeyPair]]
-signature :: KeyPair -> Signature
-signature = Signature . getPrivateKey . fst . getKeyPair
 
 data EventTriggerF f =
     TAnd f f
