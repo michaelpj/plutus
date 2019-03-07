@@ -190,7 +190,7 @@ genValue' valueRange = do
 
         -- generate values with no more than 10 elements to avoid the tests
         -- taking too long (due to the map-as-list-of-kv-pairs implementation)
-        maxCurrencies = 10
+        maxCurrencies = 100
 
     numValues <- Gen.int (Range.linear 0 maxCurrencies)
     values <- traverse (const sngl) [0 .. numValues]

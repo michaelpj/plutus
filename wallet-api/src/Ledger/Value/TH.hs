@@ -112,7 +112,7 @@ scale = [|| \i (Value xs) -> Value ($$(Map.map) ($$(P.multiply) i) xs) ||]
 -- Num operations
 
 plus :: Q (TExp (Value -> Value -> Value))
-plus = [|| \(Value v1) (Value v2) -> Value $ $$(Map.unionWith) $$curCmp $$(P.plus) v1 v2||]
+plus = [|| \(Value v1) (Value v2) -> Value $ Map.unionWith' $$curCmp $$(P.plus) v1 v2||]
 
 negate :: Q (TExp (Value -> Value))
 negate = [|| $$(scale) (-1) ||]

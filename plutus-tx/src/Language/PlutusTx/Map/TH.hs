@@ -7,26 +7,27 @@
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 -- | https://github.com/sweirich/dth/blob/master/examples/red-black/RedBlack.lhs
 -- http://hackage.haskell.org/package/llrbtree-0.1.1
-module Language.PlutusTx.Map.TH (
-    Map,
-    RBTree(..),
-    Color(..),
-    Comparison,
-    nil,
-    singleton,
-    lookup,
-    keys,
-    values,
-    toList,
-    size,
-    map,
-    foldr,
-    valid,
-    insert,
+module Language.PlutusTx.Map.TH --(
+    --Map,
+    --RBTree(..),
+    --Color(..),
+    --Comparison,
+    --nil,
+    --singleton,
+    --lookup,
+    --keys,
+    --values,
+    --toList,
+    --size,
+    --map,
+    --foldr,
+    --valid,
+    --insert,
     --delete,
-    union,
-    unionWith,
-    unionThese)
+    --union,
+    --unionWith,
+    --unionWith',
+    --unionThese)
 where
 
 import           Prelude                      hiding (lookup, all, length, map, foldr)
@@ -69,6 +70,9 @@ singleton = [|| \k v -> Branch B 1 Leaf k v Leaf ||]
 
 blackHeight :: Q (TExp (RBTree k v -> BlackHeight))
 blackHeight = [|| \case { Leaf -> 0 ; Branch _ h _ _ _ _ -> h } ||]
+
+blackHeight' :: (RBTree k v -> BlackHeight)
+blackHeight' = \case { Leaf -> 0 ; Branch _ h _ _ _ _ -> h }
 
 color :: Q (TExp (RBTree k v -> Color))
 color = [|| \case { Leaf -> B ; Branch c _ _ _ _ _ -> c } ||]
@@ -189,6 +193,9 @@ turnR = [|| \case { Leaf -> Leaf; Branch _ h l k v r -> Branch R h l k v r } ||]
 turnB :: Q (TExp (RBTree k v -> RBTree k v))
 turnB = [|| \case { Leaf -> Leaf; Branch _ h l k v r -> Branch B h l k v r } ||]
 
+turnB' :: RBTree k v -> RBTree k v
+turnB' = \case { Leaf -> Leaf; Branch _ h l k v r -> Branch B h l k v r }
+
 ------------------------------------------------------------
 -- Insertion and balancing
 ------------------------------------------------------------
@@ -208,6 +215,21 @@ insert =
                     EQ -> Branch R h l k' v r
         in $$turnB (go t)
     ||]
+
+insert' :: Comparison k -> k -> v -> RBTree k v -> RBTree k v
+insert' =
+    \comp k v t ->
+        let go = \case
+                Leaf -> Branch R 1 Leaf k v Leaf
+                (Branch B h l k' v' r) -> case comp k k' of
+                    LT -> balanceL' (Branch B h (go l) k' v' r)
+                    GT -> balanceR' (Branch B h l k' v' (go r))
+                    EQ -> Branch B h l k' v r
+                (Branch R h l k' v' r) -> case comp k k' of
+                    LT -> Branch R h (go l) k' v' r
+                    GT -> Branch R h l k' v' (go r)
+                    EQ -> Branch R h l k' v r
+        in turnB' (go t)
 
 {- Note [Balancing]
 There are four cases for balancing a subtree, each of which
@@ -269,6 +291,19 @@ balanceL =
             _ -> t
     ||]
 
+balanceL' :: RBTree k v -> RBTree k v
+balanceL' =
+    \t -> case t of
+            Branch B h toSplit k3 v3 t4 -> case toSplit of
+                -- See note [Balancing], this is case L1
+                Branch R _ (Branch R _ t1 k1 v1 t2) k2 v2 t3 ->
+                    Branch R (h+1) (Branch B h t1 k1 v1 t2) k2 v2 (Branch B h t3 k3 v3 t4)
+                -- See note [Balancing], this is case L2
+                Branch R _ t1 k1 v1 (Branch R _ t2 k2 v2 t3) ->
+                    Branch R (h+1) (Branch B h t1 k1 v1 t2) k2 v2 (Branch B h t3 k3 v3 t4)
+                _ -> t
+            _ -> t
+
 balanceR :: Q (TExp (RBTree k v-> RBTree k v))
 balanceR =
     [|| \t -> case t of
@@ -282,6 +317,19 @@ balanceR =
                 _ -> t
             _ -> t
     ||]
+
+balanceR' :: RBTree k v-> RBTree k v
+balanceR' =
+    \t -> case t of
+            Branch B h t1 k1 v1 toSplit -> case toSplit of
+                -- See note [Balancing], this is case R1
+                Branch R _ t2 k2 v2 (Branch R _ t3 k3 v3 t4) ->
+                    Branch R (h+1) (Branch B h t1 k1 v1 t2) k2 v2 (Branch B h t3 k3 v3 t4)
+                -- See note [Balancing], this is case R2
+                Branch R _ (Branch R _ t2 k2 v2 t3) k3 v3 t4 ->
+                    Branch R (h+1) (Branch B h t1 k1 v1 t2) k2 v2 (Branch B h t3 k3 v3 t4)
+                _ -> t
+            _ -> t
 
 ------------------------------------------------------------
 -- Joining and splitting
@@ -314,6 +362,29 @@ join = [|| \comp k v ->
     in join
     ||]
 
+join' :: Comparison k -> k -> v -> RBTree k v -> RBTree k v -> RBTree k v
+join' = \comp k v ->
+    let bh = blackHeight'
+        ins = insert' comp k v
+        join Leaf t2 = ins t2
+        join t1 Leaf = ins t1
+        join t1 t2 = case $$intCompare h1 h2 of
+            LT -> turnB' $ joinLT t1 t2 h1
+            GT -> turnB' $ joinGT t1 t2 h2
+            EQ -> Branch B (h1+1) t1 k v t2
+          where
+            h1 = bh t1
+            h2 = bh t2
+        joinLT t1 t2@(Branch c h l k' v' r) h1
+          | h == h1   = Branch R (h+1) t1 k v t2
+          | otherwise = balanceL' (Branch c h (joinLT t1 l h1) k' v' r)
+        joinLT t1 Leaf _ = t1
+        joinGT t1@(Branch c h l k' v' r) t2 h2
+          | h == h2   = Branch R (h+1) t1 k v t2
+          | otherwise = balanceR' (Branch c h l k' v' (joinGT r t2 h2))
+        joinGT Leaf t2 _ = t2
+    in join
+
 -- | Given a key @k@, spits a tree into a left tree with keys less than @k@, optionally a value
 -- corresponding to the mapping for @k@ if there is one, and a right tree with keys greater
 -- than @k@.
@@ -329,6 +400,18 @@ split =
                     EQ -> ($$turnB l, Just v, $$turnB r)
         in go
     ||]
+
+split' :: Comparison k -> k -> RBTree k v -> (RBTree k v, Maybe v, RBTree k v)
+split' =
+    \comp needle ->
+        let jn = join' comp
+            go = \case
+                Leaf -> (Leaf, Nothing, Leaf)
+                Branch _ _ l k v r -> case comp needle k of
+                    LT -> let (l', mid, r') = go l in (l', mid, jn k v r' (turnB' r))
+                    GT -> let (l', mid, r') = go r in (jn k v (turnB' l) l', mid, r')
+                    EQ -> (turnB' l, Just v, turnB' r)
+        in go
 
 ------------------------------------------------------------
 -- Union
@@ -369,6 +452,19 @@ unionWith =
                 in $$join comp k newV (union l l') (union r r')
         in union
     ||]
+
+unionWith' :: Comparison k -> (a -> a -> a) -> RBTree k a -> RBTree k a -> RBTree k a
+unionWith' =
+    \comp with->
+        let union l Leaf = turnB' $ l
+            union Leaf r = turnB' $ r
+            union (Branch _ _ l k v r) t =
+                let (l', maybeV, r') = split' comp k t
+                    newV = case maybeV of
+                        Just v' -> with v v'
+                        Nothing -> v
+                in join' comp k newV (union l l') (union r r')
+        in union
 
 -- | Left-biased union of two trees.
 union :: Q (TExp (Comparison k -> RBTree k a -> RBTree k a -> RBTree k a))
