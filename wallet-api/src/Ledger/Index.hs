@@ -153,7 +153,7 @@ data InOutMatch =
         Ledger.RedeemerScript
         DataScript
         (Ledger.AddressOf (Digest SHA256))
-    | PubKeyMatch Tx PubKey Signature -- TODO: PendingTx should be signed? not Tx?
+    | PubKeyMatch Tx PubKey Signature
     deriving (Eq, Ord, Show)
 
 -- | Match a transaction input with the output that it consumes, ensuring that

@@ -87,8 +87,6 @@ module Ledger.Types(
     outType,
     inRef,
     inType,
-    inScripts,
-    inSignature,
     validRange
     ) where
 
@@ -444,7 +442,7 @@ txOutRefs t = mkOut <$> zip [0..] (txOutputs t) where
 -- | Type of transaction input.
 data TxInType =
       ConsumeScriptAddress !ValidatorScript !RedeemerScript
-    | ConsumePublicKeyAddress !Signature
+    | ConsumePublicKeyAddress !Signature  -- TODO: is this correct?
     deriving (Show, Eq, Ord, Generic, Serialise, ToJSON, FromJSON)
 
 -- | Transaction input
@@ -468,21 +466,6 @@ inRef = lens txInRef s where
 inType :: Lens' (TxInOf h) TxInType
 inType = lens txInType s where
     s txi t = txi { txInType = t }
-
--- | Validator and redeemer scripts of a transaction input that spends a
---   "pay to script" output
---
-inScripts :: TxInOf h -> Maybe (ValidatorScript, RedeemerScript)
-inScripts TxInOf{ txInType = t } = case t of
-    ConsumeScriptAddress v r  -> Just (v, r)
-    ConsumePublicKeyAddress _ -> Nothing
-
--- | Signature of a transaction input that spends a "pay to public key" output
---
-inSignature :: TxInOf h -> Maybe Signature
-inSignature TxInOf{ txInType = t } = case t of
-    ConsumeScriptAddress _ _  -> Nothing
-    ConsumePublicKeyAddress s -> Just s
 
 -- FIXME: this is wrong
 pubKeyTxIn :: TxOutRefOf h -> Signature -> TxInOf h
