@@ -10,6 +10,7 @@
 module Language.PlutusTx.Map.TH (
     Map,
     RBTree(..),
+    Color(..),
     Comparison,
     nil,
     singleton,
@@ -66,8 +67,11 @@ nil = [|| Leaf ||]
 singleton :: Q (TExp (k -> v -> RBTree k v))
 singleton = [|| \k v -> Branch B 1 Leaf k v Leaf ||]
 
-height :: Q (TExp (RBTree k v -> BlackHeight))
-height = [|| \case { Leaf -> 0 ; Branch _ h _ _ _ _ -> h } ||]
+blackHeight :: Q (TExp (RBTree k v -> BlackHeight))
+blackHeight = [|| \case { Leaf -> 0 ; Branch _ h _ _ _ _ -> h } ||]
+
+color :: Q (TExp (RBTree k v -> Color))
+color = [|| \case { Leaf -> B ; Branch c _ _ _ _ _ -> c } ||]
 
 lookup :: Q (TExp (Comparison k -> k -> RBTree k v -> Maybe v))
 lookup =
@@ -121,65 +125,59 @@ foldr =
 ------------------------------------------------------------
 
 isBalanced :: Q (TExp (RBTree k v -> Bool))
-isBalanced = [|| \t -> $$isBlackSame t && $$isRedSeparate t ||]
+isBalanced = [|| \t -> $$sameBlacksToLeaves t && $$checkChildren t ||]
 
-isBlackSame :: Q (TExp (RBTree k v -> Bool))
-isBlackSame =
-    [||
-        \t -> case $$blacks t of
+sameBlacksToLeaves :: Q (TExp (RBTree k v -> Bool))
+sameBlacksToLeaves =
+    [|| \t -> case $$blacksToLeaves t of
               [] -> True
               n:ns -> $$all (n==) ns
     ||]
 
-blacks :: Q (TExp (RBTree k v -> [Int]))
-blacks =
+blacksToLeaves :: Q (TExp (RBTree k v -> [Int]))
+blacksToLeaves =
     [||
-         let
-             blacks' :: Int -> RBTree k v -> [Int]
-             blacks' n = \case
+         let blacksToLeavesFrom :: Int -> RBTree k v -> [Int]
+             blacksToLeavesFrom n = \case
                 Leaf -> [n+1]
-                Branch R _ l _ _ r -> blacks' n  l ++ blacks' n  r
-                Branch B _ l _ _ r -> blacks' (n+1) l ++ blacks' (n+1) r
-         in blacks' 0
+                Branch R _ l _ _ r -> blacksToLeavesFrom n l ++ blacksToLeavesFrom n r
+                Branch B _ l _ _ r -> blacksToLeavesFrom (n+1) l ++ blacksToLeavesFrom (n+1) r
+         in blacksToLeavesFrom 0
     ||]
 
-isRedSeparate :: Q (TExp (RBTree k v -> Bool))
-isRedSeparate = [|| $$reds B ||]
-
-reds :: Q (TExp (Color -> RBTree k v -> Bool))
-reds =
-    [||
+checkChildren :: Q (TExp (RBTree k v -> Bool))
+checkChildren =
+    [|| \t ->
         let
-            reds _ Leaf = True
-            reds R (Branch R _ _ _ _ _) = False
-            reds _ (Branch c _ l _ _ r) = reds c l && reds c r
-        in reds
+            checkVsParentColor _ Leaf = True
+            -- Red child of red parent - invariant violation!
+            checkVsParentColor R (Branch R _ _ _ _ _) = False
+            checkVsParentColor _ (Branch c _ l _ _ r) = checkVsParentColor c l && checkVsParentColor c r
+        in checkVsParentColor ($$color t) t
     ||]
 
-isOrdered :: Q (TExp (Comparison k -> RBTree k v -> Bool))
-isOrdered =
+keysSorted :: Q (TExp (Comparison k -> RBTree k v -> Bool))
+keysSorted =
     [|| \comp t ->
-            let
-                ordered [] = True
-                ordered [_] = True
-                ordered (x:y:xys) = comp x y == LT && ordered (y:xys)
-            in ordered $ $$keys t
+            let sorted [] = True
+                sorted [_] = True
+                sorted (x:y:xys) = comp x y == LT && sorted (y:xys)
+            in sorted $ $$keys t
     ||]
 
 correctBlackHeight :: Q (TExp (RBTree k v -> Bool))
 correctBlackHeight =
     [|| \t ->
-            let
-                correct n Leaf = n == 0
+            let correct n Leaf = n == 0
                 correct n (Branch R h l _ _ r) = n == h' && correct n l && correct n r
                   where h' = h - 1
                 correct n (Branch B h l _ _ r) = n == h && correct n' l && correct n' r
                   where n' = n - 1
-            in correct ($$height t) t
+            in correct ($$blackHeight t) t
     ||]
 
 valid :: Q (TExp (Comparison k -> RBTree k v -> Bool))
-valid = [|| \comp t -> $$isBalanced t && $$correctBlackHeight t && $$isOrdered comp t ||]
+valid = [|| \comp t -> $$isBalanced t && $$correctBlackHeight t && $$keysSorted comp t ||]
 
 ------------------------------------------------------------
 -- Colour switching
@@ -320,8 +318,8 @@ join = [|| \comp k v ->
             GT -> $$turnB $ joinGT t1 t2 h2
             EQ -> Branch B (h1+1) t1 k v t2
           where
-            h1 = $$height t1
-            h2 = $$height t2
+            h1 = $$blackHeight t1
+            h2 = $$blackHeight t2
         joinLT t1 t2@(Branch c h l k' v' r) h1
           | h == h1   = Branch R (h+1) t1 k v t2
           | otherwise = $$balanceL (Branch c h (joinLT t1 l h1) k' v' r)
