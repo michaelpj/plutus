@@ -30,7 +30,6 @@ module Wallet.API(
     collectFromScriptTxn,
     ownPubKeyTxOut,
     ownPubKey,
-    ownSignature,
     -- * Slot ranges
     Interval(..),
     SlotRange,
@@ -112,6 +111,7 @@ pubKey = snd . getKeyPair
 keyPair :: KeyBytes -> KeyPair
 keyPair i = KeyPair (PrivateKey i, PubKey (privKeyTrim i))
 
+-- FIXME: remove this
 -- | Create a [[Signature]] signed by the private key of a
 --   [[KeyPair]]
 signature :: KeyPair -> Signature
@@ -280,10 +280,6 @@ class WalletAPI m where
     The current slot.
     -}
     slot :: m Slot
-
--- | Generate a 'Signature' with the wallet's own private key
-ownSignature :: (Functor m, WalletAPI m) => m Signature
-ownSignature = signature <$> myKeyPair
 
 throwInsufficientFundsError :: MonadError WalletAPIError m => Text -> m a
 throwInsufficientFundsError = throwError . InsufficientFunds

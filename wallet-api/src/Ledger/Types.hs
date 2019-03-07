@@ -99,6 +99,7 @@ import           Control.Lens                             hiding (lifted)
 import           Control.Monad                            (join)
 import           Control.Newtype.Generics     (Newtype)
 import           Crypto.Hash                              (Digest, SHA256, digestFromByteString, hash)
+import           Crypto.Error                             (throwCryptoError)
 import           Data.Aeson                               (FromJSON (parseJSON), ToJSON (toJSON), withText)
 import qualified Data.Aeson                               as JSON
 import           Data.Bifunctor                           (first)
@@ -180,12 +181,11 @@ makeLift ''TxIdOf
 type TxId = TxIdOf (Digest SHA256)
 
 -- | True if the signature matches the public key
--- FIXME: implement this
 signedBy :: Signature -> PubKey -> TxId -> Bool
 signedBy (Signature k) (PubKey s) txId =
     let k' = ED25519.publicKey $ BSL.toStrict $ getKeyBytes k
         s' = ED25519.signature $ BSL.toStrict $ getKeyBytes s
-    in ED25519.verify <$> k' <*> pure txId <*> s'
+    in throwCryptoError $ ED25519.verify <$> k' <*> pure (getTxId txId) <*> s' -- TODO: is this what we want
 
 deriving newtype instance Serialise TxId
 deriving anyclass instance ToJSON a => ToJSON (TxIdOf a)
@@ -484,6 +484,7 @@ inSignature TxInOf{ txInType = t } = case t of
     ConsumeScriptAddress _ _  -> Nothing
     ConsumePublicKeyAddress s -> Just s
 
+-- FIXME: this is wrong
 pubKeyTxIn :: TxOutRefOf h -> Signature -> TxInOf h
 pubKeyTxIn r = TxInOf r . ConsumePublicKeyAddress
 
