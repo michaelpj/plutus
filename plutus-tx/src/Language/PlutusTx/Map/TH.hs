@@ -351,27 +351,40 @@ split =
 ------------------------------------------------------------
 
 -- | Union two trees, keeping both values for a key in case it appears on both sides.
--- This is the most general union function, all the others can be derived by mapping over
--- the resulting structure.
+-- This is the most general union function, but it is less efficient than 'unionWith'
+-- and 'union'.
 unionThese :: Q (TExp (Comparison k -> RBTree k a -> RBTree k b -> RBTree k (These a b)))
 unionThese =
     [|| \comp ->
+        -- The cases for leaves meant that this is less efficient than a simple union:
+        -- it must look at every element (this is obvious from the type!).
         let union l Leaf = $$turnB $ $$map This l
             union Leaf r = $$turnB $ $$map That r
             union (Branch _ _ l k v r) t =
                 -- There are several ways to do a union of RBTree. This way has the
                 -- key advantage of pulling out the mapping for k if there is one,
                 -- so we can package it up in a 'These' properly.
-                let (l', v', r') = $$split comp k t
-                    values = $$andMaybe v v'
-                in $$join comp k values (union l l') (union r r')
+                let (l', maybeV, r') = $$split comp k t
+                    theseVs = $$andMaybe v maybeV
+                in $$join comp k theseVs (union l l') (union r r')
         in union
     ||]
 
 -- | Union two trees, using the given function to compute a value when a key has a
 -- mapping on both sides.
 unionWith :: Q (TExp (Comparison k -> (a -> a -> a) -> RBTree k a -> RBTree k a -> RBTree k a))
-unionWith = [|| \comp with l r -> $$map ($$mergeThese with) ($$unionThese comp l r) ||]
+unionWith =
+    [|| \comp with->
+        let union l Leaf = $$turnB $ l
+            union Leaf r = $$turnB $ r
+            union (Branch _ _ l k v r) t =
+                let (l', maybeV, r') = $$split comp k t
+                    newV = case maybeV of
+                        Just v' -> with v v'
+                        Nothing -> v
+                in $$join comp k newV (union l l') (union r r')
+        in union
+    ||]
 
 -- | Left-biased union of two trees.
 union :: Q (TExp (Comparison k -> RBTree k a -> RBTree k a -> RBTree k a))

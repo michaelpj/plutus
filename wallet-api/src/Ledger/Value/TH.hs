@@ -63,6 +63,10 @@ newtype Value = Value { getValue :: Map.Map CurrencySymbol Int }
     deriving anyclass (ToSchema)
     deriving newtype (Serialise)
 
+deriving instance (ToJSON (Map.Color))
+deriving instance (FromJSON (Map.Color))
+deriving instance (ToSchema (Map.Color))
+
 instance (ToSchema k, ToSchema v) => (ToSchema (Map.Map k v)) where
     -- I got an error message telling me to do this when I tried to derive the instance, I
     -- don't entirely understand why, but this may be wrong.
@@ -134,6 +138,9 @@ liftBinop = [||
             This i -> i `op` 0
             That j -> 0 `op` j
             These i j -> i `op` j
+        -- This uses 'unionThese', which is less efficient than 'unionWith'. But
+        -- there's no escaping that: in this situation we *do* need to look at every
+        -- element in both maps.
         union = $$(Map.unionThese) $$curCmp ls rs
     in $$(P.all) p ($$(Map.values) union) ||]
 
