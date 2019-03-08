@@ -486,7 +486,7 @@ inType :: Lens' (TxInOf h) TxInType
 inType = lens txInType s where
     s txi t = txi { txInType = t }
 
--- FIXME: this is wrong
+-- TODO: is this correct?
 pubKeyTxIn :: TxOutRefOf h -> PrivateKey -> TxInOf h
 pubKeyTxIn r = TxInOf r . ConsumePublicKeyAddress
 

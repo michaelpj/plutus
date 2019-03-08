@@ -153,13 +153,12 @@ genValidTransaction' g f (Mockchain bc ops) = do
                 then Gen.discard
                 else Gen.int (Range.linear 1 (Map.size ops))
     let ins = Set.fromList
-                    $ uncurry pubKeyTxIn . second mkSig
+                    $ uncurry pubKeyTxIn
                     <$> (catMaybes
                         $ traverse (pubKeyTxo [bc]) . (di . fst) <$> inUTXO)
         inUTXO = take nUtxo $ Map.toList ops
         totalVal = foldl' (+) 0 $ (map (Ada.fromValue . txOutValue . snd) inUTXO)
         di a = (a, a)
-        mkSig (PubKey i) = Signature i
     genValidTransactionSpending' g f ins totalVal
 
 genValidTransactionSpending :: MonadGen m
