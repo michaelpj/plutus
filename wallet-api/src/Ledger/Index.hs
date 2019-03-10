@@ -163,7 +163,7 @@ matchInputOutput tx i txo = case (txInType i, txOutType txo) of
     (Ledger.ConsumeScriptAddress v r, Ledger.PayToScript d) ->
         pure $ ScriptMatch i v r d (txOutAddress txo)
     (Ledger.ConsumePublicKeyAddress sig, Ledger.PayToPubKey pk) ->
-        pure $ PubKeyMatch tx pk sig
+        pure $ PubKeyMatch tx pk undefined -- sig
     _ -> throwError $ InOutTypeMismatch i txo
 
 -- | Check that a matching pair of transaction input and transaction output is
@@ -247,7 +247,7 @@ mkIn tx i = Validation.PendingTxIn <$> pure ref <*> pure red <*> vl where
             let h = Ledger.getAddress $ Ledger.scriptAddress v in
             Left (Validation.plcValidatorDigest h, Validation.plcRedeemerHash r)
         Ledger.ConsumePublicKeyAddress sig ->
-            Right sig
+            Right undefined -- sig
     vl = valueOf i
 
 valueOf :: ValidationMonad m => Ledger.TxIn -> m Value
