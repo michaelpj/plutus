@@ -215,7 +215,7 @@ instance WalletAPI MockWallet where
         ws <- get
         let fnds = ws ^. ownFunds
             kp    = view ownKeyPair ws
-            sig   = fst (getKeyPair kp)
+            sig   = snd (getKeyPair kp)
         (spend, change) <- selectCoin (second txOutValue <$> Map.toList fnds) vl
         let
             txOutput = if Value.gt change Value.zero then Just (pubKeyTxOut change (pubKey kp)) else Nothing
