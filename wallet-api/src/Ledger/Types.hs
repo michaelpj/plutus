@@ -461,7 +461,7 @@ txOutRefs t = mkOut <$> zip [0..] (txOutputs t) where
 -- | Type of transaction input.
 data TxInType =
       ConsumeScriptAddress !ValidatorScript !RedeemerScript
-    | ConsumePublicKeyAddress !PrivateKey  -- TODO: is this correct?
+    | ConsumePublicKeyAddress !PubKey  -- TODO: is this correct?
     deriving (Show, Eq, Ord, Generic, Serialise, ToJSON, FromJSON)
 
 -- | Transaction input
@@ -487,7 +487,7 @@ inType = lens txInType s where
     s txi t = txi { txInType = t }
 
 -- TODO: is this correct?
-pubKeyTxIn :: TxOutRefOf h -> PrivateKey -> TxInOf h
+pubKeyTxIn :: TxOutRefOf h -> PubKey -> TxInOf h
 pubKeyTxIn r = TxInOf r . ConsumePublicKeyAddress
 
 scriptTxIn :: TxOutRefOf h -> ValidatorScript -> RedeemerScript -> TxInOf h
