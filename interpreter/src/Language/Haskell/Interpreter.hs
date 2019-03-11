@@ -31,7 +31,7 @@ import           System.Exit               (ExitCode (ExitSuccess))
 import           System.FilePath           ((</>))
 import           System.IO.Error           (tryIOError)
 import           System.IO.Temp            (getCanonicalTemporaryDirectory, openTempFile)
-import           System.Process            (cwd, proc, readProcessWithExitCode)
+import           System.Process            (cwd, proc, readCreateProcessWithExitCode, CreateProcess(..))
 import           Text.Read                 (readMaybe)
 
 data CompilationError
@@ -55,10 +55,11 @@ runghc
     :: (MonadIO m, MonadError [CompilationError] m, MonadMask m)
     => [String]
     -> FilePath
+    -> Maybe [(String, String)]
     -> m String
-runghc runghcOpts file = do
+runghc runghcOpts file env = do
     bin <- liftIO lookupRunghc
-    (exitCode, stdout, stderr) <- runProcess bin runghcOpts file
+    (exitCode, stdout, stderr) <- runProcess bin runghcOpts file env
     case exitCode of
         ExitSuccess -> pure stdout
         _ ->
@@ -71,10 +72,12 @@ runProcess
     :: (MonadIO m, MonadError [CompilationError] m, MonadMask m)
     => FilePath
     -> [String]
-    -> String
+    -> FilePath
+    -> Maybe [(String, String)]
     -> m (ExitCode, String, String)
-runProcess runghc runghcOpts file = do
-    result <- liftIO $ tryIOError $ readProcessWithExitCode runghc (runghcOpts <> [file]) ""
+runProcess runghc runghcOpts file env = do
+    let procSpec = (proc runghc (runghcOpts <> [file])){env=env}
+    result <- liftIO $ tryIOError $ readCreateProcessWithExitCode procSpec ""
     case result of
         Left e  -> throwError . pure . RawError . Text.pack . show $ e
         Right v -> pure v
