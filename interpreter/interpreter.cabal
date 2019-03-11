@@ -28,7 +28,6 @@ library
         http-types -any,
         monad-logger -any,
         filepath -any,
-        marlowe -any,
         mtl -any,
         newtype-generics -any,
         servant <0.15,
