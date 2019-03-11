@@ -37,7 +37,7 @@ runscript
 runscript handle file script = do
     liftIO $ Text.hPutStr handle script
     liftIO $ hFlush handle
-    runghc [] file
+    runghc [] file Nothing
 
 avoidUnsafe :: (MonadError MeadowError m) => SourceCode -> m ()
 avoidUnsafe s =
