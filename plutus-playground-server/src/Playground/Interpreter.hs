@@ -71,7 +71,7 @@ runscript
 runscript handle file script = do
     liftIO $ Text.hPutStr handle script
     liftIO $ hFlush handle
-    runghc runghcOpts file Nothing
+    runghc runghcOpts file (Just [("GHCRTS", "-M4G")])
 
 compile ::
        (MonadMask m, MonadIO m, MonadError PlaygroundError m)
