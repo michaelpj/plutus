@@ -17,7 +17,8 @@ module Language.PlutusTx.Plugin (
     sizePlc,
     getPir,
     plugin,
-    plc) where
+    plc,
+    hoistFun) where
 
 import           Language.PlutusTx.Compiler.Builtins
 import           Language.PlutusTx.Compiler.Error
@@ -108,6 +109,10 @@ plc :: forall (loc::Symbol) a . a -> CompiledCode a
 -- this constructor is only really there to get rid of the unused warning
 plc _ = CompiledCode mustBeReplaced mustBeReplaced
 
+{-# NOINLINE hoistFun #-}
+hoistFun :: forall a . TH.Name -> a -> a
+hoistFun _ x = x
+
 data PluginOptions = PluginOptions {
     poDoTypecheck    :: Bool
     , poDeferErrors  :: Bool
@@ -129,10 +134,10 @@ install args todo =
         pure (GHC.CoreDoPluginPass "Core to PLC" (pluginPass opts) : todo)
 
 pluginPass :: PluginOptions -> GHC.ModGuts -> GHC.CoreM GHC.ModGuts
-pluginPass opts guts = getMarkerName >>= \case
+pluginPass opts guts = getMarkerNames >>= \case
     -- nothing to do
     Nothing -> pure guts
-    Just name -> GHC.bindsOnlyPass (mapM $ convertMarkedExprsBind opts name) guts
+    Just names -> GHC.bindsOnlyPass (mapM $ convertMarkedExprsBind opts names) guts
 
 {- Note [Hooking in the plugin]
 Working out what to process and where to put it is tricky. We are going to turn the result in
@@ -146,8 +151,11 @@ where GHC gives unconstrained type variables the type `Any` rather than leaving 
 note [System FC and system FW]). I don't currently know how to resolve this.
 -}
 
-getMarkerName :: GHC.CoreM (Maybe GHC.Name)
-getMarkerName = GHC.thNameToGhcName 'plc
+getMarkerNames :: GHC.CoreM (Maybe (GHC.Name, GHC.Name))
+getMarkerNames = do
+    n1 <- GHC.thNameToGhcName 'plc
+    n2 <- GHC.thNameToGhcName 'hoistFun
+    pure $ (,) <$> n1 <*> n2
 
 messagePrefix :: String
 messagePrefix = "GHC Core to PLC plugin"
@@ -208,17 +216,18 @@ makePrimitiveNameInfo names = do
     pure $ Map.fromList mapped
 
 -- | Converts all the marked expressions in the given binder into PLC literals.
-convertMarkedExprsBind :: PluginOptions -> GHC.Name -> GHC.CoreBind -> GHC.CoreM GHC.CoreBind
-convertMarkedExprsBind opts markerName = \case
-    GHC.NonRec b e -> GHC.NonRec b <$> convertMarkedExprs opts markerName e
-    GHC.Rec bs -> GHC.Rec <$> mapM (\(b, e) -> (,) b <$> convertMarkedExprs opts markerName e) bs
+convertMarkedExprsBind :: PluginOptions -> (GHC.Name, GHC.Name) -> GHC.CoreBind -> GHC.CoreM GHC.CoreBind
+convertMarkedExprsBind opts markerNames = \case
+    GHC.NonRec b e -> GHC.NonRec b <$> convertMarkedExprs opts markerNames e
+    GHC.Rec bs -> GHC.Rec <$> mapM (\(b, e) -> (,) b <$> convertMarkedExprs opts markerNames e) bs
 
 -- | Converts all the marked expressions in the given expression into PLC literals.
-convertMarkedExprs :: PluginOptions -> GHC.Name -> GHC.CoreExpr -> GHC.CoreM GHC.CoreExpr
-convertMarkedExprs opts markerName =
+convertMarkedExprs :: PluginOptions -> (GHC.Name, GHC.Name) -> GHC.CoreExpr -> GHC.CoreM GHC.CoreExpr
+convertMarkedExprs opts markerNames =
     let
-        conv = convertMarkedExprs opts markerName
-        convB = convertMarkedExprsBind opts markerName
+        conv = convertMarkedExprs opts markerNames
+        convB = convertMarkedExprsBind opts markerNames
+        (plcName, hoistName) = markerNames
     in \case
       GHC.App (GHC.App (GHC.App
                           -- function id
@@ -229,8 +238,8 @@ convertMarkedExprs opts markerName =
                      (GHC.Type codeTy))
             -- value argument
             inner
-          | markerName == GHC.idName fid -> convertExpr opts (show fs_locStr) codeTy inner
-      e@(GHC.Var fid) | markerName == GHC.idName fid -> failCompilationSDoc "Found invalid marker, not applied correctly" (GHC.ppr e)
+          | plcName == GHC.idName fid -> convertExpr opts (show fs_locStr) codeTy inner
+      e@(GHC.Var fid) | plcName == GHC.idName fid || hoistName == GHC.idName fid -> failCompilationSDoc "Found invalid marker, not applied correctly" (GHC.ppr e)
       GHC.App e a -> GHC.App <$> conv e <*> conv a
       GHC.Lam b e -> GHC.Lam b <$> conv e
       GHC.Let bnd e -> GHC.Let <$> convB bnd <*> conv e
