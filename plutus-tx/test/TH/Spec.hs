@@ -24,6 +24,8 @@ import qualified Language.PlutusIR          as PIR
 import           Language.PlutusCore.Pretty
 import           Language.PlutusCore
 
+import           Language.Haskell.TH
+
 import           Control.Monad.Except
 import           Control.Exception
 
@@ -64,6 +66,7 @@ tests = testNested "TH" [
     , goldenEvalCekLog "traceDirect" [traceDirect]
     , goldenEvalCekLog "tracePrelude" [tracePrelude]
     , goldenEvalCekLog "traceRepeatedly" [traceRepeatedly]
+    , goldenPir "hoistBasic" hoistBasic
   ]
 
 simple :: CompiledCode (Bool -> Int)
@@ -98,3 +101,6 @@ traceRepeatedly = $$(compile
                    i3 = $$(traceH) "Adding them up" (i1 + i2)
               in i3
     ||])
+
+hoistBasic :: CompiledCode Int
+hoistBasic = $$(compile [|| $$addOne ($$addOne 1) ||])

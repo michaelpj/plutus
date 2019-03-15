@@ -30,6 +30,7 @@ data ConvertingContext = ConvertingContext {
     ccOpts            :: ConversionOptions,
     ccFlags           :: GHC.DynFlags,
     ccBuiltinNameInfo :: BuiltinNameInfo,
+    ccHoistName       :: GHC.Name,
     ccScopes          :: ScopeStack
     }
 

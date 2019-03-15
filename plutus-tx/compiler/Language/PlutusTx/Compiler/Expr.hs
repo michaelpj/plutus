@@ -25,6 +25,7 @@ import qualified CoreUtils                              as GHC
 import qualified GhcPlugins                             as GHC
 import qualified MkId                                   as GHC
 import qualified PrelNames                              as GHC
+import qualified CoreFVs                                as GHC
 
 import qualified Language.PlutusIR                      as PIR
 import qualified Language.PlutusIR.Compiler.Definitions as PIR
@@ -40,6 +41,7 @@ import           Control.Monad.Reader
 import qualified Data.ByteString.Lazy                   as BSL
 import           Data.List                              (elem, elemIndex)
 import qualified Data.List.NonEmpty                     as NE
+import qualified Data.Set                               as Set
 import           Data.Traversable
 
 {- Note [System FC and System FW]
@@ -141,12 +143,32 @@ where it's not used, the PIR dead-binding pass will remove it.
 
 -- Expressions
 
+hoistExpr :: Converting m => GHC.Name -> GHC.Type -> GHC.CoreExpr -> m PIRTerm
+hoistExpr n ty rhs = do
+    maybeDef <- PIR.lookupTerm () n
+    case maybeDef of
+        Just term -> pure term
+        Nothing -> do
+            converted <- convExpr rhs
+            var <- do
+                t' <- convType ty
+                n' <- convNameFresh n
+                pure $ PIR.VarDecl () n' t'
+            let fvs = Set.fromList $ fmap GHC.getName $ GHC.exprFreeVarsList rhs
+            PIR.defineTerm n (PIR.Def var converted) fvs
+            pure $ PIR.mkVar () var
+
 convExpr :: Converting m => GHC.CoreExpr -> m PIRTerm
 convExpr e = withContextM (sdToTxt $ "Converting expr:" GHC.<+> GHC.ppr e) $ do
     -- See Note [Scopes]
-    ConvertingContext {ccScopes=stack} <- ask
+    ConvertingContext {ccScopes=stack,ccHoistName=hoistName} <- ask
     let top = NE.head stack
     case e of
+        -- Hoisting things
+        GHC.App (GHC.App (GHC.App (GHC.App (GHC.Var hoistId) (GHC.Type exprTy)) _)
+                 (GHC.Var targetId))
+                 hoistRhs | GHC.getName hoistId == hoistName -> hoistExpr (GHC.getName targetId) exprTy hoistRhs
+        e@(GHC.Var fid) | hoistName == GHC.idName fid -> throwPlain $ ConversionError "Incorrectly applied hoist"
         -- See Note [Literals]
         GHC.App (GHC.Var (isPrimitiveWrapper -> True)) arg -> convExpr arg
         -- special typeclass method calls

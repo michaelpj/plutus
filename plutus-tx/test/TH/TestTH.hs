@@ -3,10 +3,11 @@
 module TH.TestTH where
 
 import           Language.Haskell.TH
+import           Language.PlutusTx.Plugin   (hoistFun)
 
 {-# ANN module "HLint: ignore" #-}
 
-power :: Int -> Q (TExp (Int -> Int))
+power :: Int -> TExpQ (Int -> Int)
 power n =
     if n <= 0 then
         [|| \ _ -> (1::Int) ||]
@@ -15,5 +16,8 @@ power n =
     else
         [|| \(x::Int) -> x * ($$(power (n - (1::Int))) x) ||]
 
-andTH :: Q (TExp (Bool -> Bool -> Bool))
+andTH :: TExpQ (Bool -> Bool -> Bool)
 andTH = [||\(a :: Bool) -> \(b::Bool) -> if a then if b then True else False else False||]
+
+addOne :: TExpQ (Int -> Int)
+addOne = [|| hoistFun addOne (\(x::Int) -> x + 1) ||]

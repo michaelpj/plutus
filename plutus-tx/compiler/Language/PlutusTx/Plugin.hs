@@ -110,7 +110,7 @@ plc :: forall (loc::Symbol) a . a -> CompiledCode a
 plc _ = CompiledCode mustBeReplaced mustBeReplaced
 
 {-# NOINLINE hoistFun #-}
-hoistFun :: forall a . TH.Name -> a -> a
+hoistFun :: forall a b . b -> a -> a
 hoistFun _ x = x
 
 data PluginOptions = PluginOptions {
@@ -238,7 +238,7 @@ convertMarkedExprs opts markerNames =
                      (GHC.Type codeTy))
             -- value argument
             inner
-          | plcName == GHC.idName fid -> convertExpr opts (show fs_locStr) codeTy inner
+          | plcName == GHC.idName fid -> convertExpr opts hoistName (show fs_locStr) codeTy inner
       e@(GHC.Var fid) | plcName == GHC.idName fid || hoistName == GHC.idName fid -> failCompilationSDoc "Found invalid marker, not applied correctly" (GHC.ppr e)
       GHC.App e a -> GHC.App <$> conv e <*> conv a
       GHC.Lam b e -> GHC.Lam b <$> conv e
@@ -272,8 +272,8 @@ getStringBuiltinTypes ann =
        PLC.insertDynamicBuiltinNameDefinition PLC.dynamicAppendDefinition mempty
 
 -- | Actually invokes the Core to PLC compiler to convert an expression into a PLC literal.
-convertExpr :: PluginOptions -> String -> GHC.Type -> GHC.CoreExpr -> GHC.CoreM GHC.CoreExpr
-convertExpr opts locStr codeTy origE = do
+convertExpr :: PluginOptions -> GHC.Name -> String -> GHC.Type -> GHC.CoreExpr -> GHC.CoreM GHC.CoreExpr
+convertExpr opts hoistName locStr codeTy origE = do
     flags <- GHC.getDynFlags
     -- We need to do this out here, since it has to run in CoreM
     nameInfo <- makePrimitiveNameInfo builtinNames
@@ -288,6 +288,7 @@ convertExpr opts locStr codeTy origE = do
             ccOpts=ConversionOptions { coCheckValueRestriction=poDoTypecheck opts },
             ccFlags=flags,
             ccBuiltinNameInfo=nameInfo,
+            ccHoistName=hoistName,
             ccScopes=initialScopeStack
             }
     case runExcept . runQuoteT . flip runReaderT context $ result of
