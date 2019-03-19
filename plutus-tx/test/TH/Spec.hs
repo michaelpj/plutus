@@ -2,8 +2,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeApplications    #-}
+{-# OPTIONS -fplugin Language.PlutusTx.Plugin -fplugin-opt Language.PlutusTx.Plugin:defer-errors -fplugin-opt Language.PlutusTx.Plugin:strip-context #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -O0 #-}
+{-# OPTIONS_GHC   -g #-}
 
 module TH.Spec (tests) where
 
@@ -60,6 +62,9 @@ tests = testNested "TH" [
     goldenPir "simple" simple
     , goldenPir "power" powerPlc
     , goldenPir "and" andPlc
+    , goldenPir "nandDirect" nandPlcDirect
+    , goldenPir "andDirect" andPlcDirect
+    , goldenPir "andExternal" andPlcExternal
     , goldenEvalCek "all" [allPlc]
     , goldenEvalCek "convertString" [convertString]
     , goldenEvalCekLog "traceDirect" [traceDirect]
@@ -76,6 +81,24 @@ powerPlc = $$(compile [|| $$(power (4::Int)) ||])
 
 andPlc :: CompiledCode Bool
 andPlc = $$(compile [|| $$(andTH) True False ||])
+
+-- These NOINLINEs are here so we see the unfoldings actually bound, otherwise GHC will inline them for us
+{-# NOINLINE andDirect #-}
+andDirect :: Bool -> Bool -> Bool
+andDirect = \(a :: Bool) -> \(b::Bool) -> nandDirect (nandDirect a b) (nandDirect a b)
+
+{-# NOINLINE nandDirect #-}
+nandDirect :: Bool -> Bool -> Bool
+nandDirect = \(a :: Bool) -> \(b::Bool) -> if a then False else if b then False else True
+
+nandPlcDirect :: CompiledCode Bool
+nandPlcDirect = $$(compile [|| nandDirect True False ||])
+
+andPlcDirect :: CompiledCode Bool
+andPlcDirect = $$(compile [|| andDirect True False ||])
+
+andPlcExternal :: CompiledCode Bool
+andPlcExternal = $$(compile [|| andExternal True False ||])
 
 allPlc :: CompiledCode Bool
 allPlc = $$(compile [|| $$(all) (\(x::Int) -> $$gt x 5) [7, 6] ||])

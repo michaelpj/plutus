@@ -24,6 +24,8 @@ import qualified CoreUtils                              as GHC
 import qualified GhcPlugins                             as GHC
 import qualified MkId                                   as GHC
 import qualified PrelNames                              as GHC
+import qualified FV                                     as GHC
+import qualified UniqSet                                as GHC
 
 import qualified Language.PlutusIR                      as PIR
 import qualified Language.PlutusIR.Compiler.Definitions as PIR
@@ -39,6 +41,7 @@ import           Control.Monad.Reader
 import qualified Data.ByteString.Lazy                   as BSL
 import           Data.List                              (elem, elemIndex)
 import qualified Data.List.NonEmpty                     as NE
+import qualified Data.Set                               as Set
 import           Data.Traversable
 
 {- Note [System FC and System FW]
@@ -135,6 +138,23 @@ We handle this by simply let-binding that variable outside our generated case. I
 where it's not used, the PIR dead-binding pass will remove it.
 -}
 
+hoistExpr :: Converting m => GHC.Var -> GHC.CoreExpr -> m PIRTerm
+hoistExpr var t =
+    let
+        name = GHC.getName var
+    in withContextM 2 (sdToTxt $ "Converting definition of:" GHC.<+> GHC.ppr var) $ do
+        maybeDef <- PIR.lookupTerm () name
+        case maybeDef of
+            Just term -> pure term
+            Nothing -> do
+                t' <- convExpr t
+                var' <- convVarFresh var
+                let fvs = GHC.getName <$> (GHC.fvVarList $ GHC.expr_fvs t)
+                let tcs = GHC.getName <$> (GHC.nonDetEltsUniqSet $ tyConsOfExpr t)
+                let allFvs = fvs ++ tcs
+                PIR.defineTerm name (PIR.Def var' t') (Set.fromList allFvs)
+                pure $ PIR.mkVar () var'
+
 -- Expressions
 
 convExpr :: Converting m => GHC.CoreExpr -> m PIRTerm
@@ -164,14 +184,21 @@ convExpr e = withContextM 2 (sdToTxt $ "Converting expr:" GHC.<+> GHC.ppr e) $ d
         -- TODO: support record selectors. AFAICT GHC doesn't make a pattern-matching function that we can call, so we'd
         -- have to make the pattern match ourselves
         GHC.Var (GHC.idDetails -> GHC.RecSelId{}) -> throwPlain $ UnsupportedError "Record selectors, use pattern matching"
-        GHC.Var n -> do
-            -- Defined names, including builtin names
-            maybeDef <- PIR.lookupTerm () (GHC.getName n)
-            case maybeDef of
-                Just term -> pure term
-                -- the term we get must be closed - we don't resolve most references
-                -- TODO: possibly relax this?
-                Nothing -> throwSd FreeVariableError $ "Variable" GHC.<+> GHC.ppr n GHC.$+$ (GHC.ppr $ GHC.idDetails n)
+        -- look at unfoldings
+        GHC.Var n -> case GHC.realIdUnfolding n of
+            GHC.CoreUnfolding{GHC.uf_tmpl=unfolding} -> do
+                --txt <- sdToTxt (GHC.ppr unfolding)
+                --traceShowM txt
+                hoistExpr n unfolding
+            GHC.NoUnfolding -> do
+                -- Defined names, including builtin names
+                maybeDef <- PIR.lookupTerm () (GHC.getName n)
+                case maybeDef of
+                    Just term -> pure term
+                    -- the term we get must be closed - we don't resolve most references
+                    -- TODO: possibly relax this?
+                    Nothing -> throwSd FreeVariableError $ "Variable" GHC.<+> GHC.ppr n GHC.$+$ (GHC.ppr $ GHC.idDetails n)
+            u -> throwSd UnsupportedError $ "Variable:" GHC.<+> GHC.ppr n GHC.<+> "has unsupported kind of unfolding" GHC.$+$ GHC.ppr u
         GHC.Lit lit -> convLiteral lit
         -- arg can be a type here, in which case it's a type instantiation
         GHC.App l (GHC.Type t) -> PIR.TyInst () <$> convExpr l <*> convType t

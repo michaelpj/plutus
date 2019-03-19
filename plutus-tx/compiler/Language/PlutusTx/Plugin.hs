@@ -50,10 +50,12 @@ import qualified Data.Text.Prettyprint.Doc              as PP
 import           GHC.TypeLits
 import           System.IO.Unsafe                       (unsafePerformIO)
 
+-- if we inline this then we won't be able to find it later!
+{-# NOINLINE plc #-}
 -- | Marks the given expression for conversion to PLC.
 plc :: forall (loc::Symbol) a . a -> CompiledCode a
 -- this constructor is only really there to get rid of the unused warning
-plc _ = SerializedCode mustBeReplaced mustBeReplaced
+plc _ = SerializedCode (mustBeReplaced "pir") (mustBeReplaced "plc")
 
 data PluginOptions = PluginOptions {
     poDoTypecheck    :: Bool
@@ -72,8 +74,17 @@ install args todo =
             , poDeferErrors = elem "defer-errors" args
             , poContextLevel = if elem "no-context" args then 0 else if elem "debug-context" args then 3 else 1
             }
+        pass = GHC.CoreDoPluginPass "Core to PLC" (pluginPass opts)
+        isSimpl GHC.CoreDoSimplify {} = True
+        isSimpl _ = False
     in
-        pure (GHC.CoreDoPluginPass "Core to PLC" (pluginPass opts) : todo)
+        case break isSimpl todo of
+            -- Found a simplifier pass, insert ourselves after it
+            (l, s:r) -> pure $ l ++ s:pass:r
+            _ -> do
+                flags <- GHC.getDynFlags
+                let passes = GHC.showSDoc flags $ GHC.ppr todo
+                failCompilation ("Could not find a simplifier pass in " <> passes)
 
 pluginPass :: PluginOptions -> GHC.ModGuts -> GHC.CoreM GHC.ModGuts
 pluginPass opts guts = getMarkerName >>= \case

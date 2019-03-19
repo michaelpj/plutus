@@ -420,8 +420,12 @@ errors = testNested "errors" [
 integer :: CompiledCode Integer
 integer = plc @"integer" (1::Integer)
 
+{-# NOINLINE cantTouchThis #-}
+cantTouchThis :: Bool -> Bool -> Bool
+cantTouchThis = (&&)
+
 free :: CompiledCode Bool
-free = plc @"free" (True && False)
+free = plc @"free" (True `cantTouchThis` False)
 
 negativeInt :: CompiledCode Int
 negativeInt = plc @"negativeInt" (-1 :: Int)
