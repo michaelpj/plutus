@@ -136,7 +136,6 @@ convTyCon tc = do
                         PIR.defineDatatype tcName (PIR.Def tvd datatype) (Set.fromList deps)
                     pure $ PIR.mkTyVar () tvd
 
-
 getUsedTcs :: (Converting m) => GHC.TyCon -> m [GHC.TyCon]
 getUsedTcs tc = do
     dcs <- getDataCons tc

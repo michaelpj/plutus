@@ -99,19 +99,19 @@ equalsInteger :: Int -> Int -> Bool
 equalsInteger = (==)
 
 error :: () -> a
-error = mustBeReplaced
+error = mustBeReplaced "error"
 
 -- | An opaque type representing PLC strings.
 data String
 
 appendString :: String -> String -> String
-appendString = mustBeReplaced
+appendString = mustBeReplaced "appendString"
 
 emptyString :: String
-emptyString = mustBeReplaced
+emptyString = mustBeReplaced "emptyString"
 
 charToString :: Char -> String
-charToString = mustBeReplaced
+charToString = mustBeReplaced "charToString"
 
 trace :: String -> ()
-trace = mustBeReplaced
+trace = mustBeReplaced "trace"

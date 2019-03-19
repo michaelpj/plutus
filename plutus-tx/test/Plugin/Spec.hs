@@ -15,6 +15,7 @@ module Plugin.Spec where
 import           Common
 import           PlcTestUtils
 import           Plugin.ReadValue
+import           Plugin.Lib
 
 import qualified Language.PlutusTx.Builtins as Builtins
 import           Language.PlutusTx.Code
@@ -42,7 +43,9 @@ tests = testNested "Plugin" [
   , recursiveTypes
   , recursion
   , pure readDyns
+  , unfoldings
   , errors
+  , wobbly
   ]
 
 basic :: TestNested
@@ -78,7 +81,6 @@ primitives = testNested "primitives" [
   , goldenPir "error" errorPlc
   , goldenPir "ifThenElse" ifThenElse
   , goldenEval "ifThenElseApply" [ getProgram $ ifThenElse, getProgram $ int, getProgram $ int2 ]
-  --, goldenPlc "blocknum" blocknumPlc
   , goldenPir "emptyByteString" emptyByteString
   , goldenEval "emptyByteStringApply" [ getPlc emptyByteString, unsafeLiftProgram (Builtins.emptyByteString) ]
   , goldenPir "bytestring" bytestring
@@ -134,9 +136,6 @@ errorPlc = plc @"errorPlc" (Builtins.error @Int)
 
 ifThenElse :: CompiledCode (Int -> Int -> Int)
 ifThenElse = plc @"ifThenElse" (\(x::Int) (y::Int) -> if Builtins.equalsInteger x y then x else y)
-
---blocknumPlc :: CompiledCode
---blocknumPlc = plc @"blocknumPlc" Builtins.blocknum
 
 emptyByteString :: CompiledCode (Builtins.ByteString -> Builtins.ByteString)
 emptyByteString = plc @"emptyByteString" (\(x :: Builtins.ByteString) -> x)
@@ -284,7 +283,7 @@ newtypeCreate :: CompiledCode (Int -> MyNewtype)
 newtypeCreate = plc @"newtypeCreate" (\(x::Int) -> MyNewtype x)
 
 newtypeId :: CompiledCode (MyNewtype -> MyNewtype)
-newtypeId = plc @"newtypeCreate" (\(MyNewtype x) -> MyNewtype x)
+newtypeId = plc @"newtypeId" (\(MyNewtype x) -> MyNewtype x)
 
 newtypeCreate2 :: CompiledCode MyNewtype
 newtypeCreate2 = plc @"newtypeCreate2" (MyNewtype 1)
@@ -374,13 +373,10 @@ sameEmptyRose = plc @"sameEmptyRose" (
 
 recursion :: TestNested
 recursion = testNested "recursiveFunctions" [
-    -- currently broken, will come back to this later
     goldenPir "fib" fib
     , goldenEval "fib4" [ getProgram $ fib, getProgram $ plc @"4" (4::Int) ]
     , goldenPir "sum" sumDirect
     , goldenEval "sumList" [ getProgram $ sumDirect, getProgram $ listConstruct3 ]
-    --, golden "sumFold" sumViaFold
-    --, goldenEval "sumFoldList" [ sumViaFold, listConstruct3 ]
     , goldenPir "even" evenMutual
     , goldenEval "even3" [ getProgram $ evenMutual, getProgram $ plc @"3" (3::Int) ]
     , goldenEval "even4" [ getProgram $ evenMutual, getProgram $ plc @"4" (4::Int) ]
@@ -412,6 +408,37 @@ evenMutual = plc @"evenMutual" (
         odd n = if Builtins.equalsInteger n 0 then False else even (Builtins.subtractInteger n 1)
     in even)
 
+unfoldings :: TestNested
+unfoldings = testNested "unfoldings" [
+    goldenPir "nandDirect" nandPlcDirect
+    , goldenPir "andDirect" andPlcDirect
+    , goldenPir "andExternal" andPlcExternal
+    , goldenPir "allDirect" allPlcDirect
+  ]
+
+andDirect :: Bool -> Bool -> Bool
+andDirect = \(a :: Bool) -> \(b::Bool) -> nandDirect (nandDirect a b) (nandDirect a b)
+
+nandDirect :: Bool -> Bool -> Bool
+nandDirect = \(a :: Bool) -> \(b::Bool) -> if a then False else if b then False else True
+
+nandPlcDirect :: CompiledCode Bool
+nandPlcDirect = plc @"nandPlcDirect" (nandDirect True False)
+
+andPlcDirect :: CompiledCode Bool
+andPlcDirect = plc @"andPlcDirect" (andDirect True False)
+
+andPlcExternal :: CompiledCode Bool
+andPlcExternal = plc @"andPlcExternal" (andExternal True False)
+
+allDirect :: (a -> Bool) -> [a] -> Bool
+allDirect p l = case l of
+    [] -> True
+    h:t -> andDirect (p h) (allDirect p t)
+
+allPlcDirect :: CompiledCode Bool
+allPlcDirect = plc @"andPlcDirect" (allDirect (\(x::Int) -> Builtins.greaterThanInteger x 5) [7, 6])
+
 errors :: TestNested
 errors = testNested "errors" [
     goldenPlcCatch "integer" integer
@@ -420,11 +447,11 @@ errors = testNested "errors" [
     , goldenPlcCatch "valueRestriction" valueRestriction
     , goldenPlcCatch "recordSelector" recordSelector
     , goldenPlcCatch "recursiveNewtype" recursiveNewtype
-    , goldenPlcCatch "emptyRoseId1" emptyRoseId1
   ]
 
 integer :: CompiledCode Integer
 integer = plc @"integer" (1::Integer)
+
 
 free :: CompiledCode Bool
 free = plc @"free" (True && False)
@@ -445,12 +472,29 @@ newtype RecursiveNewtype = RecursiveNewtype [RecursiveNewtype]
 recursiveNewtype :: CompiledCode (RecursiveNewtype)
 recursiveNewtype = plc @"recursiveNewtype" (RecursiveNewtype [])
 
+wobbly :: TestNested
+wobbly = testNested "wobbly" [
+    -- We used to have problems with polymorphic let bindings where the generalization was
+    -- on the outside of the let, which hit the value restriction. Now we hit the simplifier
+    -- it seems to sometimes float these in, but we should keep an eye on these.
+    goldenPir "emptyRoseId1" emptyRoseId1
+    , goldenPir "polyMap" polyMap
+  ]
+
 emptyRoseId1 :: CompiledCode (EmptyRose -> EmptyRose)
 emptyRoseId1 = plc @"emptyRoseId1" (
     let map _ []     = []
         map f (x:xs) = f x : map f xs
         go (EmptyRose xs) = EmptyRose (map go xs)
     in go)
+
+mapDirect :: (a -> b) -> [a] -> [b]
+mapDirect f l = case l of
+    [] -> []
+    x:xs -> f x : mapDirect f xs
+
+polyMap :: CompiledCode ([Int])
+polyMap = plc @"polyMap" (mapDirect (Builtins.addInteger 1) [0, 1])
 
 -- Unexpectedly results in
 --
