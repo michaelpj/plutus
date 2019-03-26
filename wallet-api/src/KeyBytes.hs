@@ -10,7 +10,9 @@ module KeyBytes ( KeyBytes (..)
 
 import           Codec.Serialise
 import           Data.Aeson             (FromJSON (..), ToJSON (..))
+import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Lazy   as BSL
+import qualified Data.ByteString.Char8  as BS8
 import           Data.Hashable          (Hashable)
 import           Data.String            (IsString (..))
 import           Data.Swagger.Internal
@@ -45,7 +47,12 @@ fromHex = KeyBytes . asBSLiteral
         where withBytes f = BSL.pack . f . BSL.unpack
 
 newtype KeyBytes = KeyBytes { getKeyBytes :: BSL.ByteString } -- TODO: use strict bytestring
-    deriving (Eq, Ord, Show, IsString, Hashable, Serialise)
+    deriving (Eq, Ord, IsString, Hashable, Serialise)
+
+instance Show KeyBytes where
+    -- TODO: Change this to base16 (hex) encoding. This is best done
+    --       after rebasing onto master.
+    show = BS8.unpack . Base64.encode . BSL.toStrict . getKeyBytes
 
 -- convert a private key to a public key
 -- TODO: verify that this doesn't have sidechannels; maybe use ScrubbedBytes ??
