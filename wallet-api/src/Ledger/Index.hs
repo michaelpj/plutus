@@ -23,6 +23,7 @@ module Ledger.Index(
     validateTransaction
     ) where
 
+import           Control.Lens         ((^.), at)
 import           Control.Monad.Except (MonadError (..), liftEither)
 import           Control.Monad.Reader (MonadReader (..), ReaderT (..), ask)
 import           Crypto.Hash          (Digest, SHA256)
@@ -34,7 +35,7 @@ import qualified Data.Set             as Set
 import           GHC.Generics         (Generic)
 import qualified Ledger.Interval      as Interval
 import           Ledger.Types         (Blockchain, DataScript, PubKey, Signature, Slot (..), Tx (..), TxIn, TxInOf (..),
-                                       TxOut, TxOutOf (..), TxOutRef, ValidationData (..), Value, lifted, updateUtxo,
+                                       TxOut, TxOutOf (..), TxOutRef, ValidationData (..), Value, TxId, lifted, signatures, updateUtxo,
                                        validValuesTx)
 import qualified Ledger.Types         as Ledger
 import           Ledger.Validation    (PendingTx (..))
@@ -71,7 +72,7 @@ lookup i =
 -- | Reason why a transaction is invalid
 data ValidationError =
     InOutTypeMismatch TxIn TxOut
-    -- ^ A pay-to-pubkey output was consumed by a pay-to-script input or vice versa
+    -- ^ A pay-to-pubkey output was consumed by a pay-to-script input or vice versa, or the 'TxIn' refers to a different public key than the 'TxOut'
     | TxOutRefNotFound TxOutRef
     -- ^ The unspent transaction output consumed by a transaction input could not be found (either because it was already spent, or because there was no transaction with the given hash on the blockchain)
     | InvalidScriptHash DataScript
@@ -86,6 +87,8 @@ data ValidationError =
     -- ^ (for pay-to-script outputs) Evaluation of the validator script failed
     | CurrentSlotOutOfRange Slot
     -- ^ The current slot is not covered by the transaction's validity slot range.
+    | SignatureMissing PubKey
+    -- ^ The transaction is missing a signature
     deriving (Eq, Ord, Show, Generic)
 
 instance FromJSON ValidationError
@@ -137,9 +140,11 @@ checkSlotRange sl tx =
 --   (b) can be unlocked by the signatures or validator scripts of the inputs
 checkValidInputs :: ValidationMonad m => Tx -> m ()
 checkValidInputs tx = do
-    matches <- lkpOutputs tx >>= traverse (uncurry (matchInputOutput tx))
+    let txId = Ledger.hashTx tx
+        sigs = tx ^. signatures
+    matches <- lkpOutputs tx >>= traverse (uncurry (matchInputOutput txId sigs))
     vld     <- validationData tx
-    traverse_ (checkMatch tx vld) matches
+    traverse_ (checkMatch vld) matches
 
 -- | Match each input of the transaction with its output
 lkpOutputs :: ValidationMonad m => Tx -> m [(TxIn, TxOut)]
@@ -153,17 +158,28 @@ data InOutMatch =
         Ledger.RedeemerScript
         DataScript
         (Ledger.AddressOf (Digest SHA256))
-    | PubKeyMatch Tx PubKey Signature
+    | PubKeyMatch TxId PubKey Signature
     deriving (Eq, Ord, Show)
 
 -- | Match a transaction input with the output that it consumes, ensuring that
 --   both are of the same type (pubkey or pay-to-script)
-matchInputOutput :: ValidationMonad m => Tx -> TxIn -> TxOut -> m InOutMatch
-matchInputOutput tx i txo = case (txInType i, txOutType txo) of
+matchInputOutput :: ValidationMonad m 
+    => TxId 
+    -- ^ Hash of the transaction that is being verified
+    -> Map.Map PubKey Signature 
+    -- ^ Signatures provided with the transaction
+    -> TxIn 
+    -- ^ Input that allegedly spends the output
+    -> TxOut 
+    -- ^ The unspent transaction output we are trying to unlock
+    -> m InOutMatch
+matchInputOutput txid mp i txo = case (txInType i, txOutType txo) of
     (Ledger.ConsumeScriptAddress v r, Ledger.PayToScript d) ->
         pure $ ScriptMatch i v r d (txOutAddress txo)
-    (Ledger.ConsumePublicKeyAddress sig, Ledger.PayToPubKey pk) ->
-        pure $ PubKeyMatch tx pk undefined -- sig
+    (Ledger.ConsumePublicKeyAddress pk', Ledger.PayToPubKey pk)
+        | pk == pk' -> case mp ^. at pk' of
+                        Nothing -> throwError (SignatureMissing pk')
+                        Just sig -> pure (PubKeyMatch txid pk sig)
     _ -> throwError $ InOutTypeMismatch i txo
 
 -- | Check that a matching pair of transaction input and transaction output is
@@ -171,13 +187,13 @@ matchInputOutput tx i txo = case (txInType i, txOutType txo) of
 --   correct and script evaluation has to terminate successfully. If this is a
 --   pay-to-pubkey output then the signature needs to match the public key that
 --   locks it.
-checkMatch :: ValidationMonad m => Tx -> PendingTx -> InOutMatch -> m ()
-checkMatch tx v = \case
+checkMatch :: ValidationMonad m => PendingTx -> InOutMatch -> m ()
+checkMatch v = \case
     ScriptMatch txin vl r d a
         | a /= Ledger.scriptAddress vl ->
                 throwError $ InvalidScriptHash d
         | otherwise -> do
-            pTxIn <- mkIn tx txin
+            pTxIn <- mkIn txin
             let v' = ValidationData
                     $ lifted
                     $ v { pendingTxIn = pTxIn }
@@ -185,8 +201,7 @@ checkMatch tx v = \case
             if success
             then pure ()
             else throwError $ ScriptFailure logOut
-    PubKeyMatch tx pk sig ->
-        let msg = Ledger.hashTx tx in
+    PubKeyMatch msg pk sig ->
         if Ledger.signedBy sig pk msg
         then pure ()
         else throwError $ InvalidSignature pk sig
@@ -213,7 +228,8 @@ checkPositiveValues t =
 -- | Encode the current transaction and slot in PLC.
 validationData :: ValidationMonad m => Tx -> m PendingTx
 validationData tx = rump <$> ins where
-    ins = traverse (mkIn tx) $ Set.toList $ txInputs tx
+    ins = traverse mkIn $ Set.toList $ txInputs tx
+    txHash = Validation.plcTxHash $ Ledger.hashTx tx
 
     rump inputs = PendingTx
         { pendingTxInputs = inputs
@@ -222,6 +238,8 @@ validationData tx = rump <$> ins where
         , pendingTxFee = txFee tx
         , pendingTxIn = head inputs -- this is changed accordingly in `checkMatch` during validation
         , pendingTxValidRange = txValidRange tx
+        , pendingTxSignatures = Map.toList (tx ^. signatures) -- TODO: Use Map when Plutus map is ready
+        , pendingTxHash = txHash
         }
 
 mkOut :: TxOut -> Validation.PendingTxOut
@@ -235,8 +253,8 @@ mkOut t = Validation.PendingTxOut (txOutValue t) d tp where
                 (Just (validatorHash, dataScriptHash), Validation.DataTxOut)
         Ledger.PayToPubKey pk -> (Nothing, Validation.PubKeyTxOut pk)
 
-mkIn :: ValidationMonad m => Tx -> TxIn -> m Validation.PendingTxIn
-mkIn tx i = Validation.PendingTxIn <$> pure ref <*> pure red <*> vl where
+mkIn :: ValidationMonad m => TxIn -> m Validation.PendingTxIn
+mkIn i = Validation.PendingTxIn <$> pure ref <*> pure red <*> vl where
     ref =
         let hash = Validation.plcTxHash . Ledger.txOutRefId $ txInRef i
             idx  = Ledger.txOutRefIdx $ Ledger.txInRef i
@@ -245,9 +263,9 @@ mkIn tx i = Validation.PendingTxIn <$> pure ref <*> pure red <*> vl where
     red = case txInType i of
         Ledger.ConsumeScriptAddress v r  ->
             let h = Ledger.getAddress $ Ledger.scriptAddress v in
-            Left (Validation.plcValidatorDigest h, Validation.plcRedeemerHash r)
-        Ledger.ConsumePublicKeyAddress sig ->
-            Right undefined -- sig
+            Just (Validation.plcValidatorDigest h, Validation.plcRedeemerHash r)
+        Ledger.ConsumePublicKeyAddress _ ->
+            Nothing
     vl = valueOf i
 
 valueOf :: ValidationMonad m => Ledger.TxIn -> m Value

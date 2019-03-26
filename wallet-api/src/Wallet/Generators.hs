@@ -128,7 +128,8 @@ genInitialTransaction GeneratorModel{..} =
         txOutputs = o,
         txForge = t,
         txFee = 0,
-        txValidRange = W.intervalFrom 0
+        txValidRange = W.intervalFrom 0,
+        txSignatures = Map.empty
         }, o)
 
 -- | Generate a valid transaction, using the unspent outputs provided.
@@ -185,7 +186,9 @@ genValidTransactionSpending' g f ins totalVal = do
                     txOutputs = uncurry pubKeyTxOut <$> zip outVals (Set.toList $ gmPubKeys g),
                     txForge = Value.zero,
                     txFee = fee,
-                    txValidRange = $$(Interval.always) }
+                    txValidRange = $$(Interval.always),
+                    txSignatures = Map.empty -- TODO: Insert signatures of the chosen keys
+                    }
         else Gen.discard
 
 genAda :: MonadGen m => m Ada

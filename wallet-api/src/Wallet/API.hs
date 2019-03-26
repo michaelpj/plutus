@@ -83,7 +83,7 @@ import qualified Data.Set                   as Set
 import           Data.Text                  (Text)
 import           GHC.Generics               (Generic)
 import           KeyBytes
-import           Ledger                     (Address, DataScript, PubKey (..), RedeemerScript, Signature (..), Slot, SlotRange,
+import           Ledger                     (Address, DataScript, PubKey (..), RedeemerScript, Slot, SlotRange,
                                              Tx (..), TxId, TxIn, TxOut, TxOutOf (..), TxOutType (..), ValidatorScript, PrivateKey (..),
                                              Value, pubKeyTxOut, scriptAddress, scriptTxIn, txOutRefId)
 import qualified Ledger.Interval            as Interval
@@ -373,6 +373,7 @@ createTxAndSubmit range ins outs = do
             , txForge = Value.zero
             , txFee = 0
             , txValidRange = range
+            , txSignatures = Map.empty
             }
     submitTxn tx
     pure tx

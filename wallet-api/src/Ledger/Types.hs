@@ -89,7 +89,8 @@ module Ledger.Types(
     outType,
     inRef,
     inType,
-    validRange
+    validRange,
+    signatures
     ) where
 
 import qualified Codec.CBOR.Write                         as Write
@@ -100,7 +101,7 @@ import           Control.Monad                            (join)
 import           Control.Newtype.Generics     (Newtype)
 import           Crypto.Hash                              (Digest, SHA256, digestFromByteString, hash)
 import           Crypto.Error                             (throwCryptoError)
-import           Data.Aeson                               (FromJSON (parseJSON), ToJSON (toJSON), withText)
+import           Data.Aeson                               (FromJSON (parseJSON), ToJSON (toJSON), ToJSONKey, FromJSONKey, withText)
 import qualified Data.Aeson                               as JSON
 import           Data.Bifunctor                           (first)
 import qualified Data.ByteArray                           as BA
@@ -166,7 +167,7 @@ makeLift ''PrivateKey
 newtype PubKey = PubKey { getPubKey :: KeyBytes }
     deriving (Eq, Ord, Show)
     deriving stock (Generic)
-    deriving anyclass (ToSchema, ToJSON, FromJSON, Newtype)
+    deriving anyclass (ToSchema, ToJSON, FromJSON, Newtype, ToJSONKey, FromJSONKey)
     deriving newtype (Serialise)
 
 makeLift ''PubKey
@@ -234,8 +235,7 @@ instance FromJSON (Digest SHA256) where
       Right v -> pure v
 
 -- | A payment address is a double SHA256 of a
---   UTxO output's validator script (and presumably its data script).
---   This corresponds to a Bitcoing pay-to-witness-script-hash
+--   UTxO output's validator script, or of a public key.
 newtype AddressOf h = AddressOf { getAddress :: h }
     deriving (Eq, Ord, Show, Generic)
 
@@ -384,8 +384,9 @@ data Tx = Tx {
     txOutputs    :: [TxOut],
     txForge      :: !Value,
     txFee        :: !Ada,
-    txValidRange :: !SlotRange
+    txValidRange :: !SlotRange,
     -- ^ The 'SlotRange' during which this transaction may be validated
+    txSignatures :: Map PubKey Signature
     } deriving (Show, Eq, Ord, Generic, Serialise, ToJSON, FromJSON)
 
 -- | The inputs of a transaction
@@ -403,6 +404,11 @@ validRange :: Lens' Tx SlotRange
 validRange = lens g s where
     g = txValidRange
     s tx o = tx { txValidRange = o }
+
+signatures :: Lens' Tx (Map PubKey Signature)
+signatures = lens g s where
+    g = txSignatures
+    s tx mp = tx { txSignatures = mp }
 
 instance BA.ByteArrayAccess Tx where
     length        = BA.length . Write.toStrictByteString . encode
@@ -624,7 +630,7 @@ spentOutputs = Set.map txInRef . txInputs
 unspentOutputs :: Blockchain -> Map TxOutRef TxOut
 unspentOutputs = foldr updateUtxo Map.empty . join
 
--- | Update a map of unspent transaction outputs and sigantures with the inputs
+-- | Update a map of unspent transaction outputs and signatures with the inputs
 --   and outputs of a transaction.
 updateUtxo :: Tx -> Map TxOutRef TxOut -> Map TxOutRef TxOut
 updateUtxo t unspent = (unspent `Map.difference` lift' (spentOutputs t)) `Map.union` outs where

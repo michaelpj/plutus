@@ -30,7 +30,6 @@ module Ledger.Validation
     -- * Validator functions
     -- ** Signatures
     , txSignedBy
-    , txInSignedBy
     -- ** Transactions
     , pubKeyOutput
     , scriptOutput
@@ -58,10 +57,12 @@ import qualified Data.Text.Encoding           as TE
 import           GHC.Generics                 (Generic)
 import           Language.Haskell.TH          (Q, TExp)
 import           Language.PlutusTx.Lift       (makeLift)
-import qualified Language.PlutusTx.Builtins as Builtins
+import qualified Language.PlutusTx.Builtins   as Builtins
+import qualified Language.PlutusTx.Prelude    as P
 import           Ledger.Interval              (SlotRange)
 import           Ledger.Types                 (Ada, PubKey (..), Signature (..), Value, Slot(..))
 import qualified Ledger.Types                 as Ledger
+import           KeyBytes                     (KeyBytes(..))
 
 -- Ignore newtype warnings related to `Oracle` and `Signed` because it causes
 -- problems with the plugin
@@ -100,7 +101,7 @@ data PendingTxOutRef = PendingTxOutRef
 -- | Input of a pending transaction.
 data PendingTxIn = PendingTxIn
     { pendingTxInRef       :: PendingTxOutRef
-    , pendingTxInWitness   :: Either (ValidatorHash, RedeemerHash) Signature
+    , pendingTxInWitness   :: Maybe (ValidatorHash, RedeemerHash)
     -- ^ Tx input witness, hashes for Script input, or signature for a PubKey
     , pendingTxInValue     :: Value -- ^ Value consumed by this txn input
     } deriving (Generic)
@@ -114,6 +115,10 @@ data PendingTx = PendingTx
     , pendingTxIn          :: PendingTxIn
     -- ^ PendingTxIn being validated
     , pendingTxValidRange  :: SlotRange
+    , pendingTxSignatures  :: [(PubKey, Signature)]
+    -- ^ Signatures provided with the transaction
+    , pendingTxHash        :: TxHash
+    -- ^ Hash of the pending transaction (excluding witnesses)
     } deriving (Generic)
 
 {- Note [Oracles]
@@ -226,31 +231,33 @@ plcSHA3_256 = Hash.sha3
 plcDigest :: Digest SHA256 -> BSL.ByteString
 plcDigest = serialise
 
+-- | Equality of public keys
+eqPubKey :: Q (TExp (PubKey -> PubKey -> Bool))
+eqPubKey = [|| 
+    \(PubKey (KeyBytes l)) (PubKey (KeyBytes r)) -> $$(P.equalsByteString) l r
+    ||]
+
 -- | Check if a transaction was signed by a public key
 txSignedBy :: Q (TExp (PendingTx -> PubKey -> Bool))
 txSignedBy = [||
-    \(p :: PendingTx) (PubKey k) ->
+    \(p :: PendingTx) k ->
         let
-            PendingTx txins _ _ _ _ _ = p
+            PendingTx _ _ _ _ _ _ sigs hsh = p
 
             signedBy' :: Signature -> Bool
-            signedBy' (Signature s) = s == k
+            signedBy' (Signature (KeyBytes sig)) = 
+                let 
+                    PubKey (KeyBytes pk) = k
+                    TxHash msg           = hsh
+                in $$(P.verifySignature) sig pk msg
 
-            go :: [PendingTxIn] -> Bool
+            go :: [(PubKey, Signature)] -> Bool
             go l = case l of
-                        PendingTxIn _ (Right sig) _ : r -> if signedBy' sig then True else go r
+                        (pk, sig):r -> if $$(P.and) ($$(eqPubKey) k pk) (signedBy' sig) then True else go r
                         _ : r -> go r
                         []  -> False
         in
-            go txins
-    ||]
-
--- | Check if the input of a pending transaction was signed by a public key
-txInSignedBy :: Q (TExp (PendingTxIn -> PubKey -> Bool))
-txInSignedBy = [||
-    \(i :: PendingTxIn) (PubKey k) -> case i of
-        PendingTxIn _ (Right (Signature sig)) _ -> sig == k
-        _ -> False
+            go sigs
     ||]
 
 -- | Returns the public key that locks the transaction output
@@ -265,10 +272,6 @@ scriptOutput :: Q (TExp (PendingTxOut -> Maybe (ValidatorHash, DataScriptHash)))
 scriptOutput = [|| \(o:: PendingTxOut) -> case o of
     PendingTxOut _ d DataTxOut -> d
     _                          -> Nothing ||]
-
--- | Equality of public keys
-eqPubKey :: Q (TExp (PubKey -> PubKey -> Bool))
-eqPubKey = [|| \(PubKey l) (PubKey r) -> l == r ||]
 
 -- | Equality of data scripts
 eqDataScript :: Q (TExp (DataScriptHash -> DataScriptHash -> Bool))
