@@ -12,6 +12,9 @@
 module Wallet.Emulator.Types(
     -- * Wallets
     Wallet(..),
+    walletPubKey,
+    walletPrivKey,
+    signWithWallet,
     TxPool,
     -- * Emulator
     Assertion(OwnFundsEqual, IsValidated),
@@ -86,9 +89,9 @@ import           Servant.API                (FromHttpApiData, ToHttpApiData)
 
 import           Data.Hashable              (Hashable)
 import           KeyBytes
-import           Ledger                     (Address, Block, Blockchain, Slot, Tx (..), TxId, TxOut, TxOutOf (..),
+import           Ledger                     (Address, Block, Blockchain, PrivateKey(..), PubKey(..), Slot, Tx (..), TxId, TxOut, TxOutOf (..),
                                              TxOutRef, Value, hashTx, lastSlot, pubKeyAddress, pubKeyTxIn, pubKeyTxOut,
-                                             txOutAddress)
+                                             sign, signatures, txOutAddress)
 import qualified Ledger.Index               as Index
 import qualified Ledger.Interval            as Interval
 import qualified Ledger.Value               as Value
@@ -102,6 +105,20 @@ newtype Wallet = Wallet { getWallet :: KeyBytes }
     deriving (Show, Eq, Ord, Generic)
     deriving newtype (ToHttpApiData, FromHttpApiData, Hashable)
     deriving anyclass (Newtype, ToJSON, FromJSON, ToJSONKey)
+
+walletPubKey :: Wallet -> PubKey
+walletPubKey = PubKey . dropPrivKey . getWallet
+
+walletPrivKey :: Wallet -> PrivateKey
+walletPrivKey = PrivateKey . takePrivKey . getWallet
+
+-- | Add the wallet's signature to the transaction's list of signatures
+addSignature :: PrivateKey -> PubKey -> Tx -> Tx
+addSignature privK pubK tx = tx & signatures . at pubK .~ Just sig where
+    sig = Ledger.sign tx privK
+
+signWithWallet :: Wallet -> Tx -> Tx
+signWithWallet wlt = addSignature (walletPrivKey wlt) (walletPubKey wlt)
 
 type TxPool = [Tx]
 
@@ -210,6 +227,10 @@ instance WalletAPI MockWallet where
         tellTx [txn]
 
     myKeyPair = use ownKeyPair
+
+    signTxn tx = do
+        (privK, pubK) <- getKeyPair <$> use ownKeyPair
+        pure (addSignature privK pubK tx)
 
     createPaymentWithChange vl = do
         ws <- get

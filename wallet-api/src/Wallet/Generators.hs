@@ -27,7 +27,11 @@ module Wallet.Generators(
     Wallet.Generators.runTrace,
     runTraceOn,
     splitVal,
-    validateMockchain
+    validateMockchain,
+    -- * Wallets for testing
+    wallet1,
+    wallet2,
+    wallet3
     ) where
 
 import           Data.Bifunctor              (Bifunctor (..))
@@ -51,6 +55,15 @@ import           Ledger
 import qualified Wallet.API      as W
 import           Wallet.Emulator as Emulator
 
+wallet1, wallet2, wallet3 :: Wallet
+wallet1 = Wallet $ fromHex "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
+wallet2 = Wallet $ fromHex "4ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c"
+wallet3 = Wallet $ fromHex "c5aa8df43f9f837bedb7442f31dcb7b166d38535076f094b85ce3a2e0b4458f7fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025"
+
+-- TODO: Get private keys for the following two public keys:
+-- "e61a185bcef2613a6c7cb79763ce945d3b245d76114dd440bcf5f2dc1aa57057"
+-- "c0dac102c4533186e25dc43128472353eaabdb878b152aeb8e001f92d90233a7"
+
 data GeneratorModel = GeneratorModel {
     gmInitialBalance :: Map PubKey Value,
     -- ^ Value created at the beginning of the blockchain
@@ -62,16 +75,12 @@ data GeneratorModel = GeneratorModel {
 generatorModel :: GeneratorModel
 generatorModel = 
     let vl = Ada.toValue $ Ada.fromInt 100000
-        pubKeys = fromHex <$> [ "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
-                              , "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c"
-                              , "fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025"
-                              , "e61a185bcef2613a6c7cb79763ce945d3b245d76114dd440bcf5f2dc1aa57057"
-                              , "c0dac102c4533186e25dc43128472353eaabdb878b152aeb8e001f92d90233a7"
-                              ]
+        pubKeys = walletPubKey <$> [wallet1, wallet2, wallet3]
+
     in
     GeneratorModel 
-    { gmInitialBalance = Map.fromList $ first PubKey <$> zip pubKeys (repeat vl)
-    , gmPubKeys        = Set.fromList $ PubKey <$> pubKeys
+    { gmInitialBalance = Map.fromList $ zip pubKeys (repeat vl)
+    , gmPubKeys        = Set.fromList pubKeys
     }
 
 -- | Estimate a transaction fee based on the number of its inputs and outputs.
@@ -123,14 +132,15 @@ genInitialTransaction GeneratorModel{..} =
     let
         o = (uncurry $ flip pubKeyTxOut) <$> Map.toList gmInitialBalance
         t = Map.foldl' Value.plus Value.zero gmInitialBalance
-    in (Tx {
-        txInputs = Set.empty,
-        txOutputs = o,
-        txForge = t,
-        txFee = 0,
-        txValidRange = W.intervalFrom 0,
-        txSignatures = Map.empty
-        }, o)
+        tx = Tx 
+                { txInputs = Set.empty
+                , txOutputs = o
+                , txForge = t
+                , txFee = 0
+                , txValidRange = W.intervalFrom 0
+                , txSignatures = Map.empty
+                }
+    in (tx, o)
 
 -- | Generate a valid transaction, using the unspent outputs provided.
 --   Fails if the there are no unspent outputs, or if the total value
@@ -181,14 +191,15 @@ genValidTransactionSpending' g f ins totalVal = do
         then do
             let sz = totalVal - fee
             outVals <- fmap (Ada.toValue) <$> splitVal numOut sz
-            pure Tx {
-                    txInputs = ins,
-                    txOutputs = uncurry pubKeyTxOut <$> zip outVals (Set.toList $ gmPubKeys g),
-                    txForge = Value.zero,
-                    txFee = fee,
-                    txValidRange = $$(Interval.always),
-                    txSignatures = Map.empty -- TODO: Insert signatures of the chosen keys
-                    }
+            let tx = Tx 
+                        { txInputs = ins
+                        , txOutputs = uncurry pubKeyTxOut <$> zip outVals (Set.toList $ gmPubKeys g)
+                        , txForge = Value.zero
+                        , txFee = fee
+                        , txValidRange = $$(Interval.always)
+                        , txSignatures = Map.empty
+                        }
+            pure tx
         else Gen.discard
 
 genAda :: MonadGen m => m Ada

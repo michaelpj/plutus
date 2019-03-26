@@ -4,7 +4,8 @@
 {-# LANGUAGE TemplateHaskell            #-}
 
 module KeyBytes ( KeyBytes (..)
-                , privKeyTrim
+                , dropPrivKey
+                , takePrivKey
                 , fromHex
                 ) where
 
@@ -54,10 +55,14 @@ instance Show KeyBytes where
     --       after rebasing onto master.
     show = BS8.unpack . Base64.encode . BSL.toStrict . getKeyBytes
 
--- convert a private key to a public key
+-- drop the first 32 bytes of a private-public key pair
 -- TODO: verify that this doesn't have sidechannels; maybe use ScrubbedBytes ??
-privKeyTrim :: KeyBytes -> KeyBytes
-privKeyTrim (KeyBytes bs) = KeyBytes (BSL.drop 32 bs)
+dropPrivKey :: KeyBytes -> KeyBytes
+dropPrivKey (KeyBytes bs) = KeyBytes (BSL.take 32 $ BSL.drop 32 bs)
+
+-- take the first 32 bytes of a private-public key pair
+takePrivKey :: KeyBytes -> KeyBytes
+takePrivKey (KeyBytes bs) = KeyBytes (BSL.take 32 bs)
 
 makeLift ''KeyBytes
 

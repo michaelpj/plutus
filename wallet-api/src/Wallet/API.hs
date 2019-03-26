@@ -16,9 +16,12 @@ module Wallet.API(
     KeyPair(..),
     PubKey(..),
     pubKey,
+    privateKey,
     keyPair,
     createPayment,
     createTxAndSubmit,
+    signTxAndSubmit,
+    signTxAndSubmit_,
     payToScript,
     payToScript_,
     payToPublicKey,
@@ -102,9 +105,12 @@ newtype KeyPair = KeyPair { getKeyPair :: (PrivateKey, PubKey) }
 pubKey :: KeyPair -> PubKey
 pubKey = snd . getKeyPair
 
+privateKey :: KeyPair -> PrivateKey
+privateKey = fst . getKeyPair
+
 -- | Create a [[KeyPair]] given a "private key"
 keyPair :: KeyBytes -> KeyPair
-keyPair i = KeyPair (PrivateKey i, PubKey (privKeyTrim i))
+keyPair i = KeyPair (PrivateKey (takePrivKey i), PubKey (dropPrivKey i))
 
 data EventTriggerF f =
     TAnd f f
@@ -226,7 +232,14 @@ class MonadError WalletAPIError m => WalletDiagnostics m where
 class WalletAPI m where
 
     submitTxn :: Tx -> m ()
-    myKeyPair :: m KeyPair
+    myKeyPair :: m KeyPair -- TODO: Delete!
+
+    -- | Sign the transaction with the wallet's private key and add
+    --   the signature to the transaction's list of signatures.
+    --
+    --   NOTE: In the future this won't be part of WalletAPI to allow the
+    --   signing to be handled by a different process
+    signTxn   :: Tx -> m Tx
 
     {- |
     Create a payment that spends the specified value and returns any
@@ -358,7 +371,7 @@ payToPublicKey_ r v = void . payToPublicKey r v
 ownPubKeyTxOut :: (Monad m, WalletAPI m) => Value -> m TxOut
 ownPubKeyTxOut v = pubKeyTxOut v <$> fmap pubKey myKeyPair
 
--- | Create a transaction and submit it.
+-- | Create a transaction, sign it with the wallet's private key, and submit it.
 --   TODO: Also compute the fee
 createTxAndSubmit ::
     (Monad m, WalletAPI m)
@@ -375,8 +388,19 @@ createTxAndSubmit range ins outs = do
             , txValidRange = range
             , txSignatures = Map.empty
             }
-    submitTxn tx
-    pure tx
+    signTxAndSubmit tx
+
+-- | Add the wallet's signature to the transaction and submit it. Returns
+--   the transaction with the wallet's signature.
+signTxAndSubmit :: (Monad m, WalletAPI m) => Tx -> m Tx
+signTxAndSubmit t = do
+    tx' <- signTxn t
+    submitTxn tx'
+    pure tx'
+
+-- | A version of 'signTxAndSubmit' that discards the result.
+signTxAndSubmit_ :: (Monad m, WalletAPI m) => Tx -> m ()
+signTxAndSubmit_ = void . signTxAndSubmit
 
 -- | An open-ended 'SlotRange' that begins at slot 1.
 defaultSlotRange :: SlotRange

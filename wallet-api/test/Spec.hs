@@ -31,7 +31,7 @@ import qualified Ledger.Index               as Index
 import           Wallet
 import qualified Wallet.API                 as W
 import           Wallet.Emulator
-import           Wallet.Generators          (Mockchain (..))
+import           Wallet.Generators          (Mockchain (..), wallet1, wallet2, wallet3)
 import qualified Wallet.Generators          as Gen
 import qualified Wallet.Graph
 
@@ -78,15 +78,10 @@ tests = testGroup "all tests" [
         ]
     ]
 
-wallet1, wallet2, wallet3 :: Wallet
-wallet1 = Wallet $ fromHex "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
-wallet2 = Wallet $ fromHex "4ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c"
-wallet3 = Wallet $ fromHex "c5aa8df43f9f837bedb7442f31dcb7b166d38535076f094b85ce3a2e0b4458f7fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025"
-
 pubKey1, pubKey2, pubKey3 :: PubKey
-pubKey1 = PubKey (privKeyTrim (getWallet wallet1))
-pubKey2 = PubKey (privKeyTrim (getWallet wallet2))
-pubKey3 = PubKey (privKeyTrim (getWallet wallet3))
+pubKey1 = walletPubKey wallet1
+pubKey2 = walletPubKey wallet2
+pubKey3 = walletPubKey wallet3
 
 initialTxnValid :: Property
 initialTxnValid = property $ do
@@ -147,7 +142,7 @@ txnIndexValid = property $ do
 --   validated
 simpleTrace :: Tx -> Trace MockWallet ()
 simpleTrace txn = do
-    [txn'] <- walletAction wallet1 $ submitTxn txn
+    [txn'] <- walletAction wallet1 $ signTxAndSubmit_ txn
     block <- processPending
     assertIsValidated txn'
 
@@ -202,9 +197,9 @@ invalidScript = property $ do
 
     let (result, st) = Gen.runTrace m $ do
             processPending
-            walletAction wallet1 $ submitTxn scriptTxn
+            walletAction wallet1 $ signTxAndSubmit_ scriptTxn
             processPending
-            walletAction wallet1 $ submitTxn invalidTxn
+            walletAction wallet1 $ signTxAndSubmit_ invalidTxn
             processPending
 
     Hedgehog.assert (isRight result)
