@@ -197,7 +197,13 @@ invalidScript = property $ do
 
     let (result, st) = Gen.runTrace m $ do
             processPending
-            walletAction wallet1 $ signTxAndSubmit_ scriptTxn
+            -- we need to sign scriptTxn again because it has been modified
+            -- note that although 'scriptTxn' is submitted by wallet 1, it
+            -- may spend outputs belonging to one of the other two wallets.
+            -- So we can't use 'signTxAndSubmit_' (because it would only attach
+            -- wallet 1's signatures). Instead, we get all the wallets' 
+            -- signatures with 'signAll'.
+            walletAction wallet1 $ submitTxn (Gen.signAll scriptTxn)
             processPending
             walletAction wallet1 $ signTxAndSubmit_ invalidTxn
             processPending

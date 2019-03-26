@@ -191,7 +191,7 @@ type TxId = TxIdOf (Digest SHA256)
 
 -- | True if the signature matches the public key
 signedBy :: Signature -> PubKey -> TxId -> Bool
-signedBy (Signature k) (PubKey s) txId =
+signedBy (Signature s) (PubKey k) txId =
     let k' = ED25519.publicKey $ BSL.toStrict $ getKeyBytes k
         s' = ED25519.signature $ BSL.toStrict $ getKeyBytes s
     in throwCryptoError $ ED25519.verify <$> k' <*> pure (getTxId txId) <*> s' -- TODO: is this what we want
