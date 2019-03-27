@@ -51,4 +51,5 @@ flags:
     development: true
 extra-package-dbs: []
 nix:
-  packages: [gmp, openssl]
+  enable: true
+  shell-file: shell.nix
