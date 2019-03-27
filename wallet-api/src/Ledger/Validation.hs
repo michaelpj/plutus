@@ -253,7 +253,7 @@ txSignedBy = [||
 
             go :: [(PubKey, Signature)] -> Bool
             go l = case l of
-                        (pk, sig):r -> if $$(P.and) ($$(eqPubKey) k pk) (signedBy' sig) then True else go r
+                        (pk, sig):r -> if $$(P.and) ($$(eqPubKey) k pk) (signedBy' sig) then True else $$(P.traceH) "matching pub key with invalid signature" (go r)
                         _ : r -> go r
                         []  -> False
         in

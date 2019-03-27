@@ -44,8 +44,8 @@ import qualified Ledger.Ada.TH                as Ada
 import           Ledger.Ada                   (Ada)
 import qualified Wallet.API                   as W
 import           Wallet                       (EventHandler (..), EventTrigger, WalletAPI (..),
-                                               WalletDiagnostics (..), andT, slotRangeT, fundsAtAddressT, throwOtherError,
-                                               ownPubKeyTxOut, payToScript, pubKey, createTxAndSubmit, signature)
+                                               WalletDiagnostics (..), andT, slotRangeT, createTxAndSubmit, fundsAtAddressT, throwOtherError,
+                                               ownPubKeyTxOut, payToScript)
 
 import           Prelude                    (Bool (..), fst, snd, ($), (.),
                                              (<$>), (==))
@@ -70,12 +70,7 @@ refundRange :: Campaign -> SlotRange
 refundRange cmp =
     W.intervalFrom (campaignCollectionDeadline cmp)
 
-data Action = Collect | Refund
-    deriving Generic
-
-PlutusTx.makeLift ''Action
-
-data Redeemer = Redeemer Action Signature
+data Redeemer = Collect | Refund
     deriving Generic
 
 PlutusTx.makeLift ''Redeemer
@@ -89,7 +84,7 @@ contribute :: (WalletAPI m, WalletDiagnostics m)
 contribute cmp adaAmount = do
     let value = $$(Ada.toValue) adaAmount
     _ <- if $$(V.leq) value $$(V.zero) then throwOtherError "Must contribute a positive value" else pure ()
-    ds <- DataScript . Ledger.lifted . pubKey <$> myKeyPair
+    ds <- DataScript . Ledger.lifted . W.pubKey <$> myKeyPair
 
     let range = W.interval 1 (campaignDeadline cmp)
 
@@ -105,11 +100,9 @@ collect :: (WalletAPI m, WalletDiagnostics m) => Campaign -> m ()
 collect cmp = register (collectFundsTrigger cmp) $ EventHandler $ \_ -> do
         logMsg "Collecting funds"
         am <- watchedAddresses
-        keyPair <- myKeyPair
-        let sig = signature keyPair
         let scr        = contributionScript cmp
             contributions = am ^. at (campaignAddress cmp) . to (Map.toList . fromMaybe Map.empty)
-            red        = Ledger.RedeemerScript $ Ledger.lifted $ Redeemer Collect sig
+            red        = Ledger.RedeemerScript $ Ledger.lifted $ Collect
             con (r, _) = scriptTxIn r scr red
             ins        = con <$> contributions
             value = foldl' $$(V.plus) $$(V.zero) $ Ledger.txOutValue . snd <$> contributions
@@ -154,10 +147,10 @@ contributionScript cmp  = ValidatorScript val where
 
             -- | Check that a pending transaction is signed by the private key
             --   of the given public key.
-            signedBy :: PubKey -> Signature -> Bool
-            signedBy (PubKey pk) (Signature s) = $$(PlutusTx.eq) pk s
+            signedBy :: PendingTx -> PubKey -> Bool
+            signedBy = $$(Validation.txSignedBy)
 
-            PendingTx ps outs _ _ _ range = p
+            PendingTx ps outs _ _ _ range _ _ = p
 
             collRange :: SlotRange
             collRange = $$(Interval.interval) campaignDeadline campaignCollectionDeadline
@@ -172,7 +165,7 @@ contributionScript cmp  = ValidatorScript val where
                 in $$(PlutusTx.foldr) addToTotal $$(Ada.zero) ps
 
             isValid = case act of
-                Redeemer Refund sig -> -- the "refund" branch
+                Refund -> -- the "refund" branch
                     let
                         -- Check that all outputs are paid to the public key
                         -- of the contributor (that is, to the `a` argument of the data script)
@@ -184,14 +177,14 @@ contributionScript cmp  = ValidatorScript val where
 
                         refundable   = $$(Interval.contains) refndRange range &&
                                         contributorOnly &&
-                                        a `signedBy` sig
+                                        p `signedBy` a
 
                     in refundable
-                Redeemer Collect sig -> -- the "successful campaign" branch
+                Collect -> -- the "successful campaign" branch
                     let
                         payToOwner = $$(Interval.contains) collRange range &&
                                     $$(Ada.geq) totalInputs campaignTarget &&
-                                    campaignOwner `signedBy` sig
+                                    p `signedBy` campaignOwner
                     in payToOwner
         in
         if isValid then () else $$(PlutusTx.error) ()) ||])
@@ -213,13 +206,11 @@ refund :: (WalletAPI m, WalletDiagnostics m) => TxId -> Campaign -> EventHandler
 refund txid cmp = EventHandler $ \_ -> do
     logMsg "Claiming refund"
     am <- watchedAddresses
-    keyPair <- myKeyPair
-    let sig = signature keyPair
     let adr     = campaignAddress cmp
         utxo    = fromMaybe Map.empty $ am ^. at adr
         ourUtxo = Map.toList $ Map.filterWithKey (\k _ -> txid == Ledger.txOutRefId k) utxo
         scr   = contributionScript cmp
-        red   = Ledger.RedeemerScript $ Ledger.lifted $ Redeemer Refund sig
+        red   = Ledger.RedeemerScript $ Ledger.lifted Refund
         i ref = scriptTxIn ref scr red
         inputs = Set.fromList $ i . fst <$> ourUtxo
         value  = foldl' $$(V.plus) $$(V.zero) $ Ledger.txOutValue . snd <$> ourUtxo
