@@ -14,7 +14,7 @@ import           Language.PlutusTx.Utils
 
 import           Language.PlutusIR
 
-import qualified Data.ByteString.Lazy         as BSL
+import qualified Data.ByteString.Sized        as BSS
 import           Data.Proxy
 
 -- Derived instances
@@ -35,11 +35,17 @@ instance Typeable Int where
 instance Lift Int where
     lift i = pure $ Constant () $ PLC.BuiltinInt () haskellIntSize $ fromIntegral i
 
-instance Typeable BSL.ByteString where
-    typeRep _ = pure $ appSize haskellBSSize (TyBuiltin () PLC.TyByteString)
+instance Typeable BSS.ByteString32 where
+    typeRep _ = pure $ appSize haskellBS32Size (TyBuiltin () PLC.TyByteString)
 
-instance Lift BSL.ByteString where
-    lift bs = pure $ Constant () $ PLC.BuiltinBS () haskellBSSize bs
+instance Lift BSS.ByteString32 where
+    lift (BSS.ByteString32 bs) = pure $ Constant () $ PLC.BuiltinBS () haskellBS32Size bs
+
+instance Typeable BSS.ByteString64 where
+    typeRep _ = pure $ appSize haskellBS64Size (TyBuiltin () PLC.TyByteString)
+
+instance Lift BSS.ByteString64 where
+    lift (BSS.ByteString64 bs) = pure $ Constant () $ PLC.BuiltinBS () haskellBS64Size bs
 
 -- Standard types
 -- These need to be in a separate file for TH staging reasons

@@ -31,33 +31,33 @@ module Language.PlutusTx.Builtins (
                                 , trace
                                 ) where
 
-import           Data.ByteString.Lazy    (ByteString)
-import qualified Data.ByteString.Lazy    as BSL
+import           Data.ByteString.Sized   (ByteString32, ByteString64)
+import qualified Data.ByteString.Sized   as BSS
 import           Prelude                 hiding (String, error)
 
 import           Language.PlutusTx.Utils (mustBeReplaced)
 
 -- TODO: resizing primitives? better handling of sizes?
 
-concatenate :: ByteString -> ByteString -> ByteString
-concatenate = BSL.append
+concatenate :: ByteString32 -> ByteString32 -> ByteString32
+concatenate = BSS.append32
 
-takeByteString :: Int -> ByteString -> ByteString
-takeByteString i = BSL.take (fromIntegral i)
+takeByteString :: Int -> ByteString32 -> ByteString32
+takeByteString i = BSS.take32 (fromIntegral i)
 
-dropByteString :: Int -> ByteString -> ByteString
-dropByteString i = BSL.drop (fromIntegral i)
+dropByteString :: Int -> ByteString32 -> ByteString32
+dropByteString i = BSS.drop32 (fromIntegral i)
 
-sha2_256 :: ByteString -> ByteString
+sha2_256 :: ByteString32 -> ByteString32
 sha2_256 = mustBeReplaced
 
-sha3_256 :: ByteString -> ByteString
+sha3_256 :: ByteString32 -> ByteString32
 sha3_256 = mustBeReplaced
 
-verifySignature :: ByteString -> ByteString -> ByteString -> Bool
+verifySignature :: ByteString32 -> ByteString32 -> ByteString64 -> Bool
 verifySignature = mustBeReplaced
 
-equalsByteString :: ByteString -> ByteString -> Bool
+equalsByteString :: ByteString32 -> ByteString32 -> Bool
 equalsByteString = (==)
 
 addInteger :: Int -> Int -> Int

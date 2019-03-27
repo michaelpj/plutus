@@ -42,6 +42,7 @@ library
         Language.PlutusTx.Prelude
         Language.PlutusTx.Evaluation
     reexported-modules:
+        Data.ByteString.Sized,
         Language.PlutusTx.Lift,
         Language.PlutusTx.Lift.Class,
         Language.PlutusTx.Builtins,
@@ -62,6 +63,7 @@ library plutus-tx-compiler
     import: lang
     hs-source-dirs: compiler
     exposed-modules:
+        Data.ByteString.Sized
         Language.PlutusTx.Plugin
         Language.PlutusTx.Builtins
         Language.PlutusTx.PLCTypes
