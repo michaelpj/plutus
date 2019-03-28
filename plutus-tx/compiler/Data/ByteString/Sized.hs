@@ -1,3 +1,4 @@
+-- Types for 'ByteString's of length 32 and 64.
 module Data.ByteString.Sized(
       ByteString32(..)
     , ByteString64(..)
@@ -10,13 +11,13 @@ module Data.ByteString.Sized(
 
 import qualified Data.ByteString.Lazy as BSL
 import           Data.String          (IsString (..))
-import           GHC.Int (Int64)
+import           GHC.Int              (Int64)
 
--- | A 'BSL.ByteString' of 32 bytes.
+-- | A 'BSL.ByteString' of at most 32 bytes.
 newtype ByteString32 = ByteString32 { unByteString32 :: BSL.ByteString }
         deriving (Eq, Ord, Show, IsString)
 
--- | A 'BSL.ByteString' of 64 bytes.
+-- | A 'BSL.ByteString' of at most 64 bytes.
 newtype ByteString64 = ByteString64 { unByteString64 :: BSL.ByteString }
         deriving (Eq, Ord, Show, IsString)
 

@@ -249,7 +249,7 @@ defineBuiltinTerms = do
 
     -- Blockchain builtins
     do
-        term <- wrapSizedBsrel [BS32, BS32, BS64] $ instSize haskellBS32Size $ instSize haskellBS32Size $ instSize haskellBS64Size $ mkBuiltin PLC.VerifySignature
+        term <- wrapSizedBsrel [BS32, BS32, BS64] $ instSize haskellBS64Size $ instSize haskellBS32Size $ instSize haskellBS32Size $ mkBuiltin PLC.VerifySignature
         defineBuiltinTerm 'Builtins.verifySignature term [bs32, bs64, bool]
     -- TODO: blocknum, this is annoying because we want to actually apply it to a size, which currently crashes in the evaluator
     -- as it's unimplemented
