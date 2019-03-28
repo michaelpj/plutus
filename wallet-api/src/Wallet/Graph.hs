@@ -23,9 +23,7 @@ import qualified Data.Set         as Set
 import qualified Data.Text        as Text
 import           GHC.Generics     (Generic)
 import qualified Ledger.Ada       as Ada
-import           Ledger.Types     (Blockchain, PubKey, Tx, TxId, TxOutOf (TxOutOf), TxOutRef, TxOutRefOf (TxOutRefOf),
-                                   TxOutType (PayToPubKey, PayToScript), getTxId, hashTx, out, txInRef, txInputs,
-                                   txOutRefId, txOutRefs, txOutType, txOutValue, unspentOutputs)
+import           Ledger
 
 -- | The owner of an unspent transaction output.
 data UtxOwner

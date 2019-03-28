@@ -34,15 +34,17 @@ import           Data.Semigroup       (Semigroup)
 import qualified Data.Set             as Set
 import           GHC.Generics         (Generic)
 import qualified Ledger.Interval      as Interval
-import           Ledger.Types         (Blockchain, DataScript, PubKey, Signature, Slot (..), Tx (..), TxIn, TxInOf (..),
-                                       TxOut, TxOutOf (..), TxOutRef, ValidationData (..), Value, lifted, updateUtxo,
-                                       validValuesTx)
-import qualified Ledger.Types         as Ledger
+import Ledger.Crypto
+import Ledger.Blockchain
+import Ledger.Tx
+import Ledger.Scripts
+import Ledger.Interval
+import Ledger.Value         (Value)
+import qualified Ledger.Value         as V
+import qualified Ledger.Ada           as Ada
 import           Ledger.Validation    (PendingTx (..))
 import qualified Ledger.Validation    as Validation
 import           Prelude              hiding (lookup)
-import qualified Ledger.Value         as V
-import qualified Ledger.Ada           as Ada
 
 -- | Context for validating transactions. We need access to the unspent
 --   transaction outputs of the blockchain, and we can throw 'ValidationError's.
@@ -54,7 +56,7 @@ newtype UtxoIndex = UtxoIndex { getIndex :: Map.Map TxOutRef TxOut }
 
 -- | Create an index of all UTxOs on the chain.
 initialise :: Blockchain -> UtxoIndex
-initialise = UtxoIndex . Ledger.unspentOutputs
+initialise = UtxoIndex . unspentOutputs
 
 -- | Update the index for the addition of a transaction.
 insert :: Tx -> UtxoIndex -> UtxoIndex
@@ -114,7 +116,7 @@ lkpTxOut t = lookup t =<< ask
 
 -- | Validate a transaction in a 'ValidationMonad' context.
 validateTransaction :: ValidationMonad m
-    => Ledger.Slot
+    => Slot
     -> Tx
     -> m UtxoIndex
 validateTransaction h t = do
@@ -125,7 +127,7 @@ validateTransaction h t = do
     insert t <$> ask
 
 -- | Check that a transaction can be validated in the given slot.
-checkSlotRange :: ValidationMonad m => Ledger.Slot -> Tx -> m ()
+checkSlotRange :: ValidationMonad m => Slot -> Tx -> m ()
 checkSlotRange sl tx =
     if $$(Interval.member) sl (txValidRange tx)
     then pure ()
@@ -147,10 +149,10 @@ lkpOutputs = traverse (\t -> traverse (lkpTxOut . txInRef) (t, t)) . Set.toList 
 data InOutMatch =
     ScriptMatch
         TxIn
-        Ledger.ValidatorScript
-        Ledger.RedeemerScript
+        ValidatorScript
+        RedeemerScript
         DataScript
-        (Ledger.AddressOf (Digest SHA256))
+        (AddressOf (Digest SHA256))
     | PubKeyMatch PubKey Signature
     deriving (Eq, Ord, Show)
 
@@ -158,9 +160,9 @@ data InOutMatch =
 --   both are of the same type (pubkey or pay-to-script).
 matchInputOutput :: ValidationMonad m => TxIn -> TxOut -> m InOutMatch
 matchInputOutput i txo = case (txInType i, txOutType txo) of
-    (Ledger.ConsumeScriptAddress v r, Ledger.PayToScript d) ->
+    (ConsumeScriptAddress v r, PayToScript d) ->
         pure $ ScriptMatch i v r d (txOutAddress txo)
-    (Ledger.ConsumePublicKeyAddress sig, Ledger.PayToPubKey pk) ->
+    (ConsumePublicKeyAddress sig, PayToPubKey pk) ->
         pure $ PubKeyMatch pk sig
     _ -> throwError $ InOutTypeMismatch i txo
 
@@ -172,19 +174,19 @@ matchInputOutput i txo = case (txInType i, txOutType txo) of
 checkMatch :: ValidationMonad m => PendingTx -> InOutMatch -> m ()
 checkMatch v = \case
     ScriptMatch txin vl r d a
-        | a /= Ledger.scriptAddress vl ->
+        | a /= scriptAddress vl ->
                 throwError $ InvalidScriptHash d
         | otherwise -> do
             pTxIn <- mkIn txin
             let v' = ValidationData
                     $ lifted
                     $ v { pendingTxIn = pTxIn }
-                (logOut, success) = Ledger.runScript v' vl d r
+                (logOut, success) = runScript v' vl d r
             if success
             then pure ()
             else throwError $ ScriptFailure logOut
     PubKeyMatch pk sig ->
-        if sig `Ledger.signedBy` pk
+        if sig `signedBy` pk
         then pure ()
         else throwError $ InvalidSignature pk sig
 
@@ -210,12 +212,12 @@ validationData :: ValidationMonad m => Tx -> m PendingTx
 validationData tx = rump <$> ins where
     ins = traverse mkIn $ Set.toList $ txInputs tx
 
-    rump inputs = PendingTx
-        { pendingTxInputs = inputs
+    rump txins = PendingTx
+        { pendingTxInputs = txins
         , pendingTxOutputs = mkOut <$> txOutputs tx
         , pendingTxForge = txForge tx
         , pendingTxFee = txFee tx
-        , pendingTxIn = head inputs -- this is changed accordingly in `checkMatch` during validation
+        , pendingTxIn = head txins -- this is changed accordingly in `checkMatch` during validation
         , pendingTxValidRange = txValidRange tx
         }
 
@@ -223,30 +225,30 @@ validationData tx = rump <$> ins where
 mkOut :: TxOut -> Validation.PendingTxOut
 mkOut t = Validation.PendingTxOut (txOutValue t) d tp where
     (d, tp) = case txOutType t of
-        Ledger.PayToScript scrpt ->
+        PayToScript scrpt ->
             let
                 dataScriptHash = Validation.plcDataScriptHash scrpt
-                validatorHash  = Validation.plcValidatorDigest (Ledger.getAddress $ txOutAddress t)
+                validatorHash  = Validation.plcValidatorDigest (getAddress $ txOutAddress t)
             in
                 (Just (validatorHash, dataScriptHash), Validation.DataTxOut)
-        Ledger.PayToPubKey pk -> (Nothing, Validation.PubKeyTxOut pk)
+        PayToPubKey pk -> (Nothing, Validation.PubKeyTxOut pk)
 
 -- | Create the data about a transaction input which will be passed to a validator script.
 mkIn :: ValidationMonad m => TxIn -> m Validation.PendingTxIn
 mkIn i = Validation.PendingTxIn <$> pure ref <*> pure red <*> vl where
     ref =
-        let hash = Validation.plcTxHash . Ledger.txOutRefId $ txInRef i
-            idx  = Ledger.txOutRefIdx $ Ledger.txInRef i
+        let hash = Validation.plcTxHash . txOutRefId $ txInRef i
+            idx  = txOutRefIdx $ txInRef i
         in
             Validation.PendingTxOutRef hash idx
     red = case txInType i of
-        Ledger.ConsumeScriptAddress v r  ->
-            let h = Ledger.getAddress $ Ledger.scriptAddress v in
+        ConsumeScriptAddress v r  ->
+            let h = getAddress $ scriptAddress v in
             Left (Validation.plcValidatorDigest h, Validation.plcRedeemerHash r)
-        Ledger.ConsumePublicKeyAddress sig ->
+        ConsumePublicKeyAddress sig ->
             Right sig
     vl = valueOf i
 
 -- | Get the 'Value' attached to a transaction input.
-valueOf :: ValidationMonad m => Ledger.TxIn -> m Value
+valueOf :: ValidationMonad m => TxIn -> m Value
 valueOf = lkpValue . txInRef
