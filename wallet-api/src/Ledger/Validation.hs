@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE DeriveAnyClass       #-}
 {-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE DerivingStrategies   #-}
@@ -52,7 +53,6 @@ import           Data.Bifunctor               (first)
 import qualified Data.ByteString.Lazy.Hash    as Hash
 import qualified Data.ByteString.Base64       as Base64
 import qualified Data.ByteString.Lazy         as BSL
-import qualified Data.ByteString.Sized        as BSS
 import           Data.Proxy                   (Proxy (Proxy))
 import           Data.Swagger.Internal.Schema (ToSchema (declareNamedSchema), paramSchemaToSchema, plain)
 import qualified Data.Text.Encoding           as TE
@@ -178,7 +178,7 @@ them from the correct types in Haskell, and for comparing them (in
 -}
 -- | PLC runtime representation of a `Digest SHA256`
 newtype ValidatorHash =
-    ValidatorHash BSS.ByteString32
+    ValidatorHash (Builtins.SizedByteString 32)
     deriving stock (Eq, Generic)
     deriving newtype (Serialise)
 
@@ -198,44 +198,44 @@ instance FromJSON ValidatorHash where
             Right v -> pure v
 
 newtype DataScriptHash =
-    DataScriptHash BSS.ByteString32
+    DataScriptHash (Builtins.SizedByteString 32)
     deriving (Eq, Generic)
 
 newtype RedeemerHash =
-    RedeemerHash BSS.ByteString32
+    RedeemerHash (Builtins.SizedByteString 32)
     deriving (Eq, Generic)
 
 newtype TxHash =
-    TxHash BSS.ByteString32
+    TxHash (Builtins.SizedByteString 32)
     deriving (Eq, Generic)
 
 plcDataScriptHash :: Ledger.DataScript -> DataScriptHash
-plcDataScriptHash = DataScriptHash . plcSHA2_256 . BSS.byteString32 . BSL.pack . BA.unpack
+plcDataScriptHash = DataScriptHash . Builtins.SizedByteString . plcSHA2_256 . serialise
 
 plcValidatorDigest :: Digest SHA256 -> ValidatorHash
-plcValidatorDigest = ValidatorHash . BSS.byteString32 . BSL.pack . BA.unpack
+plcValidatorDigest = ValidatorHash . plcDigest
 
 plcRedeemerHash :: Ledger.RedeemerScript -> RedeemerHash
-plcRedeemerHash = RedeemerHash . plcSHA2_256 . BSS.byteString32 . BSL.pack . BA.unpack
+plcRedeemerHash = RedeemerHash . Builtins.SizedByteString . plcSHA2_256 . serialise
 
 plcTxHash :: Ledger.TxId -> TxHash
 plcTxHash = TxHash . plcDigest . Ledger.getTxId
 
 -- | PLC-compatible SHA-256 hash of a hashable value
-plcSHA2_256 :: BSS.ByteString32 -> BSS.ByteString32
-plcSHA2_256 = BSS.byteString32 . Hash.sha2 . BSS.unByteString32
+plcSHA2_256 :: BSL.ByteString -> BSL.ByteString
+plcSHA2_256 = Hash.sha2
 
 -- | PLC-compatible SHA3-256 hash of a hashable value
-plcSHA3_256 :: BSS.ByteString32 -> BSS.ByteString32
-plcSHA3_256 = BSS.byteString32 . Hash.sha3 . BSS.unByteString32
+plcSHA3_256 :: BSL.ByteString -> BSL.ByteString
+plcSHA3_256 = Hash.sha3
 
 -- | Convert a `Digest SHA256` to a PLC `Hash`
-plcDigest :: Digest SHA256 -> BSS.ByteString32
-plcDigest = BSS.byteString32 . BSL.pack . BA.unpack
+plcDigest :: Digest SHA256 -> P.SizedByteString 32
+plcDigest = P.SizedByteString . BSL.pack . BA.unpack
 
 -- | Equality of public keys
 eqPubKey :: Q (TExp (PubKey -> PubKey -> Bool))
-eqPubKey = [|| 
+eqPubKey = [||
     \(PubKey (KeyBytes l)) (PubKey (KeyBytes r)) -> $$(P.equalsByteString) l r
     ||]
 
@@ -247,18 +247,18 @@ txSignedBy = [||
             PendingTx _ _ _ _ _ _ sigs hsh = p
 
             signedBy' :: Signature -> Bool
-            signedBy' (Signature sig) = 
-                let 
+            signedBy' (Signature sig) =
+                let
                     PubKey (KeyBytes pk) = k
                     TxHash msg           = hsh
                 in $$(P.verifySignature) pk msg sig
 
             go :: [(PubKey, Signature)] -> Bool
             go l = case l of
-                        (pk, sig):r -> 
+                        (pk, sig):r ->
                             if $$(eqPubKey) k pk
                             then if signedBy' sig
-                                 then True 
+                                 then True
                                  else $$(P.traceH) "matching pub key with invalid signature" (go r)
                             else go r
                         []  -> False

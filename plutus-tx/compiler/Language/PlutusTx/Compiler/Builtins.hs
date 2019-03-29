@@ -16,7 +16,6 @@ module Language.PlutusTx.Compiler.Builtins (
     , errorTy
     , errorFunc) where
 
-import qualified Data.ByteString.Sized                       as BSS
 import qualified Language.PlutusTx.Builtins                  as Builtins
 import           Language.PlutusTx.Compiler.Error
 import {-# SOURCE #-} Language.PlutusTx.Compiler.Expr
@@ -41,6 +40,8 @@ import qualified Language.PlutusCore.StdLib.Data.Bool        as Bool
 import qualified Language.PlutusCore.StdLib.Data.Unit        as Unit
 
 import qualified GhcPlugins                                  as GHC
+
+import GHC.Natural
 
 import qualified Language.Haskell.TH.Syntax                  as TH
 
@@ -123,12 +124,12 @@ For an example of how the "abstract module" approach would look:
 -- | The 'TH.Name's for which 'BuiltinNameInfo' needs to be provided.
 builtinNames :: [TH.Name]
 builtinNames = [
-      ''BSS.ByteString64
-    , ''BSS.ByteString32
+      ''Builtins.SizedByteString
     , ''Int
     , ''Bool
     , ''()
 
+    , 'Builtins.resizeByteString
     , 'Builtins.concatenate
     , 'Builtins.takeByteString
     , 'Builtins.dropByteString
@@ -187,8 +188,7 @@ defineBuiltinType name ty deps = do
 -- | Add definitions for all the builtin terms to the environment.
 defineBuiltinTerms :: Converting m => m ()
 defineBuiltinTerms = do
-    bs32 <- GHC.getName <$> getThing ''BSS.ByteString32
-    bs64 <- GHC.getName <$> getThing ''BSS.ByteString64
+    bs <- GHC.getName <$> getThing ''Builtins.SizedByteString
     int <- GHC.getName <$> getThing ''Int
     bool <- GHC.getName <$> getThing ''Bool
     unit <- GHC.getName <$> getThing ''()
@@ -197,23 +197,26 @@ defineBuiltinTerms = do
 
     -- Bytestring builtins
     do
-        let term = instSize haskellBS32Size $ mkBuiltin PLC.Concatenate
-        defineBuiltinTerm 'Builtins.concatenate term [bs32]
+        let term = mkBuiltin PLC.ResizeByteString
+        defineBuiltinTerm 'Builtins.resizeByteString term [bs]
     do
-        let term = instSize haskellBS32Size $ instSize haskellIntSize $ mkBuiltin PLC.TakeByteString
-        defineBuiltinTerm 'Builtins.takeByteString term [int, bs32]
+        let term = mkBuiltin PLC.Concatenate
+        defineBuiltinTerm 'Builtins.concatenate term [bs]
     do
-        let term = instSize haskellBS32Size $ instSize haskellIntSize $ mkBuiltin PLC.DropByteString
-        defineBuiltinTerm 'Builtins.dropByteString term [int, bs32]
+        let term = instSize haskellIntSize $ mkBuiltin PLC.TakeByteString
+        defineBuiltinTerm 'Builtins.takeByteString term [int, bs]
     do
-        let term = instSize haskellBS32Size $ mkBuiltin PLC.SHA2
-        defineBuiltinTerm 'Builtins.sha2_256 term [bs32]
+        let term = instSize haskellIntSize $ mkBuiltin PLC.DropByteString
+        defineBuiltinTerm 'Builtins.dropByteString term [int]
     do
-        let term = instSize haskellBS32Size $ mkBuiltin PLC.SHA3
-        defineBuiltinTerm 'Builtins.sha3_256 term [bs32]
+        let term = mkBuiltin PLC.SHA2
+        defineBuiltinTerm 'Builtins.sha2_256 term [bs]
     do
-        term <- mkBsRel PLC.EqByteString
-        defineBuiltinTerm 'Builtins.equalsByteString term [bs32, bool]
+        let term = mkBuiltin PLC.SHA3
+        defineBuiltinTerm 'Builtins.sha3_256 term [bs]
+    do
+        term <- wrapBsRel 2 $ mkBuiltin PLC.EqByteString
+        defineBuiltinTerm 'Builtins.equalsByteString term [bs, bool]
 
     -- Integer builtins
     do
@@ -249,10 +252,8 @@ defineBuiltinTerms = do
 
     -- Blockchain builtins
     do
-        term <- wrapSizedBsrel [BS32, BS32, BS64] $ instSize haskellBS64Size $ instSize haskellBS32Size $ instSize haskellBS32Size $ mkBuiltin PLC.VerifySignature
-        defineBuiltinTerm 'Builtins.verifySignature term [bs32, bs64, bool]
-    -- TODO: blocknum, this is annoying because we want to actually apply it to a size, which currently crashes in the evaluator
-    -- as it's unimplemented
+        term <- wrapSizedBsrel [32, 32, 64] $ instSize haskellBS64Size $ instSize haskellBS32Size $ instSize haskellBS32Size $ mkBuiltin PLC.VerifySignature
+        defineBuiltinTerm 'Builtins.verifySignature term [bs, bool]
 
     -- Error
     do
@@ -277,11 +278,8 @@ defineBuiltinTerms = do
 defineBuiltinTypes :: Converting m => m ()
 defineBuiltinTypes = do
     do
-        let ty = appSize haskellBS32Size $ PLC.TyBuiltin () PLC.TyByteString
-        defineBuiltinType ''BSS.ByteString32 ty []
-    do
-        let ty = appSize haskellBS64Size $ PLC.TyBuiltin () PLC.TyByteString
-        defineBuiltinType ''BSS.ByteString64 ty []
+        let ty = PLC.TyBuiltin () PLC.TyByteString
+        defineBuiltinType ''Builtins.SizedByteString ty []
     do
         let ty = appSize haskellIntSize (PLC.TyBuiltin () PLC.TyInteger)
         defineBuiltinType ''Int ty []
@@ -362,29 +360,33 @@ wrapIntRel arity term = do
 mkIntRel :: Converting m => PLC.BuiltinName -> m PIRTerm
 mkIntRel name = wrapIntRel 2 $ instSize haskellIntSize (mkBuiltin name)
 
-data ByteStringLength = BS64 | BS32
-
--- | Wrap an 32-byte bytestring relation of arity @n@ that produces a Scott
+-- | Wrap an size-polymorphic bytestring relation of arity @n@ that produces a Scott
 --   boolean.
 wrapBsRel :: Converting m => Int -> PIRTerm -> m PIRTerm
 wrapBsRel arity term = do
-    bsTy <- lookupBuiltinType ''BSS.ByteString32
+    bsTy <- lookupBuiltinType ''Builtins.SizedByteString
+    szName <- safeFreshTyName () "size"
+    let tvd = PIR.TyVarDecl () szName (PIR.Size ())
+    let ty = PIR.TyApp () bsTy (PIR.mkTyVar () tvd)
+
     args <- replicateM arity $ do
         name <- safeFreshName () "arg"
-        pure $ PIR.VarDecl () name bsTy
+        pure $ PIR.VarDecl () name ty
 
     converter <- scottBoolToHaskellBool
 
     pure $
+        PIR.mkIterTyAbs () [tvd] $
         PIR.mkIterLamAbs () args $
-        PIR.Apply () converter (PIR.mkIterApp () term (fmap (PIR.mkVar ()) args))
+        PIR.Apply ()
+          converter
+          (PIR.mkIterApp () (PIR.TyInst () term (PIR.mkTyVar () tvd)) (fmap (PIR.mkVar ()) args))
 
-wrapSizedBsrel :: Converting m => [ByteStringLength] -> PIRTerm -> m PIRTerm
+wrapSizedBsrel :: Converting m => [Natural] -> PIRTerm -> m PIRTerm
 wrapSizedBsrel bsls term = do
-    bs32Ty <- lookupBuiltinType ''BSS.ByteString32
-    bs64Ty <- lookupBuiltinType ''BSS.ByteString64
-    
-    let bsls' = (\case BS64 -> bs64Ty; BS32 -> bs32Ty) <$> bsls
+    bsTy <- lookupBuiltinType ''Builtins.SizedByteString
+
+    let bsls' = (\s -> appSize s bsTy) <$> bsls
 
         mkVarDecl ty = do
             name <- safeFreshName () "arg"
@@ -397,9 +399,6 @@ wrapSizedBsrel bsls term = do
     pure $
         PIR.mkIterLamAbs () args $
         PIR.Apply () converter (PIR.mkIterApp () term (fmap (PIR.mkVar ()) args))
-
-mkBsRel :: Converting m => PLC.BuiltinName -> m PIRTerm
-mkBsRel name = wrapBsRel 2 $ instSize haskellBS32Size (mkBuiltin name)
 
 -- | Convert a Scott-encoded Unit into a Haskell Unit.
 scottUnitToHaskellUnit :: Converting m => m PIRTerm

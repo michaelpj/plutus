@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 -- Need `+` for doctests, annoyingly
@@ -6,13 +7,14 @@
 -- reusing functions.
 module Language.PlutusTx.Prelude.Stage0 where
 
-import           Data.ByteString.Sized      (ByteString32, ByteString64)
 import           Prelude                    (Bool (..), Int, Maybe (..), String, (<), (>), (+))
 import qualified Prelude                    as P
 
 import qualified Language.PlutusTx.Builtins as Builtins
 
 import           Language.Haskell.TH
+
+import           GHC.TypeLits
 
 -- | Terminate the evaluation of the script with an error message
 error :: Q (TExp (() -> a))
@@ -252,29 +254,33 @@ foldl = [||
         in foldl
     ||]
 
--- | The double SHA256 hash of a 'ByteString'
-sha2_256 :: Q (TExp (ByteString32 -> ByteString32))
+-- | The double SHA256 hash of a 'SizedByteString'
+sha2_256 :: Q (TExp (Builtins.SizedByteString s -> Builtins.SizedByteString 32))
 sha2_256 = [|| Builtins.sha2_256 ||]
 
--- | The triple SHA256 hash of a 'ByteString'
-sha3_256 :: Q (TExp (ByteString32 -> ByteString32))
+-- | The triple SHA256 hash of a 'SizedByteString'
+sha3_256 :: Q (TExp (Builtins.SizedByteString s -> Builtins.SizedByteString 32))
 sha3_256 = [|| Builtins.sha3_256 ||]
 
-verifySignature :: Q (TExp (ByteString32 -> ByteString32 -> ByteString64 -> Bool))
+verifySignature :: Q (TExp (Builtins.SizedByteString 32 -> Builtins.SizedByteString 32 -> Builtins.SizedByteString 64 -> Bool))
 verifySignature = [|| Builtins.verifySignature ||]
 
--- | Check if two 'ByteString's are equal
-equalsByteString :: Q (TExp (ByteString32 -> ByteString32 -> Bool))
+-- | Check if two 'SizedByteString's are equal
+equalsByteString :: Q (TExp (Builtins.SizedByteString s -> Builtins.SizedByteString s -> Bool))
 equalsByteString = [|| Builtins.equalsByteString ||]
 
--- | Returns the n length prefix of a 'ByteString'
-takeByteString :: Q (TExp (Int -> ByteString32 -> ByteString32))
+-- | Returns the n length prefix of a 'SizedByteString'
+takeByteString :: Q (TExp (Int -> Builtins.SizedByteString s -> Builtins.SizedByteString s))
 takeByteString = [|| Builtins.takeByteString ||]
 
--- | Returns the suffix of a 'ByteString' after n elements
-dropByteString :: Q (TExp (Int -> ByteString32 -> ByteString32))
+-- | Returns the suffix of a 'SizedByteString' after n elements
+dropByteString :: Q (TExp (Int -> Builtins.SizedByteString s -> Builtins.SizedByteString s))
 dropByteString = [|| Builtins.dropByteString ||]
 
--- | Concatenates two 'ByteString's together.
-concatenate :: Q (TExp (ByteString32 -> ByteString32 -> ByteString32))
+-- | Concatenates two 'SizedByteString's together.
+concatenate :: Q (TExp (Builtins.SizedByteString s -> Builtins.SizedByteString s -> Builtins.SizedByteString s))
 concatenate = [|| Builtins.concatenate ||]
+
+-- | Resizes a 'SizedByteString'.
+resizeByteString :: Q (TExp (Builtins.SizedByteString s1 -> Builtins.SizedByteString s2))
+resizeByteString = [|| Builtins.resizeByteString ||]

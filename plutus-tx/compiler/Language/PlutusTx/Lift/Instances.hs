@@ -4,6 +4,7 @@
 {-# LANGUAGE KindSignatures    #-}
 {-# LANGUAGE PolyKinds         #-}
 {-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeApplications  #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Language.PlutusTx.Lift.Instances () where
 
@@ -11,11 +12,13 @@ import qualified Language.PlutusCore          as PLC
 
 import           Language.PlutusTx.Lift.Class
 import           Language.PlutusTx.Utils
+import           Language.PlutusTx.Builtins
 
 import           Language.PlutusIR
 
-import qualified Data.ByteString.Sized        as BSS
 import           Data.Proxy
+
+import GHC.TypeLits
 
 -- Derived instances
 
@@ -35,17 +38,11 @@ instance Typeable Int where
 instance Lift Int where
     lift i = pure $ Constant () $ PLC.BuiltinInt () haskellIntSize $ fromIntegral i
 
-instance Typeable BSS.ByteString32 where
-    typeRep _ = pure $ appSize haskellBS32Size (TyBuiltin () PLC.TyByteString)
+instance Typeable SizedByteString where
+    typeRep _ = pure $ (TyBuiltin () PLC.TyByteString)
 
-instance Lift BSS.ByteString32 where
-    lift (BSS.ByteString32 bs) = pure $ Constant () $ PLC.BuiltinBS () haskellBS32Size bs
-
-instance Typeable BSS.ByteString64 where
-    typeRep _ = pure $ appSize haskellBS64Size (TyBuiltin () PLC.TyByteString)
-
-instance Lift BSS.ByteString64 where
-    lift (BSS.ByteString64 bs) = pure $ Constant () $ PLC.BuiltinBS () haskellBS64Size bs
+instance (KnownNat n) => Lift (SizedByteString n) where
+    lift (SizedByteString bs) = pure $ Constant () $ PLC.BuiltinBS () (fromIntegral $ natVal (Proxy @n)) bs
 
 -- Standard types
 -- These need to be in a separate file for TH staging reasons

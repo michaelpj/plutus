@@ -1,7 +1,10 @@
 {-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE DataKinds                  #-}
+{-# OPTIONS_GHC -Wno-orphans            #-}
 
 module KeyBytes ( KeyBytes (..)
                 , bytes
@@ -14,16 +17,16 @@ import           Data.Aeson             (FromJSON (..), ToJSON (..))
 import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Lazy   as BSL
 import qualified Data.ByteString.Char8  as BS8
-import qualified Data.ByteString.Sized  as BSS
 import           Data.String            (IsString (..))
 import           Data.Swagger.Internal
 import           Data.Swagger.Schema
 import           Data.Word              (Word8)
 import           Language.PlutusTx.Lift
+import qualified Language.PlutusTx.Builtins as Builtins
 import           Web.HttpApiData        (FromHttpApiData (..), ToHttpApiData (..))
 
 fromHex :: BSL.ByteString -> KeyBytes
-fromHex = KeyBytes . BSS.byteString32 . asBSLiteral
+fromHex = KeyBytes . Builtins.SizedByteString . asBSLiteral
     where
 
     handleChar :: Word8 -> Word8
@@ -47,19 +50,19 @@ fromHex = KeyBytes . BSS.byteString32 . asBSLiteral
     asBSLiteral = withBytes asBytes
         where withBytes f = BSL.pack . f . BSL.unpack
 
-newtype KeyBytes = KeyBytes { getKeyBytes :: BSS.ByteString32 } -- TODO: use strict bytestring
+newtype KeyBytes = KeyBytes { getKeyBytes :: Builtins.SizedByteString 32 } -- TODO: use strict bytestring
     deriving (Eq, Ord, IsString, Serialise)
 
 bytes :: KeyBytes -> BSL.ByteString
-bytes = BSS.unByteString32 . getKeyBytes
+bytes = Builtins.unSizedByteString . getKeyBytes
 
 fromBytes :: BSL.ByteString -> KeyBytes
-fromBytes = KeyBytes . BSS.byteString32
+fromBytes = KeyBytes . Builtins.SizedByteString
 
 instance Show KeyBytes where
     -- TODO: Change this to base16 (hex) encoding. This is best done
     --       after rebasing onto master.
-    show = BS8.unpack . Base64.encode . BSL.toStrict . BSS.unByteString32 . getKeyBytes
+    show = BS8.unpack . Base64.encode . BSL.toStrict . bytes
 
 -- drop the first 32 bytes of a private-public key pair
 -- TODO: verify that this doesn't have sidechannels; maybe use ScrubbedBytes ??
@@ -68,7 +71,6 @@ instance Show KeyBytes where
 -- We can get the public key from a private key easily
 
 -- take the first 32 bytes of a private-public key pair
--- takePrivKey :: KeyBytes -> KeyBytes
 -- takePrivKey (KeyBytes bs) = KeyBytes (BSL.take 32 bs)
 
 makeLift ''KeyBytes

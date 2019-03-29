@@ -109,7 +109,6 @@ import           Data.Bifunctor                           (first)
 import qualified Data.ByteArray                           as BA
 import qualified Data.ByteString                          as BSS
 import qualified Data.ByteString.Base64                   as Base64
-import qualified Data.ByteString.Sized                    as BSS
 import qualified Data.ByteString.Char8                    as BS8
 import qualified Data.ByteString.Lazy                     as BSL
 import           Data.Map                                 (Map)
@@ -125,6 +124,7 @@ import qualified Language.Haskell.TH                      as TH
 import qualified Language.PlutusCore                      as PLC
 import           Language.PlutusTx.Evaluation             (evaluateCekTrace)
 import           Language.PlutusCore.Evaluation.Result
+import qualified Language.PlutusTx.Prelude                as P
 import           Language.PlutusTx.Lift                   (makeLift, unsafeLiftProgram)
 import           Language.PlutusTx.Lift.Class             (Lift)
 import           Language.PlutusTx.TH                     (CompiledCode, compile, getSerializedPlc)
@@ -188,7 +188,7 @@ newtype PubKey = PubKey { getPubKey :: KeyBytes }
 
 makeLift ''PubKey
 
-newtype Signature = Signature { getSignature :: BSS.ByteString64 }
+newtype Signature = Signature { getSignature :: P.SizedByteString 64 }
     deriving (Eq, Ord, Show)
     deriving stock (Generic)
     -- deriving anyclass (ToSchema, ToJSON, FromJSON)
@@ -219,7 +219,7 @@ signedBy :: Signature -> PubKey -> TxId -> Bool
 signedBy (Signature s) (PubKey k) txId =
     let 
         k' = ED25519.publicKey $ BSL.toStrict $ KB.bytes k
-        s' = ED25519.signature $ BSL.toStrict $ BSS.unByteString64 s
+        s' = ED25519.signature $ BSL.toStrict $ P.unSizedByteString s
         -- pk = KB.bytes k
         -- msg = BSL.pack $ BA.unpack (getTxId txId)
         -- sig = BSS.unByteString64 s
@@ -232,7 +232,7 @@ sign tx (PrivateKey privKey) =
         pk = ED25519.toPublic <$> k
         salt :: BSS.ByteString
         salt = "" -- TODO: do we need better salt?
-        convert = Signature . BSS.byteString64 . BSL.pack . BA.unpack
+        convert = Signature . P.SizedByteString . BSL.pack . BA.unpack
     in throwCryptoError $ fmap convert (ED25519.sign <$> k <*> pure salt <*> pk <*> pure (getTxId $ hashTx tx))
 
 deriving newtype instance Serialise TxId

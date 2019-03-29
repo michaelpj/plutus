@@ -2,7 +2,7 @@ cabal-version: 2.2
 name: plutus-tx
 version: 0.1.0.0
 license: Apache-2.0
-license-files: 
+license-files:
   LICENSE
   NOTICE
 maintainer: michael.peyton-jones@iohk.io
@@ -42,7 +42,6 @@ library
         Language.PlutusTx.Prelude
         Language.PlutusTx.Evaluation
     reexported-modules:
-        Data.ByteString.Sized,
         Language.PlutusTx.Lift,
         Language.PlutusTx.Lift.Class,
         Language.PlutusTx.Builtins,
@@ -63,7 +62,6 @@ library plutus-tx-compiler
     import: lang
     hs-source-dirs: compiler
     exposed-modules:
-        Data.ByteString.Sized
         Language.PlutusTx.Plugin
         Language.PlutusTx.Builtins
         Language.PlutusTx.PLCTypes

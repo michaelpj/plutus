@@ -23,7 +23,6 @@ import           Language.PlutusTx.Lift
 import           Language.PlutusTx.Plugin
 
 import           Data.ByteString.Lazy ()
-import           Data.ByteString.Sized
 import           Data.Text.Prettyprint.Doc
 import           GHC.Generics
 
@@ -82,9 +81,10 @@ primitives = testNested "primitives" [
   , goldenEval "ifThenElseApply" [ getProgram $ ifThenElse, getProgram $ int, getProgram $ int2 ]
   --, goldenPlc "blocknum" blocknumPlc
   , goldenPir "bytestring32" bytestring32
-  , goldenEval "bytestring32Apply" [ getPlc bytestring32, unsafeLiftProgram ("hello"::ByteString32) ]
-  , goldenEval "sha2_256" [ getPlc sha2, unsafeLiftProgram ("hello" :: ByteString32)]
-  , goldenEval "equalsByteString" [ getPlc bsEquals, unsafeLiftProgram ("hello" :: ByteString32), unsafeLiftProgram ("hello" :: ByteString32)]
+  , goldenPir "bytestring64" bytestring64
+  , goldenEval "bytestring32Apply" [ getPlc bytestring32, unsafeLiftProgram ("hello"::Builtins.ByteString) ]
+  , goldenEval "sha2_256" [ getPlc sha2, unsafeLiftProgram ("hello" :: Builtins.ByteString)]
+  , goldenEval "equalsByteString" [ getPlc bsEquals, unsafeLiftProgram ("hello" :: Builtins.ByteString), unsafeLiftProgram ("hello" :: Builtins.ByteString)]
   , goldenPir "verify" verify
   , goldenPir "trace" trace
   ]
@@ -135,20 +135,20 @@ ifThenElse = plc @"ifThenElse" (\(x::Int) (y::Int) -> if x == y then x else y)
 --blocknumPlc :: CompiledCode
 --blocknumPlc = plc @"blocknumPlc" Builtins.blocknum
 
-bytestring32 :: CompiledCode (ByteString32 -> ByteString32)
-bytestring32 = plc @"bytestring32" (\(x::ByteString32) -> x)
+bytestring32 :: CompiledCode (Builtins.SizedByteString 32 -> Builtins.SizedByteString 32)
+bytestring32 = plc @"bytestring32" (\(x::Builtins.SizedByteString 32) -> x)
 
-bytestring64 :: CompiledCode (ByteString64 -> ByteString64)
-bytestring64 = plc @"bytestring64" (\(x::ByteString64) -> x)
+bytestring64 :: CompiledCode (Builtins.SizedByteString 64 -> Builtins.SizedByteString 64)
+bytestring64 = plc @"bytestring64" (\(x::Builtins.SizedByteString 64) -> x)
 
-sha2 :: CompiledCode (ByteString32 -> ByteString32)
-sha2 = plc @"sha2" (\(x :: ByteString32) -> Builtins.sha2_256 x)
+sha2 :: CompiledCode (Builtins.SizedByteString 32 -> Builtins.SizedByteString 32)
+sha2 = plc @"sha2" (\(x :: Builtins.SizedByteString 32) -> Builtins.sha2_256 x)
 
-bsEquals :: CompiledCode (ByteString32 -> ByteString32 -> Bool)
-bsEquals = plc @"bs32Equals" (\(x :: ByteString32) (y :: ByteString32) -> Builtins.equalsByteString x y)
+bsEquals :: CompiledCode (Builtins.SizedByteString 32 -> Builtins.SizedByteString 32 -> Bool)
+bsEquals = plc @"bs32Equals" (\(x :: Builtins.SizedByteString 32) (y :: Builtins.SizedByteString 32) -> Builtins.equalsByteString x y)
 
-verify :: CompiledCode (ByteString32 -> ByteString32 -> ByteString64 -> Bool)
-verify = plc @"verify" (\(x::ByteString32) (y::ByteString32) (z::ByteString64) -> Builtins.verifySignature x y z)
+verify :: CompiledCode (Builtins.SizedByteString 32 -> Builtins.SizedByteString 32 -> Builtins.SizedByteString 64 -> Bool)
+verify = plc @"verify" (\(x::Builtins.SizedByteString 32) (y::Builtins.SizedByteString 32) (z::Builtins.SizedByteString 64) -> Builtins.verifySignature x y z)
 
 trace :: CompiledCode (Builtins.String -> ())
 trace = plc @"trace" (\(x :: Builtins.String) -> Builtins.trace x)
