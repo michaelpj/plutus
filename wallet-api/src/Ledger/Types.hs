@@ -26,6 +26,8 @@ module Ledger.Types(
     PrivateKey (..),
     signedBy,
     sign,
+    toPublicKey,
+    fromHex,
     -- ** Addresses
     AddressOf(..),
     Address,
@@ -107,6 +109,7 @@ import           Data.Bifunctor                           (first)
 import qualified Data.ByteArray                           as BA
 import qualified Data.ByteString                          as BSS
 import qualified Data.ByteString.Base64                   as Base64
+import qualified Data.ByteString.Sized                    as BSS
 import qualified Data.ByteString.Char8                    as BS8
 import qualified Data.ByteString.Lazy                     as BSL
 import           Data.Map                                 (Map)
@@ -116,7 +119,8 @@ import           Data.Proxy                               (Proxy(Proxy))
 import qualified Data.Set                                 as Set
 import qualified Data.Text.Encoding                       as TE
 import           GHC.Generics                             (Generic)
-import           Data.Swagger.Internal.Schema             (ToSchema(declareNamedSchema), plain, paramSchemaToSchema)
+import           Data.Swagger.Internal.Schema             (ToSchema(declareNamedSchema), plain, paramSchemaToSchema, byteSchema)
+import           Data.Swagger.Internal                    (NamedSchema(NamedSchema))
 import qualified Language.Haskell.TH                      as TH
 import qualified Language.PlutusCore                      as PLC
 import           Language.PlutusTx.Evaluation             (evaluateCekTrace)
@@ -125,7 +129,8 @@ import           Language.PlutusTx.Lift                   (makeLift, unsafeLiftP
 import           Language.PlutusTx.Lift.Class             (Lift)
 import           Language.PlutusTx.TH                     (CompiledCode, compile, getSerializedPlc)
 
-import           KeyBytes
+import           KeyBytes                                 (KeyBytes)
+import qualified KeyBytes                                 as KB
 import           Ledger.Interval                          (Slot(..), SlotRange)
 import           Ledger.Ada                               (Ada)
 import           Ledger.Value                             (Value)
@@ -163,6 +168,17 @@ newtype PrivateKey = PrivateKey { getPrivateKey :: KeyBytes }
 
 makeLift ''PrivateKey
 
+fromHex :: BSL.ByteString -> PrivateKey
+fromHex = PrivateKey . KB.fromHex
+
+-- TODO: This stuff should be in a separate module
+-- TODO: Instance ByteArrayAccess PrivateKey
+-- TODO: Instance ByteArrayAccess PubKey
+
+toPublicKey :: PrivateKey -> PubKey
+toPublicKey = PubKey . KB.fromBytes . BSL.pack . BA.unpack . ED25519.toPublic . f . KB.bytes . getPrivateKey where
+    f = throwCryptoError . ED25519.secretKey . BSL.toStrict
+
 -- | Public key
 newtype PubKey = PubKey { getPubKey :: KeyBytes }
     deriving (Eq, Ord, Show)
@@ -172,11 +188,20 @@ newtype PubKey = PubKey { getPubKey :: KeyBytes }
 
 makeLift ''PubKey
 
-newtype Signature = Signature { getSignature :: KeyBytes }
+newtype Signature = Signature { getSignature :: BSS.ByteString64 }
     deriving (Eq, Ord, Show)
     deriving stock (Generic)
-    deriving anyclass (ToSchema, ToJSON, FromJSON)
+    -- deriving anyclass (ToSchema, ToJSON, FromJSON)
     deriving newtype (Serialise)
+
+instance ToSchema Signature where
+    declareNamedSchema _ = pure $ NamedSchema (Just "Signature") byteSchema
+
+instance ToJSON Signature where
+    toJSON = undefined
+
+instance FromJSON Signature where
+    parseJSON = undefined
 
 makeLift ''Signature
 
@@ -192,17 +217,22 @@ type TxId = TxIdOf (Digest SHA256)
 -- | True if the signature matches the public key
 signedBy :: Signature -> PubKey -> TxId -> Bool
 signedBy (Signature s) (PubKey k) txId =
-    let k' = ED25519.publicKey $ BSL.toStrict $ getKeyBytes k
-        s' = ED25519.signature $ BSL.toStrict $ getKeyBytes s
+    let 
+        k' = ED25519.publicKey $ BSL.toStrict $ KB.bytes k
+        s' = ED25519.signature $ BSL.toStrict $ BSS.unByteString64 s
+        -- pk = KB.bytes k
+        -- msg = BSL.pack $ BA.unpack (getTxId txId)
+        -- sig = BSS.unByteString64 s
     in throwCryptoError $ ED25519.verify <$> k' <*> pure (getTxId txId) <*> s' -- TODO: is this what we want
+    -- in fromMaybe False $ Crypto.verifySignature pk msg sig
 
 sign :: Tx -> PrivateKey -> Signature
 sign tx (PrivateKey privKey) =
-    let k  = ED25519.secretKey $ BSL.toStrict $ getKeyBytes privKey
+    let k  = ED25519.secretKey $ BSL.toStrict $ KB.bytes privKey
         pk = ED25519.toPublic <$> k
         salt :: BSS.ByteString
         salt = "" -- TODO: do we need better salt?
-        convert = Signature . KeyBytes . BSL.pack . BA.unpack
+        convert = Signature . BSS.byteString64 . BSL.pack . BA.unpack
     in throwCryptoError $ fmap convert (ED25519.sign <$> k <*> pure salt <*> pk <*> pure (getTxId $ hashTx tx))
 
 deriving newtype instance Serialise TxId

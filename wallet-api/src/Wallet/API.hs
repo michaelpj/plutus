@@ -85,10 +85,9 @@ import           Data.Ord.Deriving          (deriveOrd1)
 import qualified Data.Set                   as Set
 import           Data.Text                  (Text)
 import           GHC.Generics               (Generic)
-import           KeyBytes
 import           Ledger                     (Address, DataScript, PubKey (..), RedeemerScript, Slot, SlotRange,
                                              Tx (..), TxId, TxIn, TxOut, TxOutOf (..), TxOutType (..), ValidatorScript, PrivateKey (..),
-                                             Value, pubKeyTxOut, scriptAddress, scriptTxIn, txOutRefId)
+                                             Value, pubKeyTxOut, scriptAddress, scriptTxIn, txOutRefId, toPublicKey)
 import qualified Ledger.Interval            as Interval
 import           Ledger.Interval            (Interval(..))
 import qualified Ledger.Value               as Value
@@ -109,8 +108,8 @@ privateKey :: KeyPair -> PrivateKey
 privateKey = fst . getKeyPair
 
 -- | Create a [[KeyPair]] given a "private key"
-keyPair :: KeyBytes -> KeyPair
-keyPair i = KeyPair (PrivateKey (takePrivKey i), PubKey (dropPrivKey i))
+keyPair :: PrivateKey -> KeyPair
+keyPair pk = KeyPair (pk, toPublicKey pk)
 
 data EventTriggerF f =
     TAnd f f

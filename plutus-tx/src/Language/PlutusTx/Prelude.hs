@@ -40,7 +40,8 @@ module Language.PlutusTx.Prelude (
     append,
     filter,
     -- * Hashes
-    ByteString,
+    ByteString32,
+    ByteString64,
     sha2_256,
     sha3_256,
     equalsByteString,
@@ -50,7 +51,7 @@ module Language.PlutusTx.Prelude (
     verifySignature
     ) where
 
-import           Data.ByteString.Lazy             (ByteString)
+import           Data.ByteString.Sized      (ByteString32, ByteString64)
 
 import           Language.PlutusTx.Prelude.Stage0
 import           Language.PlutusTx.Prelude.Stage1

@@ -47,10 +47,12 @@ import           Codec.Serialise              (Serialise, deserialiseOrFail, ser
 import           Crypto.Hash                  (Digest, SHA256)
 import           Data.Aeson                   (FromJSON, ToJSON (toJSON), withText)
 import qualified Data.Aeson                   as JSON
+import qualified Data.ByteArray               as BA
 import           Data.Bifunctor               (first)
 import qualified Data.ByteString.Lazy.Hash    as Hash
 import qualified Data.ByteString.Base64       as Base64
 import qualified Data.ByteString.Lazy         as BSL
+import qualified Data.ByteString.Sized        as BSS
 import           Data.Proxy                   (Proxy (Proxy))
 import           Data.Swagger.Internal.Schema (ToSchema (declareNamedSchema), paramSchemaToSchema, plain)
 import qualified Data.Text.Encoding           as TE
@@ -176,7 +178,7 @@ them from the correct types in Haskell, and for comparing them (in
 -}
 -- | PLC runtime representation of a `Digest SHA256`
 newtype ValidatorHash =
-    ValidatorHash BSL.ByteString
+    ValidatorHash BSS.ByteString32
     deriving stock (Eq, Generic)
     deriving newtype (Serialise)
 
@@ -196,40 +198,40 @@ instance FromJSON ValidatorHash where
             Right v -> pure v
 
 newtype DataScriptHash =
-    DataScriptHash BSL.ByteString
+    DataScriptHash BSS.ByteString32
     deriving (Eq, Generic)
 
 newtype RedeemerHash =
-    RedeemerHash BSL.ByteString
+    RedeemerHash BSS.ByteString32
     deriving (Eq, Generic)
 
 newtype TxHash =
-    TxHash BSL.ByteString
+    TxHash BSS.ByteString32
     deriving (Eq, Generic)
 
 plcDataScriptHash :: Ledger.DataScript -> DataScriptHash
-plcDataScriptHash = DataScriptHash . plcSHA2_256 . serialise
+plcDataScriptHash = DataScriptHash . plcSHA2_256 . BSS.byteString32 . BSL.pack . BA.unpack
 
 plcValidatorDigest :: Digest SHA256 -> ValidatorHash
-plcValidatorDigest = ValidatorHash . plcDigest
+plcValidatorDigest = ValidatorHash . BSS.byteString32 . BSL.pack . BA.unpack
 
 plcRedeemerHash :: Ledger.RedeemerScript -> RedeemerHash
-plcRedeemerHash = RedeemerHash . plcSHA2_256 . serialise
+plcRedeemerHash = RedeemerHash . plcSHA2_256 . BSS.byteString32 . BSL.pack . BA.unpack
 
 plcTxHash :: Ledger.TxId -> TxHash
 plcTxHash = TxHash . plcDigest . Ledger.getTxId
 
 -- | PLC-compatible SHA-256 hash of a hashable value
-plcSHA2_256 :: BSL.ByteString -> BSL.ByteString
-plcSHA2_256 = Hash.sha2
+plcSHA2_256 :: BSS.ByteString32 -> BSS.ByteString32
+plcSHA2_256 = BSS.byteString32 . Hash.sha2 . BSS.unByteString32
 
 -- | PLC-compatible SHA3-256 hash of a hashable value
-plcSHA3_256 :: BSL.ByteString -> BSL.ByteString
-plcSHA3_256 = Hash.sha3
+plcSHA3_256 :: BSS.ByteString32 -> BSS.ByteString32
+plcSHA3_256 = BSS.byteString32 . Hash.sha3 . BSS.unByteString32
 
 -- | Convert a `Digest SHA256` to a PLC `Hash`
-plcDigest :: Digest SHA256 -> BSL.ByteString
-plcDigest = serialise
+plcDigest :: Digest SHA256 -> BSS.ByteString32
+plcDigest = BSS.byteString32 . BSL.pack . BA.unpack
 
 -- | Equality of public keys
 eqPubKey :: Q (TExp (PubKey -> PubKey -> Bool))
@@ -245,16 +247,20 @@ txSignedBy = [||
             PendingTx _ _ _ _ _ _ sigs hsh = p
 
             signedBy' :: Signature -> Bool
-            signedBy' (Signature (KeyBytes sig)) = 
+            signedBy' (Signature sig) = 
                 let 
                     PubKey (KeyBytes pk) = k
                     TxHash msg           = hsh
-                in $$(P.verifySignature) sig pk msg
+                in $$(P.verifySignature) pk msg sig
 
             go :: [(PubKey, Signature)] -> Bool
             go l = case l of
-                        (pk, sig):r -> if $$(P.and) ($$(eqPubKey) k pk) (signedBy' sig) then True else $$(P.traceH) "matching pub key with invalid signature" (go r)
-                        _ : r -> go r
+                        (pk, sig):r -> 
+                            if $$(eqPubKey) k pk
+                            then if signedBy' sig
+                                 then True 
+                                 else $$(P.traceH) "matching pub key with invalid signature" (go r)
+                            else go r
                         []  -> False
         in
             go sigs

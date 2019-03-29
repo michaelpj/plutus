@@ -4,8 +4,8 @@
 {-# LANGUAGE TemplateHaskell            #-}
 
 module KeyBytes ( KeyBytes (..)
-                , dropPrivKey
-                , takePrivKey
+                , bytes
+                , fromBytes
                 , fromHex
                 ) where
 
@@ -14,7 +14,7 @@ import           Data.Aeson             (FromJSON (..), ToJSON (..))
 import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Lazy   as BSL
 import qualified Data.ByteString.Char8  as BS8
-import           Data.Hashable          (Hashable)
+import qualified Data.ByteString.Sized  as BSS
 import           Data.String            (IsString (..))
 import           Data.Swagger.Internal
 import           Data.Swagger.Schema
@@ -23,7 +23,7 @@ import           Language.PlutusTx.Lift
 import           Web.HttpApiData        (FromHttpApiData (..), ToHttpApiData (..))
 
 fromHex :: BSL.ByteString -> KeyBytes
-fromHex = KeyBytes . asBSLiteral
+fromHex = KeyBytes . BSS.byteString32 . asBSLiteral
     where
 
     handleChar :: Word8 -> Word8
@@ -47,22 +47,29 @@ fromHex = KeyBytes . asBSLiteral
     asBSLiteral = withBytes asBytes
         where withBytes f = BSL.pack . f . BSL.unpack
 
-newtype KeyBytes = KeyBytes { getKeyBytes :: BSL.ByteString } -- TODO: use strict bytestring
-    deriving (Eq, Ord, IsString, Hashable, Serialise)
+newtype KeyBytes = KeyBytes { getKeyBytes :: BSS.ByteString32 } -- TODO: use strict bytestring
+    deriving (Eq, Ord, IsString, Serialise)
+
+bytes :: KeyBytes -> BSL.ByteString
+bytes = BSS.unByteString32 . getKeyBytes
+
+fromBytes :: BSL.ByteString -> KeyBytes
+fromBytes = KeyBytes . BSS.byteString32
 
 instance Show KeyBytes where
     -- TODO: Change this to base16 (hex) encoding. This is best done
     --       after rebasing onto master.
-    show = BS8.unpack . Base64.encode . BSL.toStrict . getKeyBytes
+    show = BS8.unpack . Base64.encode . BSL.toStrict . BSS.unByteString32 . getKeyBytes
 
 -- drop the first 32 bytes of a private-public key pair
 -- TODO: verify that this doesn't have sidechannels; maybe use ScrubbedBytes ??
-dropPrivKey :: KeyBytes -> KeyBytes
-dropPrivKey (KeyBytes bs) = KeyBytes (BSL.take 32 $ BSL.drop 32 bs)
+-- dropPrivKey :: KeyBytes -> KeyBytes
+-- dropPrivKey (KeyBytes bs) = KeyBytes (BSL.take 32 . BSL.drop 32 bs)
+-- We can get the public key from a private key easily
 
 -- take the first 32 bytes of a private-public key pair
-takePrivKey :: KeyBytes -> KeyBytes
-takePrivKey (KeyBytes bs) = KeyBytes (BSL.take 32 bs)
+-- takePrivKey :: KeyBytes -> KeyBytes
+-- takePrivKey (KeyBytes bs) = KeyBytes (BSL.take 32 bs)
 
 makeLift ''KeyBytes
 

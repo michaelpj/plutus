@@ -15,14 +15,15 @@ import qualified Ledger.Ada                   as Ada
 import           Ledger.Ada                   (Ada)
 import           Wallet
 
-import           Data.ByteString.Lazy (ByteString)
+import           Data.ByteString.Sized        (ByteString32)
+import qualified Data.ByteString.Sized        as BS
 import qualified Data.ByteString.Lazy.Char8   as C
 
-data HashedString = HashedString ByteString
+data HashedString = HashedString ByteString32
 
 PlutusTx.makeLift ''HashedString
 
-data ClearString = ClearString ByteString
+data ClearString = ClearString ByteString32
 
 PlutusTx.makeLift ''ClearString
 
@@ -41,14 +42,14 @@ gameAddress = Ledger.scriptAddress gameValidator
 
 lock :: (WalletAPI m, WalletDiagnostics m) => String -> Ada -> m ()
 lock word adaVl = do
-    let hashedWord = plcSHA2_256 (C.pack word)
+    let hashedWord = plcSHA2_256 (BS.byteString32 (C.pack word))
         vl = Ada.toValue adaVl
         ds = DataScript (Ledger.lifted (HashedString hashedWord))
     payToScript_ defaultSlotRange gameAddress vl ds
 
 guess :: (WalletAPI m, WalletDiagnostics m) => String -> m ()
 guess word = do
-    let clearWord = C.pack word
+    let clearWord = BS.byteString32 (C.pack word) -- TODO: pack32 ??
         redeemer = RedeemerScript (Ledger.lifted (ClearString clearWord))
     collectFromScript defaultSlotRange gameValidator redeemer
 

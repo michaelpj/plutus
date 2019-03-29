@@ -34,7 +34,7 @@ import           GHC.Generics                 (Generic)
 import qualified Language.PlutusTx            as PlutusTx
 import qualified Ledger.Interval              as Interval
 import           Ledger.Interval              (SlotRange)
-import           Ledger                       (DataScript (..), Signature(..), PubKey (..),
+import           Ledger                       (DataScript (..), PubKey (..),
                                                TxId, ValidatorScript (..), scriptTxIn, Slot(..))
 import qualified Ledger                       as Ledger
 import           Ledger.Validation            (PendingTx (..), PendingTxIn (..), PendingTxOut)
