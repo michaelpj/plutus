@@ -1,4 +1,4 @@
--- | Crowdfunding contract implemented using the [[Plutus]] interface.
+-- | Crowdfunding contract implemented using the Plutus interface.
 -- This is the fully parallel version that collects all contributions
 -- in a single transaction. This is, of course, limited by the maximum
 -- number of inputs a transaction can have.
@@ -97,7 +97,7 @@ contribute cmp adaAmount = do
     register (refundTrigger cmp) (refund (Ledger.hashTx tx) cmp)
     logMsg "Registered refund trigger"
 
--- | Register a [[EventHandler]] to collect all the funds of a campaign
+-- | Register an 'EventHandler' to collect all the funds of a campaign
 --
 collect :: (WalletAPI m, WalletDiagnostics m) => Campaign -> m ()
 collect cmp = register (collectFundsTrigger cmp) $ EventHandler $ \_ -> do
@@ -116,7 +116,7 @@ collect cmp = register (collectFundsTrigger cmp) $ EventHandler $ \_ -> do
         oo <- ownPubKeyTxOut value
         void $ createTxAndSubmit range (Set.fromList ins) [oo]
 
--- | The address of a [[Campaign]]
+-- | The address of a 'Campaign'
 campaignAddress :: Campaign -> Ledger.Address
 campaignAddress = Ledger.scriptAddress . contributionScript
 

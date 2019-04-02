@@ -67,7 +67,7 @@ data VestingData = VestingData {
 PlutusTx.makeLift ''VestingData
 
 -- | Lock some funds with the vesting validator script and return a
---   [[VestingData]] representing the current state of the process
+--   'VestingData' representing the current state of the process
 vestFunds :: (
     MonadError WalletAPIError m,
     WalletAPI m)

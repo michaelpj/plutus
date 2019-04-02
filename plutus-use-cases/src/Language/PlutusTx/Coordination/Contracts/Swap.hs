@@ -40,7 +40,7 @@ data Swap = Swap
     , swapFixedRate       :: !(Ratio Int) -- ^ Interest rate fixed at the beginning of the contract
     , swapFloatingRate    :: !(Ratio Int) -- ^ Interest rate whose value will be observed (by an oracle) on the day of the payment
     , swapMargin          :: !Ada -- ^ Margin deposited at the beginning of the contract to protect against default (one party failing to pay)
-    , swapOracle          :: !PubKey -- ^ Public key of the oracle (see note [Oracles] in [[Language.PlutusTx.Coordination.Contracts]])
+    , swapOracle          :: !PubKey -- ^ Public key of the oracle (see note [Oracles] in 'Language.PlutusTx.Coordination.Contracts')
     }
 
 -- | Identities of the parties involved in the swap. This will be the data
@@ -89,7 +89,7 @@ swapValidator _ = ValidatorScript result where
             round :: Ratio Int -> Int
             round = $$(PlutusTx.error) ()
 
-            -- | Convert an [[Int]] to a [[Ratio Int]]
+            -- | Convert an 'Int' to a @Ratio Int@
             fromInt :: Int -> Ratio Int
             fromInt = $$(PlutusTx.error) ()
 
