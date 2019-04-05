@@ -71,6 +71,7 @@ convLiteral = \case
     -- TODO: better sizes
     (GHC.LitNumber GHC.LitNumInt64 i _) -> pure $ PIR.Constant () $ PLC.BuiltinInt () haskellIntSize i
     (GHC.LitNumber GHC.LitNumInt i _)   -> pure $ PIR.Constant () $ PLC.BuiltinInt () haskellIntSize i
+    (GHC.LitNumber GHC.LitNumInteger i _)   -> pure $ PIR.Constant () $ PLC.BuiltinInt () haskellIntSize i
     GHC.MachStr bs     ->
         -- Convert the bytestring into a core expression representing the list
         -- of characters, then compile that!

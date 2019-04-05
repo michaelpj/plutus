@@ -62,6 +62,7 @@ primitives :: TestNested
 primitives = testNested "primitives" [
     goldenPir "string" string
   , goldenPir "int" int
+  , goldenPir "sizedInt" sizedInt
   , goldenPir "int2" int
   , goldenPir "bool" bool
   , goldenPir "and" andPlc
@@ -94,6 +95,9 @@ string = plc @"string" "test"
 
 int :: CompiledCode Int
 int = plc @"int" (1::Int)
+
+sizedInt :: CompiledCode (Builtins.SizedInteger 32)
+sizedInt = plc @"sizedInt" (Builtins.SizedInteger 1)
 
 int2 :: CompiledCode Int
 int2 = plc @"int2" (2::Int)

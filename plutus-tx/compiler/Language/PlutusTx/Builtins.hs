@@ -3,8 +3,10 @@
 {-# OPTIONS_GHC -O0 #-}
 -- | Primitive names and functions for working with Plutus Core builtins.
 module Language.PlutusTx.Builtins (
+                                -- * Sizes
+                                Size
                                 -- * Bytestring builtins
-                                SizedByteString(..)
+                                , SizedByteString(..)
                                 , ByteString
                                 , resizeByteString
                                 , concatenate
@@ -15,6 +17,7 @@ module Language.PlutusTx.Builtins (
                                 , verifySignature
                                 , equalsByteString
                                 -- * Integer builtins
+                                , SizedInteger(..)
                                 , addInteger
                                 , subtractInteger
                                 , multiplyInteger
@@ -49,8 +52,14 @@ import           Language.PlutusTx.Utils   (mustBeReplaced)
 
 -- TODO: resizing primitives? better handling of sizes?
 
+type Size = Nat
+
+-- | A sized integer.
+newtype SizedInteger (s::Size) = SizedInteger { unSizedInteger :: Integer }
+        deriving (Eq, Ord, Show, Serialise)
+
 -- | A sized bytestring.
-newtype SizedByteString (s::Nat) = SizedByteString { unSizedByteString :: BSL.ByteString }
+newtype SizedByteString (s::Size) = SizedByteString { unSizedByteString :: BSL.ByteString }
         deriving (Eq, Ord, Show, IsString, Serialise)
 
 -- | A bytestring of default size (32 bytes).

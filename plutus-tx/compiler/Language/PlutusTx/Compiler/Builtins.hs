@@ -125,6 +125,7 @@ For an example of how the "abstract module" approach would look:
 builtinNames :: [TH.Name]
 builtinNames = [
       ''Builtins.SizedByteString
+    , ''Builtins.SizedInteger
     , ''Int
     , ''Bool
     , ''()
@@ -280,6 +281,9 @@ defineBuiltinTypes = do
     do
         let ty = PLC.TyBuiltin () PLC.TyByteString
         defineBuiltinType ''Builtins.SizedByteString ty []
+    do
+        let ty = PLC.TyBuiltin () PLC.TyInteger
+        defineBuiltinType ''Builtins.SizedInteger ty []
     do
         let ty = appSize haskellIntSize (PLC.TyBuiltin () PLC.TyInteger)
         defineBuiltinType ''Int ty []
