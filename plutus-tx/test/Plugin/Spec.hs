@@ -24,6 +24,7 @@ import           Language.PlutusTx.Plugin
 import           Data.ByteString.Lazy       ()
 import           Data.Text.Prettyprint.Doc
 import           GHC.Generics
+import           GHC.TypeLits
 
 -- this module does lots of weird stuff deliberately
 {-# ANN module ("HLint: ignore"::String) #-}
@@ -86,6 +87,7 @@ primitives = testNested "primitives" [
   , goldenEval "sha2_256" [ getPlc sha2, unsafeLiftProgram ("hello" :: Builtins.ByteString)]
   , goldenEval "equalsByteString" [ getPlc bsEquals, unsafeLiftProgram ("hello" :: Builtins.ByteString), unsafeLiftProgram ("hello" :: Builtins.ByteString)]
   , goldenPir "verify" verify
+  , goldenPir "resizeBytestring" resizeBytestring
   , goldenPir "trace" trace
   ]
 
@@ -149,6 +151,9 @@ bsEquals = plc @"bs32Equals" (\(x :: Builtins.SizedByteString 32) (y :: Builtins
 
 verify :: CompiledCode (Builtins.SizedByteString 32 -> Builtins.SizedByteString 32 -> Builtins.SizedByteString 64 -> Bool)
 verify = plc @"verify" (\(x::Builtins.SizedByteString 32) (y::Builtins.SizedByteString 32) (z::Builtins.SizedByteString 64) -> Builtins.verifySignature x y z)
+
+resizeBytestring :: CompiledCode (Builtins.SizedByteString 32 -> Builtins.SizedByteString 64)
+resizeBytestring = plc @"resizeBytestring" (\(x:: Builtins.SizedByteString 32) -> Builtins.resizeByteString (Builtins.SizeWit 64) x)
 
 trace :: CompiledCode (Builtins.String -> ())
 trace = plc @"trace" (\(x :: Builtins.String) -> Builtins.trace x)

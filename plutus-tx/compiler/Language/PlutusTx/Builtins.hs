@@ -1,10 +1,14 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -O0 #-}
 -- | Primitive names and functions for working with Plutus Core builtins.
 module Language.PlutusTx.Builtins (
+                                -- * Sizes
+                                Size
+                                , SizeWit(..)
                                 -- * Bytestring builtins
-                                SizedByteString(..)
+                                , SizedByteString(..)
                                 , ByteString
                                 , resizeByteString
                                 , concatenate
@@ -49,15 +53,18 @@ import           Language.PlutusTx.Utils   (mustBeReplaced)
 
 -- TODO: resizing primitives? better handling of sizes?
 
+type Size = Nat
+data SizeWit s = SizeWit Int
+
 -- | A sized bytestring.
-newtype SizedByteString (s::Nat) = SizedByteString { unSizedByteString :: BSL.ByteString }
+newtype SizedByteString (s::Size) = SizedByteString { unSizedByteString :: BSL.ByteString }
         deriving (Eq, Ord, Show, IsString, Serialise)
 
 -- | A bytestring of default size (32 bytes).
 type ByteString = SizedByteString 32
 
-resizeByteString :: SizedByteString s1 -> SizedByteString s2
-resizeByteString (SizedByteString b) = SizedByteString b
+resizeByteString :: forall s1 s2 . SizeWit s2 -> SizedByteString s1 -> SizedByteString s2
+resizeByteString _ (SizedByteString b) = SizedByteString b
 
 concatenate :: SizedByteString s -> SizedByteString s -> SizedByteString s
 concatenate (SizedByteString l) (SizedByteString r) = SizedByteString (BSL.append l r)
