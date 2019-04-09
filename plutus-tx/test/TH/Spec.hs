@@ -30,7 +30,7 @@ import           Language.PlutusCore
 import           Control.Monad.Except
 import           Control.Exception
 
-import           Data.Text.Prettyprint.Doc
+import           Data.Text.Prettyprint.Doc hiding (Unbounded)
 import           Test.Tasty
 
 instance GetProgram (CompiledCode a) where
@@ -43,13 +43,13 @@ runPlcCek :: GetProgram a => [a] -> ExceptT SomeException IO EvaluationResultDef
 runPlcCek values = do
      ps <- traverse getProgram values
      let p = foldl1 applyProgram ps
-     ExceptT $ try @SomeException $ evaluate $ evaluateCek p
+     ExceptT $ try @SomeException $ evaluate $ evalCek Unbounded p
 
 runPlcCekTrace :: GetProgram a => [a] -> ExceptT SomeException IO ([String], EvaluationResultDef)
 runPlcCekTrace values = do
      ps <- traverse getProgram values
      let p = foldl1 applyProgram ps
-     ExceptT $ try @SomeException $ evaluate $ evaluateCekTrace p
+     ExceptT $ try @SomeException $ evaluate $ evalCekTrace Unbounded p
 
 goldenEvalCek :: GetProgram a => String -> [a] -> TestNested
 goldenEvalCek name values = nestedGoldenVsDocM name $ prettyPlcClassicDebug Haskell.<$> (rethrow $ runPlcCek values)

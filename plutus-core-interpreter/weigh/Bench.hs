@@ -15,8 +15,8 @@ main = do
         g' = processor g
 
     mainWith $ sequence_
-        [ func "valid" (fmap (runCek mempty)) f'
-        , func "invalid" (fmap (runCek mempty)) g'
+        [ func "valid" (fmap (runCek Unbounded mempty)) f'
+        , func "invalid" (fmap (runCek Unbounded mempty)) g'
         ]
 
     where evalFile0 = BSL.readFile "../language-plutus-core/test/Evaluation/Golden/verifySignature.plc"

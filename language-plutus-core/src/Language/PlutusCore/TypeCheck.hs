@@ -7,7 +7,7 @@ module Language.PlutusCore.TypeCheck
     , TypeCheckConfig (..)
     , tccDoNormTypes
     , tccDynamicBuiltinNameTypes
-    , tccMayGas
+    , tccGasThreshold
     , defTypeCheckGas
     , onChainConfig
     , offChainConfig
@@ -42,11 +42,11 @@ defTypeCheckGas = Gas 1000
 
 -- | The 'TypeCheckConfig' used on the chain.
 onChainConfig :: DynamicBuiltinNameTypes -> Gas -> TypeCheckConfig
-onChainConfig tys = TypeCheckConfig False tys . Just
+onChainConfig tys = TypeCheckConfig False tys . Threshold
 
 -- | The 'TypeCheckConfig' used off the chain.
 offChainConfig :: DynamicBuiltinNameTypes -> TypeCheckConfig
-offChainConfig tys = TypeCheckConfig True tys Nothing
+offChainConfig tys = TypeCheckConfig True tys Unbounded
 
 -- | The default 'TypeCheckConfig' used on the chain.
 defOnChainConfig :: TypeCheckConfig

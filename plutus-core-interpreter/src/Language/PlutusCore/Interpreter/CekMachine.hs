@@ -12,28 +12,37 @@
 -- (wrapped in 'OtherMachineError').
 
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module Language.PlutusCore.Interpreter.CekMachine
     ( CekMachineException
     , EvaluationResult (..)
     , EvaluationResultDef
-    , evaluateCekCatch
-    , evaluateCek
+    , evalCekTermCatch
+    , runCekTermCatch
+    , evalCekTerm
+    , runCekTerm
+    , evalCekProgram
+    , runCekProgram
     , readKnownCek
-    , runCek
     ) where
 
 import           Language.PlutusCore
 import           Language.PlutusCore.Constant
+import           Language.PlutusCore.Evaluation.Costs
 import           Language.PlutusCore.Evaluation.MachineException
+import           Language.PlutusCore.Evaluation.Stats
 import           Language.PlutusCore.Name
 import           Language.PlutusCore.View
 import           PlutusPrelude                                   hiding (hoist)
 
+import           Control.Lens                                    hiding (Context)
 import           Control.Lens.TH                                 (makeLenses)
 import           Control.Monad.Except
 import           Control.Monad.Reader
+import           Control.Monad.State
 import qualified Data.Map                                        as Map
+import           Data.Tuple
 
 type Plain f = f TyName Name ()
 
@@ -52,12 +61,37 @@ type VarEnv = UniqueMap TermUnique Closure
 
 -- | The environment the CEK machine runs in.
 data CekEnv = CekEnv
-    { _cekEnvMeans  :: DynamicBuiltinNameMeanings
-    , _cekEnvVarEnv :: VarEnv
+    { _cekEnvMeans        :: DynamicBuiltinNameMeanings
+    , _cekEnvVarEnv       :: VarEnv
+    , _cekEnvCostModel    :: CostModel (Plain Term)
+    , _cekEnvGasThreshold :: GasThreshold
     }
 
+makeLenses ''CekEnv
+
+data CekState = CekState
+    { _cekStateStats    :: Stats
+    , _cekStateGasUsage :: Gas
+    }
+
+makeLenses ''CekState
+
+emptyState :: CekState
+emptyState = CekState mempty mempty
+
+checkGasAt :: Plain Term -> CekM ()
+checkGasAt term = do
+    usage <- gets (view cekStateGasUsage)
+    threshold <- asks (view cekEnvGasThreshold)
+    unless (withinThreshold usage threshold) $ throwError $ MachineException OutOfGasError term
+
+recordGasUsageAt :: Plain Term -> Gas -> CekM ()
+recordGasUsageAt term gas = do
+    cekStateGasUsage <>= gas
+    checkGasAt term
+
 -- | The monad the CEK machine runs in.
-type CekM = ReaderT CekEnv (Either CekMachineException)
+type CekM = ReaderT CekEnv (ExceptT CekMachineException (State CekState))
 
 data Frame
     = FrameApplyFun VarEnv (Plain Value)               -- ^ @[V _]@
@@ -68,10 +102,11 @@ data Frame
 
 type Context = [Frame]
 
-makeLenses ''CekEnv
+evalCekM :: CekEnv -> CekM a -> Either CekMachineException a
+evalCekM env = flip evalState emptyState . runExceptT . flip runReaderT env
 
-runCekM :: CekEnv -> CekM a -> Either CekMachineException a
-runCekM = flip runReaderT
+runCekM :: CekEnv -> CekM a -> (CekState, Either CekMachineException a)
+runCekM env = swap . flip runState emptyState . runExceptT . flip runReaderT env
 
 -- | Get the current 'VarEnv'.
 getVarEnv :: CekM VarEnv
@@ -152,8 +187,12 @@ returnCek (FrameUnwrap                 : con) dat = case dat of
 -- iterated application of a 'BuiltinName' to a list of 'Value's and, if succesful,
 -- apply the term to the type via 'TyInst'.
 instantiateEvaluate :: Context -> Type TyName () -> Plain Term -> CekM EvaluationResultDef
-instantiateEvaluate con _  (TyAbs _ _ _ body) = computeCek con body
+instantiateEvaluate con ty tyabs@(TyAbs _ _ _ body) = do
+    gas <- asks (view (cekEnvCostModel . costModelInstantiation))
+    recordGasUsageAt (TyInst () tyabs ty) gas
+    computeCek con body
 instantiateEvaluate con ty fun
+    -- This will be handled by the cost model for saturated builtins
     | isJust $ termAsPrimIterApp fun = returnCek con $ TyInst () fun ty
     | otherwise                      =
         throwError $ MachineException NonPrimitiveInstantiationMachineError fun
@@ -166,7 +205,11 @@ instantiateEvaluate con ty fun
 -- depending on whether 'BuiltinName' is saturated or not.
 applyEvaluate
     :: VarEnv -> VarEnv -> Context -> Plain Value -> Plain Value -> CekM EvaluationResultDef
-applyEvaluate funVarEnv argVarEnv con (LamAbs _ name _ body) arg =
+applyEvaluate funVarEnv argVarEnv con fun@(LamAbs _ name _ body) arg = do
+    -- we do this here since it's where we know it's not a builtin application,
+    -- which we track separately
+    gas <- asks (view (cekEnvCostModel . costModelApplication))
+    recordGasUsageAt (Apply () fun arg) gas
     withVarEnv (extendVarEnv name arg argVarEnv funVarEnv) $ computeCek con body
 applyEvaluate funVarEnv _         con fun                    arg =
     let term = Apply () fun arg in
@@ -174,7 +217,8 @@ applyEvaluate funVarEnv _         con fun                    arg =
             Nothing                       ->
                 throwError $ MachineException NonPrimitiveApplicationMachineError term
             Just (IterApp headName spine) -> do
-                constAppResult <- applyStagedBuiltinName headName spine
+
+                constAppResult <- applyStagedBuiltinName term headName spine
                 withVarEnv funVarEnv $ case constAppResult of
                     ConstAppSuccess res -> computeCek con res
                     ConstAppFailure     -> pure EvaluationFailure
@@ -183,32 +227,62 @@ applyEvaluate funVarEnv _         con fun                    arg =
                         throwError $ MachineException (ConstAppMachineError err) term
 
 evaluateInCekM :: EvaluateConstApp (Either CekMachineException) a -> CekM (ConstAppResult a)
-evaluateInCekM a =
-    ReaderT $ \cekEnv ->
-        let eval means' = evaluateCekCatchIn $ cekEnv & cekEnvMeans %~ mappend means'
-            in runEvaluateConstApp eval a
+evaluateInCekM a = do
+    cekEnv <- ask
+    let eval means' = evalCekTermCatchIn $ cekEnv & cekEnvMeans <>~ means'
+    liftEither $ runEvaluateConstApp eval a
 
 -- | Apply a 'StagedBuiltinName' to a list of 'Value's.
-applyStagedBuiltinName :: StagedBuiltinName -> [Plain Value] -> CekM ConstAppResultDef
-applyStagedBuiltinName (DynamicStagedBuiltinName name) args = do
+applyStagedBuiltinName :: Plain Term -> StagedBuiltinName -> [Plain Value] -> CekM ConstAppResultDef
+applyStagedBuiltinName _ (DynamicStagedBuiltinName name) args = do
     DynamicBuiltinNameMeaning sch x <- lookupDynamicBuiltinName name
+    -- TODO: gas for dynamic builtins
     evaluateInCekM $ applyTypeSchemed sch x args
-applyStagedBuiltinName (StaticStagedBuiltinName  name) args =
+applyStagedBuiltinName term (StaticStagedBuiltinName name) args = do
+    costFunction <- asks (view (cekEnvCostModel . costModelBuiltin))
+    recordGasUsageAt term (costFunction name args)
     evaluateInCekM $ applyBuiltinName name args
 
 -- | Evaluate a term in an environment using the CEK machine.
-evaluateCekCatchIn
+evalCekTermCatchIn
     :: CekEnv -> Plain Term -> Either CekMachineException EvaluationResultDef
-evaluateCekCatchIn cekEnv = runCekM cekEnv . computeCek []
+evalCekTermCatchIn cekEnv = evalCekM cekEnv . computeCek []
+
+runCekTermCatchIn
+    :: CekEnv -> Plain Term -> (CekState, Either CekMachineException EvaluationResultDef)
+runCekTermCatchIn cekEnv = runCekM cekEnv . computeCek []
 
 -- | Evaluate a term using the CEK machine.
-evaluateCekCatch
-    :: DynamicBuiltinNameMeanings -> Plain Term -> Either CekMachineException EvaluationResultDef
-evaluateCekCatch means = evaluateCekCatchIn $ CekEnv means mempty
+evalCekTermCatch
+    :: GasThreshold
+    -> DynamicBuiltinNameMeanings
+    -> Plain Term
+    -> Either CekMachineException EvaluationResultDef
+evalCekTermCatch threshold means = evalCekTermCatchIn $ CekEnv means mempty defaultCostModel threshold
+
+-- | Evaluate a term using the CEK machine.
+runCekTermCatch
+    :: GasThreshold
+    -> DynamicBuiltinNameMeanings
+    -> Plain Term
+    -> (CekState, Either CekMachineException EvaluationResultDef)
+runCekTermCatch threshold means = runCekTermCatchIn $ CekEnv means mempty defaultCostModel threshold
 
 -- | Evaluate a term using the CEK machine. May throw a 'CekMachineException'.
-evaluateCek :: DynamicBuiltinNameMeanings -> Term TyName Name () -> EvaluationResultDef
-evaluateCek = either throw id .* evaluateCekCatch
+evalCekTerm
+    :: GasThreshold
+    -> DynamicBuiltinNameMeanings
+    -> Term TyName Name ()
+    -> EvaluationResultDef
+evalCekTerm threshold means term = either throw id $ evalCekTermCatch threshold means term
+
+-- | Evaluate a term using the CEK machine. May throw a 'CekMachineException'.
+runCekTerm
+    :: GasThreshold
+    -> DynamicBuiltinNameMeanings
+    -> Term TyName Name ()
+    -> (CekState, EvaluationResultDef)
+runCekTerm threshold means term = either throw id <$> runCekTermCatch threshold means term
 
 -- The implementation is a bit of a hack.
 readKnownCek
@@ -217,7 +291,7 @@ readKnownCek
     -> Term TyName Name ()
     -> Either CekMachineException (EvaluationResult a)
 readKnownCek means term = do
-    res <- runReflectT $ readKnown (evaluateCekCatch . mappend means) term
+    res <- runReflectT $ readKnown (evalCekTermCatch Unbounded . mappend means) term
     case res of
         EvaluationFailure            -> Right EvaluationFailure
         EvaluationSuccess (Left err) -> Left $ MachineException appErr term where
@@ -226,5 +300,18 @@ readKnownCek means term = do
 
 -- | Run a program using the CEK machine. May throw a 'CekMachineException'.
 -- Calls 'evaluateCek' under the hood.
-runCek :: DynamicBuiltinNameMeanings -> Program TyName Name () -> EvaluationResultDef
-runCek means (Program _ _ term) = evaluateCek means term
+evalCekProgram
+    :: GasThreshold
+    -> DynamicBuiltinNameMeanings
+    -> Program TyName Name ()
+    -> EvaluationResultDef
+evalCekProgram threshold means (Program _ _ term) = evalCekTerm threshold means term
+
+-- | Run a program using the CEK machine. May throw a 'CekMachineException'.
+-- Calls 'evaluateCek' under the hood.
+runCekProgram
+    :: GasThreshold
+    -> DynamicBuiltinNameMeanings
+    -> Program TyName Name ()
+    -> (CekState, EvaluationResultDef)
+runCekProgram threshold means (Program _ _ term) = runCekTerm threshold means term

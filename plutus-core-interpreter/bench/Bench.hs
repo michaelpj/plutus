@@ -16,8 +16,8 @@ main =
                     in
 
                     bgroup "runCek"
-                      [ bench "valid" $ nf (fmap (runCek mempty)) f'
-                      , bench "invalid" $ nf (fmap (runCek mempty)) g'
+                      [ bench "valid" $ nf (fmap (runCek Unbounded mempty)) f'
+                      , bench "invalid" $ nf (fmap (runCek Unbounded mempty)) g'
                       ]
 
                 ]

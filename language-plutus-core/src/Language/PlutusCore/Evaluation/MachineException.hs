@@ -28,6 +28,8 @@ data MachineError err
       -- ^ An attempt to evaluate an open term.
     | ConstAppMachineError ConstAppError
       -- ^ An attempt to compute a constant application resulted in 'ConstAppError'.
+    | OutOfGasError
+      -- ^ Out of gas
     | OtherMachineError err
     deriving (Eq)
 
@@ -50,6 +52,8 @@ instance ( PrettyBy config (Term TyName Name ())
         "Cannot evaluate an open term."
     prettyBy config (ConstAppMachineError constAppError)  =
         prettyBy config constAppError
+    prettyBy _      OutOfGasError                         =
+        "Out of gas."
     prettyBy _      (OtherMachineError err)               =
         pretty err
 

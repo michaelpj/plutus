@@ -24,6 +24,8 @@ module Language.PlutusCore.Type ( Term (..)
                                 , StagedBuiltinName (..)
                                 , TypeBuiltin (..)
                                 , Gas (..)
+                                , GasThreshold (..)
+                                , withinThreshold
                                 -- * Base functors
                                 , TermF (..)
                                 , TypeF (..)
@@ -39,14 +41,27 @@ import           Control.Lens
 import qualified Data.ByteString.Lazy           as BSL
 import           Data.Functor.Foldable
 import qualified Data.Map                       as M
+import           GHC.Natural
 import           Instances.TH.Lift              ()
 import           Language.Haskell.TH.Syntax     (Lift)
 import           Language.PlutusCore.Lexer.Type
 import           PlutusPrelude
 
-newtype Gas = Gas
-    { unGas :: Natural
-    }
+newtype Gas = Gas { unGas :: Natural}
+    deriving stock (Show, Eq, Ord)
+
+instance Semigroup Gas where
+    (Gas l) <> (Gas r) = Gas (l + r)
+
+instance Monoid Gas where
+    mempty = Gas 0
+
+data GasThreshold = Unbounded | Threshold Gas
+    deriving stock (Show, Eq, Ord)
+
+withinThreshold :: Gas -> GasThreshold -> Bool
+withinThreshold _ Unbounded     = True
+withinThreshold g (Threshold t) = g <= t
 
 -- | A 'Type' assigned to expressions.
 data Type tyname a = TyVar a (tyname a)

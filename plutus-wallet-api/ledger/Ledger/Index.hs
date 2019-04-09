@@ -37,6 +37,7 @@ import qualified Data.Map             as Map
 import           Data.Semigroup       (Semigroup)
 import qualified Data.Set             as Set
 import           GHC.Generics         (Generic)
+import qualified Language.PlutusCore  as PLC
 import qualified Ledger.Ada           as Ada
 import           Ledger.Blockchain
 import           Ledger.Crypto
@@ -238,7 +239,8 @@ checkMatch v = \case
             let v' = ValidationData
                     $ lifted
                     $ v { pendingTxIn = pTxIn }
-                (logOut, success) = runScript Typecheck v' vl d r
+                -- TODO: work out how much we've got to spend
+                (logOut, success) = runScript Typecheck PLC.Unbounded v' vl d r
             if success
             then pure ()
             else throwError $ ScriptFailure logOut

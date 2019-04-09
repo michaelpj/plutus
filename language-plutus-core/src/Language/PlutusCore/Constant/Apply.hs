@@ -130,6 +130,45 @@ liftConstAppResult = EvaluateT . lift . yield
 makeConstAppResult :: KnownType a => a -> ConstAppResultDef
 makeConstAppResult = pure . makeKnown
 
+data SatArgs t r where
+    NoArgs :: SatArgs a a
+    SomeArgs :: a -> SatArgs b r -> SatArgs (a -> b) r
+
+data SatApp r = forall a . SatApp a (SatArgs a r)
+
+evaluateSatApp :: SatApp r -> r
+evaluateSatApp (r `SatApp` NoArgs) = r
+evaluateSatApp (f `SatApp` SomeArgs a rest) = evaluateSatApp $ f a `SatApp` rest
+
+mkSatApp :: Monad m => TypeScheme a r -> a -> [Value TyName Name ()] -> EvaluateConstApp m (SatApp r)
+mkSatApp sch f args = do
+    sargs <- mkSatArgs sch args
+    pure $ f `SatApp` sargs
+
+-- | Apply a function with a known 'TypeScheme' to a list of 'Constant's (unwrapped from 'Value's).
+-- Checks that the constants are of expected types.
+mkSatArgs
+    :: Monad m => TypeScheme a r -> [Value TyName Name ()] -> EvaluateConstApp m (SatArgs a r)
+mkSatArgs = go where
+    go
+        :: Monad m
+        => TypeScheme a r
+        -> [Value TyName Name ()]
+        -> EvaluateConstApp m (SatArgs a r)
+    go (TypeSchemeResult _)       args =
+        liftConstAppResult $ case args of
+            [] -> ConstAppSuccess NoArgs                             -- Computed the result.
+            _  -> ConstAppError $ ExcessArgumentsConstAppError args  -- Too many arguments.
+    go (TypeSchemeAllType _ schK) args =
+        go (schK Proxy) args
+    go (TypeSchemeArrow _ schB)   args = case args of
+        []          -> liftConstAppResult ConstAppStuck   -- Not enough arguments to compute.
+        arg : args' -> do                                 -- Peel off one argument.
+            -- Coerce the argument to a Haskell value.
+            x <- extractBuiltin arg
+            -- Apply the function to the coerced argument and proceed recursively.
+            SomeArgs x <$> go schB args'
+
 -- | Convert a PLC constant (unwrapped from 'Value') into the corresponding Haskell value.
 -- Checks that the constant is of a given built-in type.
 extractBuiltin :: (Monad m, KnownType a) => Value TyName Name () -> EvaluateConstApp m a
@@ -139,31 +178,6 @@ extractBuiltin value =
         nat EvaluationFailure              = ConstAppFailure
         nat (EvaluationSuccess (Left err)) = ConstAppError $ UnreadableBuiltinConstAppError value err
         nat (EvaluationSuccess (Right x )) = ConstAppSuccess x
-
--- | Apply a function with a known 'TypeScheme' to a list of 'Constant's (unwrapped from 'Value's).
--- Checks that the constants are of expected types.
-applyTypeSchemed
-    :: Monad m => TypeScheme a r -> a -> [Value TyName Name ()] -> EvaluateConstAppDef m
-applyTypeSchemed = go where
-    go
-        :: Monad m
-        => TypeScheme a r
-        -> a
-        -> [Value TyName Name ()]
-        -> EvaluateConstAppDef m
-    go (TypeSchemeResult _)        y args =
-        liftConstAppResult $ case args of
-            [] -> makeConstAppResult y                               -- Computed the result.
-            _  -> ConstAppError $ ExcessArgumentsConstAppError args  -- Too many arguments.
-    go (TypeSchemeAllType _ schK)  f args =
-        go (schK Proxy) f args
-    go (TypeSchemeArrow _ schB)    f args = case args of
-        []          -> liftConstAppResult ConstAppStuck   -- Not enough arguments to compute.
-        arg : args' -> do                                 -- Peel off one argument.
-            -- Coerce the argument to a Haskell value.
-            x <- extractBuiltin arg
-            -- Apply the function to the coerced argument and proceed recursively.
-            go schB (f x) args'
 
 -- | Apply a 'TypedBuiltinName' to a list of 'Constant's (unwrapped from 'Value's)
 -- Checks that the constants are of expected types.

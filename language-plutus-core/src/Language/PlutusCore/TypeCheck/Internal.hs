@@ -15,7 +15,7 @@ module Language.PlutusCore.TypeCheck.Internal
     , TypeCheckM
     , tccDoNormTypes
     , tccDynamicBuiltinNameTypes
-    , tccMayGas
+    , tccGasThreshold
     , runTypeCheckM
     , kindOfTypeBuiltin
     , inferKindM
@@ -109,7 +109,7 @@ data TypeCheckConfig = TypeCheckConfig
     { _tccDoNormTypes             :: Bool
       -- ^ Whether to normalize type annotations.
     , _tccDynamicBuiltinNameTypes :: DynamicBuiltinNameTypes
-    , _tccMayGas                  :: Maybe Gas
+    , _tccGasThreshold            :: GasThreshold
       -- ^ The upper limit on the length of type reductions.
       -- If set to 'Nothing', type reductions will be unbounded.
     }
@@ -152,7 +152,7 @@ withVar name = local . over tceVarTypes . insertByName name . pure
 lookupDynamicBuiltinNameM
     :: ann -> DynamicBuiltinName -> TypeCheckM ann (Normalized (Type TyName ()))
 lookupDynamicBuiltinNameM ann name = do
-    DynamicBuiltinNameTypes dbnts <- asks $ _tccDynamicBuiltinNameTypes . _tceTypeCheckConfig
+    DynamicBuiltinNameTypes dbnts <- asks $ view (tceTypeCheckConfig . tccDynamicBuiltinNameTypes)
     case Map.lookup name dbnts of
         Nothing ->
             throwError $ UnknownDynamicBuiltinName ann (UnknownDynamicBuiltinNameErrorE name)
@@ -201,10 +201,10 @@ dummyType = TyVar () dummyTyName
 runNormalizeTypeTM
     :: (forall m. MonadQuote m => Norm.NormalizeTypeT m tyname ann1 a) -> TypeCheckM ann2 a
 runNormalizeTypeTM a = do
-    mayGas <- asks $ _tccMayGas . _tceTypeCheckConfig
-    case mayGas of
-        Nothing  -> Norm.runNormalizeTypeFullM a
-        Just gas -> do
+    threshold <- asks $ view (tceTypeCheckConfig . tccGasThreshold)
+    case threshold of
+        Unbounded  -> Norm.runNormalizeTypeFullM a
+        Threshold gas -> do
             mayX <- Norm.runNormalizeTypeGasM gas a
             case mayX of
                 Nothing -> throwing _TypeError OutOfGas
@@ -226,7 +226,7 @@ substNormalizeTypeM ty name body = runNormalizeTypeTM $ Norm.substNormalizeTypeM
 -- if we are working with normalized type annotations.
 normalizeTypeOptM :: Type TyName () -> TypeCheckM ann (Normalized (Type TyName ()))
 normalizeTypeOptM ty = do
-    normTypes <- asks $ _tccDoNormTypes . _tceTypeCheckConfig
+    normTypes <- asks $ view (tceTypeCheckConfig . tccDoNormTypes)
     if normTypes
         then normalizeTypeM ty
         else pure $ Normalized ty
