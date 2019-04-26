@@ -1,0 +1,23 @@
+(program
+  (let
+    (nonrec)
+    (datatypebind
+      (datatype
+        (tyvardecl MyMonoRecord (type))
+        
+        MyMonoRecord_match
+        (vardecl
+          MyMonoRecord (fun (con integer) (fun (con integer) MyMonoRecord))
+        )
+      )
+    )
+    (lam
+      ds
+      MyMonoRecord
+      [
+        { [ MyMonoRecord_match ds ] (con integer) }
+        (lam ds (con integer) (lam ds (con integer) ds))
+      ]
+    )
+  )
+)

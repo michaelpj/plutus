@@ -186,6 +186,7 @@ monoData = testNested "monomorphic" [
   , goldenPir "atPattern" atPattern
   , goldenEval "monoConstDestDefault" [ getProgram $ monoCase, getProgram $ monoConstructed ]
   , goldenPir "monoRecord" monoRecord
+  , goldenPir "recordMatch" recordMatch
   , goldenPir "recordNewtype" recordNewtype
   , goldenPir "nonValueCase" nonValueCase
   , goldenPir "synonym" synonym
@@ -225,6 +226,9 @@ data MyMonoRecord = MyMonoRecord { mrA :: Int , mrB :: Int}
 
 monoRecord :: CompiledCode (MyMonoRecord -> MyMonoRecord)
 monoRecord = plc @"monoRecord" (\(x :: MyMonoRecord) -> x)
+
+recordMatch :: CompiledCode (MyMonoRecord -> Int)
+recordMatch = plc @"monoRecord" (\MyMonoRecord{mrA=a} -> a)
 
 data RecordNewtype = RecordNewtype { newtypeField :: MyNewtype }
 
