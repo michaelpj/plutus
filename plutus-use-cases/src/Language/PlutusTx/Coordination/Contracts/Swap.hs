@@ -3,6 +3,7 @@
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+{-# OPTIONS_GHC -fmax-simplifier-iterations=0 #-}
 {-# OPTIONS_GHC -O0 #-}
 module Language.PlutusTx.Coordination.Contracts.Swap(
     Swap(..),
@@ -66,7 +67,7 @@ swapValidator _ = ValidatorScript result where
         let
             infixr 3 &&
             (&&) :: Bool -> Bool -> Bool
-            (&&) = $$(PlutusTx.and)
+            (&&) = PlutusTx.and
 
             mn :: Int -> Int -> Int
             mn = $$(PlutusTx.min)
@@ -101,7 +102,7 @@ swapValidator _ = ValidatorScript result where
 
             infixr 3 ||
             (||) :: Bool -> Bool -> Bool
-            (||) = $$(PlutusTx.or)
+            (||) = PlutusTx.or
 
             isPubKeyOutput :: PendingTxOut -> PubKey -> Bool
             isPubKeyOutput o k = $$(PlutusTx.maybe) False ($$(Validation.eqPubKey) k) ($$(Validation.pubKeyOutput) o)

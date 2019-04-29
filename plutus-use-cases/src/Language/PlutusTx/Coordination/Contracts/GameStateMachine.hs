@@ -99,7 +99,7 @@ gameValidator = ValidatorScript ($$(Ledger.compileScript [||
         stateEq (Initialised (HashedString s)) (Initialised (HashedString s')) =
             $$(P.equalsByteString) s s'
         stateEq (Locked (V.TokenName n) (HashedString s)) (Locked (V.TokenName n') (HashedString s')) =
-            $$(P.and) ($$(P.equalsByteString) s s') ($$(P.equalsByteString) n n')
+            P.and ($$(P.equalsByteString) s s') ($$(P.equalsByteString) n n')
         stateEq _ _ = $$(P.traceIfFalseH) "states not equal" False
 
         -- | The transition function of the game's state machine
@@ -109,9 +109,9 @@ gameValidator = ValidatorScript ($$(Ledger.compileScript [||
             then Locked tn s
             else $$(P.error) ()
         trans (Locked tn currentSecret) (Guess theGuess nextSecret) =
-            if $$(P.and)
+            if P.and
                 (checkGuess currentSecret theGuess)
-                ($$(P.and) (tokenPresent tn) (checkForge $$(V.zero)))
+                (P.and (tokenPresent tn) (checkForge $$(V.zero)))
             then Locked tn nextSecret
             else $$(P.error) ()
         trans _ _ = $$(P.traceH) "Invalid transition" ($$(P.error) ())
