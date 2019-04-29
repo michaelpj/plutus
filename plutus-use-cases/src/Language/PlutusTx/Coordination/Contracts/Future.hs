@@ -213,11 +213,11 @@ validatorScript ft = ValidatorScript val where
 
                 infixr 3 &&
                 (&&) :: Bool -> Bool -> Bool
-                (&&) = $$(PlutusTx.and)
+                (&&) = PlutusTx.and
 
                 infixr 3 ||
                 (||) :: Bool -> Bool -> Bool
-                (||) = $$(PlutusTx.or)
+                (||) = PlutusTx.or
 
                 -- Compute the required margin from the current price of the
                 -- underlying asset.

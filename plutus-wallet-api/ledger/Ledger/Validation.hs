@@ -415,7 +415,7 @@ spendsOutput = [||
             spendsOutput' p (TxHash h) i =
                 let PendingTx ins _ _ _ _ _ _ _ = p
                     spendsOutRef (PendingTxIn (PendingTxOutRef (TxHash h') i') _ _) =
-                        $$(P.and) ($$(P.equalsByteString) h h') ($$(P.eq) i i')
+                        P.and ($$(P.equalsByteString) h h') ($$(P.eq) i i')
 
                 in $$(P.any) spendsOutRef ins
 

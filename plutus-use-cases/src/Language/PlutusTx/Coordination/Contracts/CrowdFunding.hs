@@ -96,7 +96,7 @@ contributionScript cmp  = ValidatorScript val where
 
                 infixr 3 &&
                 (&&) :: Bool -> Bool -> Bool
-                (&&) = $$(P.and)
+                (&&) = P.and
 
                 signedBy' :: PendingTx -> PubKey -> Bool
                 signedBy' = $$(V.txSignedBy)

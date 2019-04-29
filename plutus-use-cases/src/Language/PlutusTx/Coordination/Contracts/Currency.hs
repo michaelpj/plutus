@@ -68,7 +68,7 @@ curValidator cur =
                             in  $$(P.traceIfFalseH) "Pending transaction does not spend the designated transaction output" v
 
                     in
-                        if $$(P.and) forgeOK txOutputSpent
+                        if P.and forgeOK txOutputSpent
                         then ()
                         else $$(P.error) ($$(P.traceH) "Invalid forge" ())
             in

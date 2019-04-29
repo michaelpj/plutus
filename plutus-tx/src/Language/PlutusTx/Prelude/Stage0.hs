@@ -51,21 +51,23 @@ traceIfFalseH = [|| \str a -> if a then True else $$traceH str False ||]
 traceIfTrueH :: Q (TExp (String -> Bool -> Bool))
 traceIfTrueH = [|| \str a -> if a then $$traceH str True else False ||]
 
+{-# INLINEABLE and #-}
 -- | Logical AND
 --
 --   >>> $$([|| $$(and) True False ||])
 --   False
 --
-and :: Q (TExp (Bool -> Bool -> Bool))
-and = [|| \(l :: Bool) (r :: Bool) -> if l then r else False ||]
+and :: Bool -> Bool -> Bool
+and = \(l :: Bool) (r :: Bool) -> if l then r else False
 
+{-# INLINEABLE or #-}
 -- | Logical OR
 --
 --   >>> $$([|| $$(or) True False ||])
 --   True
 --
-or :: Q (TExp (Bool -> Bool -> Bool))
-or = [|| \(l :: Bool) (r :: Bool) -> if l then True else r ||]
+or :: Bool -> Bool -> Bool
+or = \(l :: Bool) (r :: Bool) -> if l then True else r
 
 -- | Logical negation
 --

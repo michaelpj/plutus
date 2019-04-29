@@ -25,7 +25,7 @@ length = [|| $$(foldr) (\_ acc -> $$plus acc 1) 0 ||]
 --   True
 --
 all :: Q (TExp ((a -> Bool) -> [a] -> Bool))
-all = [|| \pred -> $$(foldr) (\a acc -> $$(and) acc (pred a)) True ||]
+all = [|| \pred -> $$(foldr) (\a acc -> and acc (pred a)) True ||]
 
 -- | PlutusTx version of 'Data.List.any'.
 --
@@ -33,7 +33,7 @@ all = [|| \pred -> $$(foldr) (\a acc -> $$(and) acc (pred a)) True ||]
 --   True
 --
 any :: Q (TExp ((a -> Bool) -> [a] -> Bool))
-any = [|| \pred -> $$(foldr) (\a acc -> $$(or) acc (pred a)) False ||]
+any = [|| \pred -> $$(foldr) (\a acc -> or acc (pred a)) False ||]
 
 -- | PlutusTx version of 'Data.List.(++)'.
 --

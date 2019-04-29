@@ -131,7 +131,7 @@ validatorScript v = ValidatorScript val where
 
             infixr 3 &&
             (&&) :: Bool -> Bool -> Bool
-            (&&) = $$(PlutusTx.and)
+            (&&) = PlutusTx.and
 
             PendingTx _ os _ _ _ range _ _ = p
             VestingTranche d1 a1 = vestingTranche1

@@ -37,7 +37,7 @@ import           Ledger.These.TH              (These(..), these)
 import           Prelude                      hiding (all, lookup, map, negate)
 
 
--- | A 'Map' of key-value pairs. 
+-- | A 'Map' of key-value pairs.
 data Map k v = Map { unMap :: [(k, v)] }
     deriving (Show)
     deriving stock (Generic)
@@ -59,11 +59,11 @@ toList = [|| \(Map l) -> l ||]
 
 -- | Apply a function to the values of a 'Map'.
 map :: Q (TExp ((v -> w) -> Map k v -> Map k w))
-map = [|| 
+map = [||
     let
         map :: forall k v w. (v -> w) -> Map k v -> Map k w
         map f (Map mp) =
-            let 
+            let
                 go :: [(k, v)] -> [(k, w)]
                 go [] = []
                 go ((c, i):xs') = (c, f i) : go xs'
@@ -77,11 +77,11 @@ type IsEqual k = k -> k -> Bool
 
 -- | Find an entry in a 'Map'.
 lookup :: Q (TExp (IsEqual k -> k -> Map k v -> Maybe v))
-lookup = [|| 
+lookup = [||
 
     let lookup :: forall k v. IsEqual k -> k -> Map k v -> Maybe v
         lookup eq c (Map xs) =
-            let 
+            let
                 go :: [(k, v)] -> Maybe v
                 go []            = Nothing
                 go ((c', i):xs') = if eq c' c then Just i else go xs'
@@ -92,7 +92,7 @@ lookup = [||
 
 -- | The keys of a 'Map'.
 keys :: Q (TExp (Map k v -> [k]))
-keys = [|| 
+keys = [||
     let keys' :: Map k v -> [k]
         keys' (Map xs) = $$(P.map) (\(k, _ :: v) -> k) xs
     in keys'
@@ -100,11 +100,11 @@ keys = [||
 
 -- | Combine two 'Map's.
 union :: Q (TExp (IsEqual k -> Map k v -> Map k r -> Map k (These v r)))
-union = [|| 
+union = [||
 
     let union :: forall k v r. IsEqual k -> Map k v -> Map k r -> Map k (These v r)
         union eq (Map ls) (Map rs) =
-            let 
+            let
                 f :: v -> Maybe r -> These v r
                 f a b' = case b' of
                     Nothing -> This a
@@ -125,14 +125,14 @@ union = [||
 
 -- | See 'Data.Map.all'
 all :: Q (TExp ((v -> Bool) -> Map k v -> Bool))
-all = [|| 
+all = [||
 
     let all :: forall k v. (v -> Bool) -> Map k v -> Bool
         all p (Map mps) =
-            let go xs = case xs of 
+            let go xs = case xs of
                     []         -> True
-                    (_ :: k, x):xs' -> $$(P.and) (p x) (go xs')
-            in go mps 
+                    (_ :: k, x):xs' -> P.and (p x) (go xs')
+            in go mps
     in all ||]
 
 
@@ -143,5 +143,3 @@ singleton = [|| \c i -> Map [(c, i)] ||]
 -- | An empty 'Map'.
 empty :: Q (TExp (Map k v))
 empty = [|| Map ([] :: [(k, v)]) ||]
-
-    
