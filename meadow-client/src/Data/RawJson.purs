@@ -1,6 +1,6 @@
 module Data.RawJson where
 
-import Data.Generic
+import Data.Generic.Rep
   ( class Generic
   )
 import Data.Lens
@@ -17,7 +17,7 @@ newtype RawJson
   = RawJson String
 
 derive instance genericRawJson ::
-  Generic RawJson
+  Generic RawJson _
 
 derive instance newtypeRawJson ::
   Newtype RawJson _

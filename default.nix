@@ -70,13 +70,6 @@ let
   localLib = import ./lib.nix { inherit config system; } ;
   src = localLib.iohkNix.cleanSourceHaskell ./.;
 
-  # We have to use purescript 0.11.7 - because purescript-bridge
-  # hasn't been updated for 0.12 yet - but our pinned nixpkgs
-  # has 0.12, and overriding doesn't work easily because we
-  # can't built 0.11.7 with the default compiler either.
-  purescriptNixpkgs = import (localLib.iohkNix.fetchNixpkgs ./purescript-11-nixpkgs-src.json) {};
-
-
   packages = self: (rec {
     inherit pkgs localLib;
 
@@ -190,7 +183,6 @@ let
         '';
         in
         pkgs.callPackage ./plutus-playground-client {
-          pkgs = purescriptNixpkgs;
           psSrc = generated-purescript;
         };
 
@@ -222,7 +214,6 @@ let
         '';
         in
         pkgs.callPackage ./meadow-client {
-          pkgs = purescriptNixpkgs;
           psSrc = generated-purescript;
         };
     };
@@ -330,7 +321,40 @@ let
           rm pre-stylish.diff post-stylish.diff
           exit
         '';
+
+        updateClientDeps = pkgs.writeScript "update-client-deps" ''
+          if [ ! -f package.json ]
+          then
+              echo "package.json not found. Please run this script from the client directory." >&2
+              exit 1
+          fi
+
+          echo Installing JavaScript Dependencies
+          ${pkgs.yarn}/bin/yarn
+          echo Generating psc-package config
+          ${pkgs.yarn}/bin/yarn spago psc-package-insdhall
+          echo Installing PureScript Dependencies
+          ${pkgs.yarn}/bin/yarn psc-package install
+          echo Generating nix config
+          ${pp2n}/bin/pp2n psc-package2nix
+          ${yarn2nix.yarn2nix}/bin/yarn2nix > yarn.nix
+          cp .psc-package/local/.set/packages.json packages.json
+          echo Done
+        '';
       };
+
+      pp2n = import (pkgs.fetchFromGitHub {
+        owner = "justinwoo";
+        repo = "psc-package2nix";
+        rev = "6e8f6dc6dea896c71b30cc88a2d95d6d1e48a6f0";
+        sha256 = "0fa6zaxxmqxva1xmnap9ng7b90zr9a55x1l5xk8igdw2nldqfa46";
+      }) {};
+      yarn2nix = import (pkgs.fetchFromGitHub {
+        owner = "moretea";
+        repo = "yarn2nix";
+        rev = "3cc020e384ce2a439813adb7a0cc772a034d90bb";
+        sha256 = "0h2kzdfiw43rbiiffpqq9lkhvdv8mgzz2w29pzrxgv8d39x67vr9";
+      }) {};
 
       withDevTools = env: env.overrideAttrs (attrs: { nativeBuildInputs = attrs.nativeBuildInputs ++ [ packages.cabal-install ]; });
     };

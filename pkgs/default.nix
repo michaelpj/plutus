@@ -56390,6 +56390,7 @@ license = stdenv.lib.licenses.bsd3;
 , base
 , containers
 , directory
+, fetchgit
 , filepath
 , generic-deriving
 , lens
@@ -56402,7 +56403,14 @@ mkDerivation {
 
 pname = "purescript-bridge";
 version = "0.13.0.0";
-sha256 = "2b1a6bbc0e1c155b20bb02356821185c7661d15cc8042ddfe12725eef2065149";
+src = fetchgit {
+
+url = "https://github.com/shmish111/purescript-bridge.git";
+sha256 = "0b3cf8r3d476d5sjjknh2fqg0prpih87q3cij7gh5xa3yaj753aq";
+rev = "ecd2bd8a25c38d100207270dcc7b8dc7e965119c";
+fetchSubmodules = true;
+
+};
 libraryHaskellDepends = [
 base
 containers
@@ -62414,8 +62422,8 @@ version = "0.9.0.2";
 src = fetchgit {
 
 url = "https://github.com/shmish111/servant-purescript.git";
-sha256 = "1c35c49f12mw6f0h6njsk42nbgmggb0kbr05iyz8gcy407y4jw9r";
-rev = "18e1b61bf0aa3792285c6d8ecd0e4a72d76e34f5";
+sha256 = "0brcakdkr0idkdb3cj9k858657xs4f6d4f3n45x9sbkbxqjn3zc0";
+rev = "316a9f7d49efd4926985bd5d91f6c9c1e1c6d3dc";
 fetchSubmodules = true;
 
 };
