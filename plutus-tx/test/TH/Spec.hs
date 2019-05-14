@@ -65,6 +65,7 @@ tests = testNested "TH" [
     , goldenEvalCek "convertString" [convertString]
     , goldenEvalCekLog "traceDirect" [traceDirect]
     , goldenEvalCekLog "tracePrelude" [tracePrelude]
+    , goldenPir "traceRepeatedlyPir" traceRepeatedly
     , goldenEvalCekLog "traceRepeatedly" [traceRepeatedly]
   ]
 

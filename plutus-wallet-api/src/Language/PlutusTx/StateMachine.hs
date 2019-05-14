@@ -63,4 +63,4 @@ mkValidator sm (currentState, _) (newState, Just input) p =
         if P.and stateOk dataScriptHashOk
         then ()
         else P.error (P.traceH "State transition failed" ())
-mkValidator _ _ _ _ = P.error ()
+mkValidator _ _ _ _ = P.error (P.traceH "State not present" ())

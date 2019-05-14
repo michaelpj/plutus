@@ -86,7 +86,7 @@ trace str a = case Builtins.trace str of () -> a
 {-# INLINABLE traceH #-}
 -- | A version of 'trace' that takes a Haskell 'String'.
 traceH :: String -> a -> a
-traceH str = trace (toPlutusString str)
+traceH str a = trace (toPlutusString str) a
 
 {-# INLINABLE traceIfFalseH #-}
 -- | Emit the given Haskell 'String' only if the argument evaluates to 'False'.
