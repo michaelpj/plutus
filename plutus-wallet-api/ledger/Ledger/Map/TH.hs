@@ -7,6 +7,8 @@
 {-# LANGUAGE LambdaCase             #-}
 {-# LANGUAGE MonoLocalBinds         #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
+-- Avoid unboxing
+{-# OPTIONS_GHC -fno-strictness #-}
 -- A map implementation that can be used in on-chain and off-chain code.
 module Ledger.Map.TH(
     Map
@@ -49,12 +51,15 @@ instance (ToJSON v, ToJSON k) => ToJSON (Map k v) where
 instance (FromJSON v, FromJSON k) => FromJSON (Map k v) where
     parseJSON v = Map <$> parseJSON v
 
+{-# INLINABLE fromList #-}
 fromList :: [(k, v)] -> Map k v
 fromList = Map
 
+{-# INLINABLE toList #-}
 toList :: Map k v -> [(k, v)]
 toList (Map l) = l
 
+{-# INLINABLE map #-}
 -- | Apply a function to the values of a 'Map'.
 map :: forall k v w . (v -> w) -> Map k v -> Map k w
 map f (Map mp) =
@@ -67,6 +72,7 @@ map f (Map mp) =
 -- | Compare two 'k's for equality.
 type IsEqual k = k -> k -> Bool
 
+{-# INLINABLE lookup #-}
 -- | Find an entry in a 'Map'.
 lookup :: forall k v . IsEqual k -> k -> Map k v -> Maybe v
 lookup eq c (Map xs) =
@@ -76,10 +82,12 @@ lookup eq c (Map xs) =
         go ((c', i):xs') = if eq c' c then Just i else go xs'
     in go xs
 
+{-# INLINABLE keys #-}
 -- | The keys of a 'Map'.
 keys :: Map k v -> [k]
 keys (Map xs) = P.map (\(k, _ :: v) -> k) xs
 
+{-# INLINABLE union #-}
 -- | Combine two 'Map's.
 union :: forall k v r . IsEqual k -> Map k v -> Map k r -> Map k (These v r)
 union eq (Map ls) (Map rs) =
@@ -100,6 +108,7 @@ union eq (Map ls) (Map rs) =
 
     in Map (P.append ls' rs'')
 
+{-# INLINABLE all #-}
 -- | See 'Data.Map.all'
 all :: (v -> Bool) -> Map k v -> Bool
 all p (Map mps) =
@@ -108,10 +117,14 @@ all p (Map mps) =
             (_ :: k, x):xs' -> P.and (p x) (go xs')
     in go mps
 
+{-# INLINABLE singleton #-}
 -- | A singleton map.
 singleton :: k -> v -> Map k v
 singleton c i = Map [(c, i)]
 
+-- This has to take unit, since the raw version is a polymorphic application, which is
+-- disallowed by the value restriction.
+{-# INLINABLE empty #-}
 -- | An empty 'Map'.
-empty :: Map k v
-empty = Map ([] :: [(k, v)])
+empty :: () -> Map k v
+empty _ = Map ([] :: [(k, v)])

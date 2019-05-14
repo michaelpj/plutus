@@ -360,7 +360,8 @@ emptyByteString = Builtins.emptyByteString
 --   4
 --
 length :: [a] -> Integer
-length = foldr (\_ acc -> plus acc 1) 0
+-- eta expanded to avoid the value restriction
+length as = foldr (\_ acc -> plus acc 1) 0 as
 
 {-# INLINABLE all #-}
 -- | PlutusTx version of 'Data.List.all'.

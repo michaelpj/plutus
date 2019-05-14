@@ -207,7 +207,9 @@ convExpr e = withContextM 2 (sdToTxt $ "Converting expr:" GHC.<+> GHC.ppr e) $ d
     let top = NE.head stack
     case e of
         -- See Note [Literals]
-        GHC.App (GHC.Var (isPrimitiveWrapper -> True)) arg -> convExpr arg
+        GHC.App (GHC.Var (isPrimitiveWrapper -> True)) arg -> case arg of
+            GHC.Var (GHC.realIdUnfolding -> GHC.CoreUnfolding{GHC.uf_tmpl=unfolding}) -> convExpr unfolding
+            x -> convExpr x
         -- void# - values of type void get represented as error, since they should be unreachable
         GHC.Var n | n == GHC.voidPrimId || n == GHC.voidArgId -> errorFunc
         -- See note [GHC runtime errors]

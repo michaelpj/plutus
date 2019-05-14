@@ -4,10 +4,11 @@
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE TemplateHaskell    #-}
 {-# LANGUAGE LambdaCase         #-}
 {-# LANGUAGE TypeApplications   #-}
+-- Avoid unboxing
+{-# OPTIONS_GHC -fno-strictness #-}
 -- | Functions for working with 'Value' in Template Haskell.
 module Ledger.Value.TH(
     -- ** Currency symbols
@@ -96,9 +97,11 @@ instance FromJSON CurrencySymbol where
 
 makeLift ''CurrencySymbol
 
+{-# INLINABLE eqCurSymbol #-}
 eqCurSymbol :: CurrencySymbol -> CurrencySymbol -> Bool
 eqCurSymbol (CurrencySymbol l) (CurrencySymbol r) = P.equalsByteString l r
 
+{-# INLINABLE currencySymbol #-}
 currencySymbol :: P.ByteString -> CurrencySymbol
 currencySymbol = CurrencySymbol
 
@@ -131,9 +134,11 @@ instance FromJSON TokenName where
 
 makeLift ''TokenName
 
+{-# INLINABLE eqTokenName #-}
 eqTokenName :: TokenName -> TokenName -> Bool
 eqTokenName (TokenName l) (TokenName r) = P.equalsByteString l r
 
+{-# INLINABLE tokenName #-}
 tokenName :: P.ByteString -> TokenName
 tokenName = TokenName
 
@@ -170,7 +175,7 @@ instance ToSchema Value where
         return $
                 NamedSchema (Just "Value") $ mempty
                     & S.type_ .~ SwaggerObject
-                    & S.properties .~ ( [ ("getValue", mapSchema)])
+                    & S.properties .~ [ ("getValue", mapSchema)]
                     & S.required .~ [ "getValue" ]
 
 makeLift ''Value
@@ -193,6 +198,7 @@ similar to 'Ledger.Ada' for their own currencies.
 
 -}
 
+{-# INLINABLE valueOf #-}
 -- | Get the quantity of the given currency in the 'Value'.
 valueOf :: Value -> CurrencySymbol -> TokenName -> Integer
 valueOf (Value mp) cur tn =
@@ -202,14 +208,17 @@ valueOf (Value mp) cur tn =
             Nothing -> 0
             Just v  -> v
 
+{-# INLINABLE symbols #-}
 -- | The list of 'CurrencySymbol's of a 'Value'.
 symbols :: Value -> [CurrencySymbol]
 symbols (Value mp) = Map.keys mp
 
+{-# INLINABLE singleton #-}
 -- | Make a 'Value' containing only the given quantity of the given currency.
 singleton :: CurrencySymbol -> TokenName -> Integer -> Value
 singleton c tn i = Value (Map.singleton c (Map.singleton tn i))
 
+{-# INLINABLE unionVal #-}
 -- | Combine two 'Value' maps
 unionVal :: Value -> Value -> Map.Map CurrencySymbol (Map.Map TokenName (Map.These Integer Integer))
 unionVal (Value l) (Value r) =
@@ -221,6 +230,7 @@ unionVal (Value l) (Value r) =
             Map.These a b -> Map.union eqTokenName a b
     in Map.map unThese combined
 
+{-# INLINABLE unionWith #-}
 unionWith :: (Integer -> Integer -> Integer) -> Value -> Value -> Value
 unionWith f ls rs =
     let
@@ -231,44 +241,53 @@ unionWith f ls rs =
             Map.These a b -> f a b
     in Value (Map.map (Map.map unThese) combined)
 
+{-# INLINABLE scale #-}
 -- | Multiply all the quantities in the 'Value' by the given scale factor.
 scale :: Integer -> Value -> Value
 scale i (Value xs) = Value (Map.map (Map.map (\i' -> P.multiply i i')) xs)
 
 -- Num operations
 
+{-# INLINABLE plus #-}
 -- | Add two 'Value's together. See 'Value' for an explanation of how operations on 'Value's work.
 plus :: Value -> Value -> Value
 plus = unionWith P.plus
 
+{-# INLINABLE negate #-}
 -- | Negate a 'Value's. See 'Value' for an explanation of how operations on 'Value's work.
 negate :: Value -> Value
 negate = scale (-1)
 
+{-# INLINABLE minus #-}
 -- | Subtract one 'Value' from another. See 'Value' for an explanation of how operations on 'Value's work.
 minus :: Value -> Value -> Value
 minus = unionWith P.minus
 
+{-# INLINABLE multiply #-}
 -- | Multiply two 'Value's together. See 'Value' for an explanation of how operations on 'Value's work.
 multiply :: Value -> Value -> Value
 multiply = unionWith P.multiply
 
+{-# INLINABLE zero #-}
 -- | The empty 'Value'.
 zero :: Value
-zero = Value Map.empty
+zero = Value (Map.empty ())
 
+{-# INLINABLE isZero #-}
 -- | Check whether a 'Value' is zero.
 isZero :: Value -> Bool
 isZero (Value xs) = Map.all (Map.all (\i -> P.eq 0 i)) xs
 
+{-# INLINABLE checkPred #-}
 checkPred :: (Map.These Integer Integer -> Bool) -> Value -> Value -> Bool
 checkPred f l r =
     let
       inner :: Map.Map TokenName (Map.These Integer Integer) -> Bool
-      inner = (Map.all f)
+      inner = Map.all f
     in
       Map.all inner (unionVal l r)
 
+{-# INLINABLE checkBinRel #-}
 -- | Check whether a binary relation holds for value pairs of two 'Value' maps,
 --   supplying 0 where a key is only present in one of them.
 checkBinRel :: (Integer -> Integer -> Bool) -> Value -> Value -> Bool
@@ -280,22 +299,27 @@ checkBinRel f l r =
             Map.These a b -> f a b
     in checkPred unThese l r
 
+{-# INLINABLE geq #-}
 -- | Check whether one 'Value' is greater than or equal to another. See 'Value' for an explanation of how operations on 'Value's work.
 geq :: Value -> Value -> Bool
 geq = checkBinRel P.geq
 
+{-# INLINABLE gt #-}
 -- | Check whether one 'Value' is strictly greater than another. See 'Value' for an explanation of how operations on 'Value's work.
 gt :: Value -> Value -> Bool
 gt = checkBinRel P.gt
 
+{-# INLINABLE leq #-}
 -- | Check whether one 'Value' is less than or equal to another. See 'Value' for an explanation of how operations on 'Value's work.
 leq :: Value -> Value -> Bool
 leq = checkBinRel P.leq
 
+{-# INLINABLE lt #-}
 -- | Check whether one 'Value' is strictly less than another. See 'Value' for an explanation of how operations on 'Value's work.
 lt :: Value -> Value -> Bool
 lt = checkBinRel P.lt
 
+{-# INLINABLE eq #-}
 -- | Check whether one 'Value' is equal to another. See 'Value' for an explanation of how operations on 'Value's work.
 eq :: Value -> Value -> Bool
 eq = checkBinRel P.eq
