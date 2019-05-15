@@ -42,6 +42,10 @@ library
     import: lang
     exposed-modules:
         Language.Plutus.Contract
+        Language.Plutus.Contract.Contract
+        Language.Plutus.Contract.Event
+        Language.Plutus.Contract.Servant
+        Language.Plutus.Contract.Transaction
     hs-source-dirs: src
     build-depends:
         plutus-wallet-api -any,
@@ -49,7 +53,11 @@ library
     build-depends:
         aeson -any,
         base >=4.7 && <5,
+        containers -any,
         text -any,
+        bytestring -any,
+        servant -any,
+        servant-server -any,
 
 executable contract-exe-guessing-game
     import: lang
