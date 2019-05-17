@@ -3,7 +3,7 @@ module Language.Plutus.Contract(
     PlutusContract
     , watchAddress
     , endpoint
-    , emit
+    , writeTx
     ) where
 
 import           Control.Monad                        ((>=>))
@@ -34,5 +34,5 @@ endpoint nm = await (Event.endpointName nm) (endpointEvent >=> uncurry dec) wher
         | otherwise = Nothing
 
 -- | Produce an unbalanced transaction
-emit :: UnbalancedTx -> PlutusContract ()
-emit t = Emit (Event.tx t) $ Pure ()
+writeTx :: UnbalancedTx -> PlutusContract ()
+writeTx = emit . Event.tx

@@ -1,7 +1,19 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE TypeFamilies      #-}
-module Language.Plutus.Contract.Contract where
+module Language.Plutus.Contract.Contract(
+      Contract
+    , done
+    , emit
+    , waiting
+    , applyInput
+    , applyInputs
+    , drain
+    , outputs
+    , isDone
+    , await
+    , result
+    ) where
 
 import           Control.Applicative (liftA2)
 import           Control.Monad       ((>=>))
@@ -21,11 +33,7 @@ instance Applicative (Contract t i) where
     cf <*> ca = case cf of
         Done -> Done
         Emit t c -> Emit t (c <*> ca)
-        Pure f -> case ca of
-            Done       -> Done
-            Emit t c   -> Emit t (Pure f <*> c)
-            Pure a     -> Pure (f a)
-            Waiting f' -> Waiting $ \i' -> fmap f (f' i')
+        Pure f -> fmap f ca
         Waiting f ->
             case ca of
                 Done -> Done
@@ -44,6 +52,15 @@ instance Monad (Contract t i) where
 
 instance Semigroup a => Semigroup (Contract t i a) where
     (<>) = liftA2 (<>)
+
+done :: Contract t i a
+done = Done
+
+emit :: t -> Contract t i ()
+emit t = Emit t (pure ())
+
+waiting :: Contract t i i
+waiting = Waiting pure
 
 -- | Apply an input to a contract, collecting as much output data
 --   't' as posible until the contract is blocked on inputs
@@ -83,4 +100,9 @@ isDone :: Monoid t => Contract t i a -> Bool
 isDone = (\case { Done -> True; _ -> False }) . snd . drain
 
 await :: t -> (i -> Maybe a) -> Contract t i a
-await a f = Emit a $ Waiting $ maybe (await a f) Pure . f
+await a f = do
+    emit a
+    i <- waiting
+    case f i of
+        Nothing -> await a f
+        Just i' -> pure i'
