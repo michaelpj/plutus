@@ -3,64 +3,23 @@
 {-# LANGUAGE TypeFamilies      #-}
 module Language.Plutus.Contract.Contract(
       Contract
-    , done
-    , emit
-    , waiting
     , applyInput
     , applyInputs
     , drain
-    , outputs
-    , isDone
-    , await
-    , result
     , loopM
+    , awaitUntil
     ) where
 
 import           Control.Applicative  (liftA2)
 import           Control.Monad        ((>=>))
 import           Control.Monad.Writer
+import           Control.Monad.Morph
 
-data Contract t i a =
-    Waiting (i -> Contract t i a)
-    | Done
-    | Emit t (Contract t i a) -- produce a 't' value
-    | Pure a
-    deriving (Functor)
+import           Data.Functor.Identity
 
--- The applicative instance parallelises the 'Waiting' operations
-instance Applicative (Contract t i) where
-    pure = Pure
-    cf <*> ca = case cf of
-        Done -> Done
-        Emit t c -> Emit t (c <*> ca)
-        Pure f -> fmap f ca
-        Waiting f ->
-            case ca of
-                Done -> Done
-                Emit t c -> Emit t (Waiting f <*> c)
-                Pure a' -> Waiting $ \i' -> fmap (\f' -> f' a') (f i')
-                Waiting f' ->
-                    Waiting $ \i' -> f i' <*> f' i'
+import Pipes
 
--- The monad instance sequentialises the 'Waiting' operations
-instance Monad (Contract t i) where
-    c >>= f = case c of
-        Waiting f' -> Waiting (f' >=> f)
-        Done       -> Done
-        Pure a     -> f a
-        Emit t c'  -> Emit t (c' >>= f)
-
-instance Semigroup a => Semigroup (Contract t i a) where
-    (<>) = liftA2 (<>)
-
-done :: Contract t i a
-done = Done
-
-emit :: t -> Contract t i ()
-emit t = Emit t (pure ())
-
-waiting :: Contract t i i
-waiting = Waiting pure
+type Contract t i a = Pipe i t Identity a
 
 -- https://hackage.haskell.org/package/extra-1.6.15/docs/src/Control.Monad.Extra.html#loopM
 
@@ -76,43 +35,23 @@ loopM act x = do
 -- | Apply an input to a contract, collecting as much output data
 --   't' as posible until the contract is blocked on inputs
 applyInput
-    :: Monoid t
-    => Contract t i a
+    :: Contract t i ()
     -> i
-    -> Writer t (Contract t i a)
-applyInput c ip = case c of
-    Waiting f -> drain (f ip)
-    Done      -> pure Done
-    Pure a    -> pure $ Pure a
-    Emit t c' -> tell t >> applyInput c' ip
+    -> Producer t Identity ()
+applyInput c ip = yield ip >-> c
 
 applyInputs
-    :: Monoid t
-    => Contract t i a
+    :: Contract t i ()
     -> [i]
-    -> Writer t (Contract t i a)
-applyInputs = foldM applyInput
+    -> Producer t Identity ()
+applyInputs c ip = each ip >-> c
 
-drain :: Monoid t => Contract t i a -> Writer t (Contract t i a)
-drain = \case
-    Waiting f -> pure $ Waiting f
-    Done -> pure Done
-    Pure a -> pure $ Pure a
-    Emit t c -> tell t >> drain c
+drain :: Monoid t => Producer t Identity a -> Effect (Writer t) a
+drain c = for (hoist generalize c) $ \it -> tell it
 
-outputs :: Monoid t => Contract t i a -> t
-outputs = execWriter . drain
-
-result :: Monoid t => Contract t i a -> Maybe a
-result = (\case { Pure b -> Just b; _ -> Nothing }) . fst . runWriter . drain
-
-isDone :: Monoid t => Contract t i a -> Bool
-isDone = (\case { Done -> True; _ -> False }) . fst . runWriter . drain
-
-await :: t -> (i -> Maybe a) -> Contract t i a
-await a f = do
-    emit a
-    i <- waiting
+awaitUntil :: (i -> Maybe a) -> Contract t i a
+awaitUntil f = do
+    i <- await
     case f i of
-        Nothing -> await a f
+        Nothing -> awaitUntil f
         Just i' -> pure i'

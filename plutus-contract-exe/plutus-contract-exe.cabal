@@ -56,6 +56,8 @@ library
         containers -any,
         lens -any,
         text -any,
+        pipes -any,
+        mmorph -any,
         mtl -any,
         bytestring -any,
         servant -any,

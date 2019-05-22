@@ -13,8 +13,10 @@ import           Servant                           ((:<|>) ((:<|>)), (:>), Get, 
 import           Servant.Server                    (Application, Server, serve)
 
 import           Language.Plutus.Contract          (PlutusContract)
-import           Language.Plutus.Contract.Contract (applyInputs)
+import           Language.Plutus.Contract.Contract
 import           Language.Plutus.Contract.Event    (Event, Step)
+
+import Pipes
 
 type ContractAPI =
        "initialise" :> Get '[JSON] Step
@@ -24,7 +26,7 @@ type ContractAPI =
 contractServer :: PlutusContract () -> Server ContractAPI
 contractServer c = initialise :<|> run where
     initialise = run []
-    run = pure . execWriter . applyInputs c
+    run = pure . execWriter . runEffect . drain . applyInputs c
 
 -- | A servant 'Application' that serves a Plutus contract
 contractApp :: PlutusContract () -> Application
