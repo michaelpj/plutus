@@ -1,36 +1,54 @@
-{-# LANGUAGE TemplateHaskell    #-}
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DeriveAnyClass         #-}
+{-# LANGUAGE DeriveGeneric          #-}
+{-# LANGUAGE DerivingStrategies     #-}
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE TemplateHaskell        #-}
 module Language.Plutus.Contract.Transaction(
-      UnbalancedTx(..)
+      UnbalancedTx
+    , inputs
+    , outputs
+    , forge
+    , requiredSignatures
+    , validityRange
     , unbalancedTx
+    , payToScript
     ) where
 
-import qualified Data.Aeson   as Aeson
-import           GHC.Generics (Generic)
+import qualified Control.Lens.TH as Lens.TH
+import qualified Data.Aeson      as Aeson
+import           GHC.Generics    (Generic)
 
-import           Ledger          (PubKey)
+import           Ledger          (Address, DataScript, PubKey)
 import qualified Ledger          as L
-import           Ledger.Slot     (SlotRange)
-import           Ledger.Value    as V
 import qualified Ledger.Interval as I
+import           Ledger.Slot     (SlotRange)
+import qualified Ledger.Tx       as Tx
+import           Ledger.Value    as V
 
 -- | An unsigned and potentially unbalanced transaction, as produced by
 --   a contract endpoint. See note [Unbalanced transactions]
 data UnbalancedTx = UnbalancedTx
-        { utxInputs             :: [L.TxIn]
-        , utxOutputs            :: [L.TxOut]
-        , utxForge              :: V.Value
-        , utxRequiredSignatures :: [PubKey]
-        , utxValidityRange      :: SlotRange
+        { unbalancedTxInputs             :: [L.TxIn]
+        , unbalancedTxOutputs            :: [L.TxOut]
+        , unbalancedTxForge              :: V.Value
+        , unbalancedTxRequiredSignatures :: [PubKey]
+        , unbalancedTxValidityRange      :: SlotRange
         }
         deriving stock (Eq, Ord, Show, Generic)
         deriving anyclass (Aeson.FromJSON, Aeson.ToJSON)
 
+Lens.TH.makeLensesWith Lens.TH.camelCaseFields ''UnbalancedTx
+
 -- | Make an unbalanced transaction that does not forge any value.
 unbalancedTx :: [L.TxIn] -> [L.TxOut] -> UnbalancedTx
-unbalancedTx ins outs = UnbalancedTx ins outs V.zero [] $$(I.always)
+unbalancedTx ins outs = UnbalancedTx ins outs V.zero [] I.always
+
+-- | Create an `UnbalancedTx` that pay money to a script address.
+payToScript :: Value -> Address -> DataScript -> UnbalancedTx
+payToScript v a ds = unbalancedTx [] [outp] where
+    outp = Tx.scriptTxOut' v a ds
 
 {- note [Unbalanced transactions]
 

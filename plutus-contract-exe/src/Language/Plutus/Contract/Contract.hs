@@ -13,6 +13,7 @@ module Language.Plutus.Contract.Contract(
     , isDone
     , await
     , result
+    , loopM
     ) where
 
 import           Control.Applicative (liftA2)
@@ -61,6 +62,17 @@ emit t = Emit t (pure ())
 
 waiting :: Contract t i i
 waiting = Waiting pure
+
+-- https://hackage.haskell.org/package/extra-1.6.15/docs/src/Control.Monad.Extra.html#loopM
+
+-- | A monadic version of 'loop', where the predicate returns 'Left' as a seed for the next loop
+--   or 'Right' to abort the loop.
+loopM :: Monad m => (a -> m (Either a b)) -> a -> m b
+loopM act x = do
+    res <- act x
+    case res of
+        Left x' -> loopM act x'
+        Right v -> return v
 
 -- | Apply an input to a contract, collecting as much output data
 --   't' as posible until the contract is blocked on inputs

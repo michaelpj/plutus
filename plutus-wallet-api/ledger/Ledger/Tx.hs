@@ -38,6 +38,7 @@ module Ledger.Tx(
     txOutData,
     pubKeyTxOut,
     scriptTxOut,
+    scriptTxOut',
     -- * Transaction inputs
     TxInOf(..),
     TxInType(..),
@@ -352,11 +353,15 @@ scriptAddress vl = AddressOf $ hash h where
     h :: Digest SHA256 = hash $ Write.toStrictByteString e
     e = encode vl
 
+-- | Create a transaction output locked by a validator script hash
+--   with the given data script attached.
+scriptTxOut' :: Value -> Address -> DataScript -> TxOut
+scriptTxOut' v a ds = TxOutOf a v tp where
+    tp = PayToScript ds
+
 -- | Create a transaction output locked by a validator script and with the given data script attached.
 scriptTxOut :: Value -> ValidatorScript -> DataScript -> TxOut
-scriptTxOut v vl ds = TxOutOf a v tp where
-    a = scriptAddress vl
-    tp = PayToScript ds
+scriptTxOut v vs = scriptTxOut' v (scriptAddress vs)
 
 -- | Create a transaction output locked by a public key.
 pubKeyTxOut :: Value -> PubKey -> TxOut

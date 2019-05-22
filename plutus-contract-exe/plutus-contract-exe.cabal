@@ -54,6 +54,7 @@ library
         aeson -any,
         base >=4.7 && <5,
         containers -any,
+        lens -any,
         text -any,
         bytestring -any,
         servant -any,
@@ -63,13 +64,29 @@ executable contract-exe-guessing-game
     import: lang
     main-is: Main.hs
     hs-source-dirs: examples/guessing-game
-    ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
-                 -Wincomplete-uni-patterns -Wincomplete-record-updates
-                 -Wmissing-import-lists
     build-depends:
         plutus-contract-exe -any,
         plutus-use-cases -any,
         plutus-wallet-api -any,
+    build-depends:
+        aeson -any,
+        base >=4.7 && <5,
+        servant -any,
+        servant-server -any,
+        text -any,
+        warp -any,
+        lens -any,
+        containers -any,
+
+executable contract-exe-crowdfunding
+    import: lang
+    main-is: Main.hs
+    hs-source-dirs: examples/crowdfunding
+    build-depends:
+        plutus-contract-exe -any,
+        plutus-use-cases -any,
+        plutus-wallet-api -any,
+        plutus-emulator -any
     build-depends:
         aeson -any,
         base >=4.7 && <5,
