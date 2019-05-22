@@ -16,10 +16,9 @@ module Language.Plutus.Contract.Contract(
     , loopM
     ) where
 
-import           Control.Applicative (liftA2)
-import           Control.Monad       ((>=>))
-import           Data.Bifunctor      (first)
-import           Data.List           (foldl')
+import           Control.Applicative  (liftA2)
+import           Control.Monad        ((>=>))
+import           Control.Monad.Writer
 
 data Contract t i a =
     Waiting (i -> Contract t i a)
@@ -78,38 +77,37 @@ loopM act x = do
 --   't' as posible until the contract is blocked on inputs
 applyInput
     :: Monoid t
-    => i
-    -> Contract t i a
-    -> (t, Contract t i a)
-applyInput ip = \case
+    => Contract t i a
+    -> i
+    -> Writer t (Contract t i a)
+applyInput c ip = case c of
     Waiting f -> drain (f ip)
-    Done -> (mempty, Done)
-    Pure a -> (mempty, Pure a)
-    Emit t c -> first (t <>) (applyInput ip c)
+    Done      -> pure Done
+    Pure a    -> pure $ Pure a
+    Emit t c' -> tell t >> applyInput c' ip
 
 applyInputs
     :: Monoid t
     => Contract t i a
     -> [i]
-    -> ([t], Contract t i a)
-applyInputs c = foldl' go (first return (drain c)) where
-    go (ts, c') i = first (:ts) (applyInput i c')
+    -> Writer t (Contract t i a)
+applyInputs = foldM applyInput
 
-drain :: Monoid t => Contract t i a -> (t, Contract t i a)
+drain :: Monoid t => Contract t i a -> Writer t (Contract t i a)
 drain = \case
-    Waiting f -> (mempty, Waiting f)
-    Done -> (mempty, Done)
-    Pure a -> (mempty, Pure a)
-    Emit t c -> first (t <>) (drain c)
+    Waiting f -> pure $ Waiting f
+    Done -> pure Done
+    Pure a -> pure $ Pure a
+    Emit t c -> tell t >> drain c
 
 outputs :: Monoid t => Contract t i a -> t
-outputs = fst . drain
+outputs = execWriter . drain
 
 result :: Monoid t => Contract t i a -> Maybe a
-result = (\case { Pure b -> Just b; _ -> Nothing }) . snd . drain
+result = (\case { Pure b -> Just b; _ -> Nothing }) . fst . runWriter . drain
 
 isDone :: Monoid t => Contract t i a -> Bool
-isDone = (\case { Done -> True; _ -> False }) . snd . drain
+isDone = (\case { Done -> True; _ -> False }) . fst . runWriter . drain
 
 await :: t -> (i -> Maybe a) -> Contract t i a
 await a f = do

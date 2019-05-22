@@ -2,7 +2,7 @@ cabal-version: 2.2
 name: plutus-contract-exe
 version: 0.1.0.0
 license: Apache-2.0
-license-files: 
+license-files:
   LICENSE
   NOTICE
 maintainer: jann.mueller@iohk.io
@@ -56,6 +56,7 @@ library
         containers -any,
         lens -any,
         text -any,
+        mtl -any,
         bytestring -any,
         servant -any,
         servant-server -any,
