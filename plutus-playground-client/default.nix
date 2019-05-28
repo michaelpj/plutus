@@ -3,7 +3,7 @@
 , fetchurl
 , psSrc
 , yarn2nix
-, pp2n
+, pp2nSrc
 }:
 
 with pkgs;
@@ -21,7 +21,7 @@ let
   webCommon = pkgs.copyPathToStore ../web-common;
 
   packages = callPackage ./packages.nix {};
-  mkCopyHook = import "${pp2n}/nix/mkCopyHook.nix";
+  mkCopyHook = import "${pp2nSrc}/nix/mkCopyHook.nix";
   installPackages = builtins.toString (builtins.map (mkCopyHook packages) (builtins.attrValues packages.inputs));
 
 in yarn2nix.mkYarnPackage {
@@ -33,7 +33,7 @@ in yarn2nix.mkYarnPackage {
   nodejs = nodejs-10_x; 
 
   buildInputs = [ git cacert python2 webCommon ];
-  nativeBuildInputs = [ psc-package purescript ];
+  nativeBuildInputs = [ psc-package ];
 
   buildPhase = ''
     export SASS_BINARY_PATH=${if stdenv.isDarwin then nodeSassBinDarwin else nodeSassBinLinux}

@@ -65387,6 +65387,33 @@ description = "Numerical computing in native Haskell";
 license = stdenv.lib.licenses.gpl3;
 
 }) {};
+"spdx" = callPackage
+({
+  mkDerivation
+, base
+, Cabal
+, containers
+, stdenv
+, transformers
+}:
+mkDerivation {
+
+pname = "spdx";
+version = "1";
+sha256 = "6dbadaaf26de5d7f88ea1d27ed19b0b42fda8bd5759a96d7fb8f6a8324be86ef";
+libraryHaskellDepends = [
+base
+Cabal
+containers
+transformers
+];
+doHaddock = false;
+doCheck = false;
+homepage = "https://github.com/phadej/spdx";
+description = "SPDX license expression language, Extras";
+license = stdenv.lib.licenses.bsd3;
+
+}) {};
 "special-values" = callPackage
 ({
   mkDerivation
