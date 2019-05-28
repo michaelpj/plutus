@@ -417,7 +417,6 @@ eval (PopulateAction n l event) = do
 getKnownCurrencies :: forall m. MonadState State m => m (Array KnownCurrency)
 getKnownCurrencies = do
   knownCurrencies <- peruse (_compilationResult <<< _Success <<< _Newtype <<< _Right <<< _InterpreterResult <<< _result <<<  _knownCurrencies)
-  -- TODO Should we be adding in ADA here? Check with Jann.
   pure $ fromMaybe [] knownCurrencies
 
 evalWalletEvent :: (Int -> SimulatorWallet) -> WalletEvent -> Array SimulatorWallet -> Array SimulatorWallet
