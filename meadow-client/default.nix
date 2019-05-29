@@ -36,16 +36,15 @@ in yarn2nix.mkYarnPackage {
   nativeBuildInputs = [ psc-package ];
 
   buildPhase = ''
+    export HOME=$NIX_BUILD_TOP
     export SASS_BINARY_PATH=${if stdenv.isDarwin then nodeSassBinDarwin else nodeSassBinLinux}
 
     # mkYarnPackage moves everything into deps/meadow
     cd deps/meadow
 
     # move everything into its correct place
-    mkdir generated
-    mkdir ../web-common
-    cp -R ${psSrc}/* generated/
-    cp -R ${webCommon}/* ../web-common/
+    cp -R ${psSrc} generated
+    cp -R ${webCommon} ../web-common
 
     # do all the psc-package stuff
     ${installPackages}
@@ -56,7 +55,7 @@ in yarn2nix.mkYarnPackage {
     rm -Rf /build/meadow-client/deps/meadow/node_modules
 
     # Everything is correctly in the top level node_modules though so we link it
-    ln -s ../../node_modules ./node_modules
+    ln -s ../../node_modules
     
     # We have to use nix patched purs and yarn will look in node_modules/.bin first so we have to delete the bad one
     rm ./node_modules/.bin/purs

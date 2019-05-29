@@ -36,28 +36,27 @@ in yarn2nix.mkYarnPackage {
   nativeBuildInputs = [ psc-package ];
 
   buildPhase = ''
+    export HOME=$NIX_BUILD_TOP
     export SASS_BINARY_PATH=${if stdenv.isDarwin then nodeSassBinDarwin else nodeSassBinLinux}
 
-    # mkYarnPackage moves everything into deps/meadow
-    cd deps/meadow
+    # mkYarnPackage moves everything into deps/plutus-playground
+    cd deps/plutus-playground
 
     # move everything into its correct place
-    mkdir generated
-    mkdir ../web-common
-    cp -R ${psSrc}/* generated/
-    cp -R ${webCommon}/* ../web-common/
+    cp -R ${psSrc} generated
+    cp -R ${webCommon} ../web-common
 
     # do all the psc-package stuff
     ${installPackages}
     mkdir -p .psc-package/local/.set
     cp ${./packages.json} .psc-package/local/.set/packages.json
 
-    # for some reason, mkYarnPackage creates an empty node_modules in deps/meadow.
-    rm -Rf /build/meadow-client/deps/meadow/node_modules
+    # for some reason, mkYarnPackage creates an empty node_modules in deps/plutus-playground.
+    rm -Rf /build/plutus-playground-client/deps/plutus-playground/node_modules
 
     # Everything is correctly in the top level node_modules though so we link it
-    ln -s ../../node_modules ./node_modules
-    
+    ln -s ../../node_modules
+
     # We have to use nix patched purs and yarn will look in node_modules/.bin first so we have to delete the bad one
     rm ./node_modules/.bin/purs
     
