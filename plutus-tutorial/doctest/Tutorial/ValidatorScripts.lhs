@@ -1,1 +1,1 @@
-02-validator-scripts.md
+02-validator-scripts.adoc

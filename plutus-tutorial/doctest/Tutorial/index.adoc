@@ -1,0 +1,13 @@
+= Plutus
+:doctype: book
+:toc: left
+:numbered:
+:source-highlighter: pygments
+
+// unfortunately, asciidoctor likes to parse these as definition lists :(
+// https://github.com/asciidoctor/asciidoctor/issues/1066
+:2c: ::
+
+include::01-plutus-tx.adoc[]
+include::02-validator-scripts.adoc[]
+include::03-wallet-api.adoc[]

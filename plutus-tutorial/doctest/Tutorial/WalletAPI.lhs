@@ -1,1 +1,1 @@
-03-wallet-api.md
+03-wallet-api.adoc
