@@ -33,7 +33,7 @@ in yarn2nix.mkYarnPackage {
   nodejs = nodejs-10_x; 
 
   buildInputs = [ git cacert python2 webCommon ];
-  nativeBuildInputs = [ psc-package ];
+  nativeBuildInputs = [ psc-package purescript ];
 
   buildPhase = ''
     export HOME=$NIX_BUILD_TOP

@@ -56470,6 +56470,203 @@ description = "A Haskell-only implementation of the MD5 digest (hash) algorithm"
 license = stdenv.lib.licenses.bsd3;
 
 }) {};
+"purescript" = callPackage
+({
+  mkDerivation
+, aeson
+, aeson-better-errors
+, ansi-terminal
+, ansi-wl-pprint
+, array
+, base
+, base-compat
+, blaze-html
+, bower-json
+, boxes
+, bytestring
+, Cabal
+, cheapskate
+, clock
+, containers
+, data-ordlist
+, deepseq
+, directory
+, dlist
+, edit-distance
+, file-embed
+, filepath
+, fsnotify
+, gitrev
+, Glob
+, haskeline
+, http-types
+, language-javascript
+, lifted-base
+, microlens-platform
+, monad-control
+, monad-logger
+, mtl
+, network
+, optparse-applicative
+, parallel
+, parsec
+, pattern-arrows
+, process
+, protolude
+, regex-tdfa
+, safe
+, scientific
+, semigroups
+, sourcemap
+, split
+, stdenv
+, stm
+, stringsearch
+, syb
+, text
+, time
+, transformers
+, transformers-base
+, transformers-compat
+, unordered-containers
+, utf8-string
+, vector
+, wai
+, wai-websockets
+, warp
+, websockets
+}:
+mkDerivation {
+
+pname = "purescript";
+version = "0.12.4";
+sha256 = "e6542f20f9210919724da71ac0f330c7fd2d14c6876e111fa7a3be04296371d2";
+isLibrary = true;
+isExecutable = true;
+libraryHaskellDepends = [
+aeson
+aeson-better-errors
+ansi-terminal
+array
+base
+base-compat
+blaze-html
+bower-json
+boxes
+bytestring
+Cabal
+cheapskate
+clock
+containers
+data-ordlist
+deepseq
+directory
+dlist
+edit-distance
+file-embed
+filepath
+fsnotify
+Glob
+haskeline
+language-javascript
+lifted-base
+microlens-platform
+monad-control
+monad-logger
+mtl
+parallel
+parsec
+pattern-arrows
+process
+protolude
+regex-tdfa
+safe
+scientific
+semigroups
+sourcemap
+split
+stm
+stringsearch
+syb
+text
+time
+transformers
+transformers-base
+transformers-compat
+unordered-containers
+utf8-string
+vector
+];
+executableHaskellDepends = [
+aeson
+aeson-better-errors
+ansi-terminal
+ansi-wl-pprint
+array
+base
+base-compat
+blaze-html
+bower-json
+boxes
+bytestring
+Cabal
+cheapskate
+clock
+containers
+data-ordlist
+deepseq
+directory
+dlist
+edit-distance
+file-embed
+filepath
+fsnotify
+gitrev
+Glob
+haskeline
+http-types
+language-javascript
+lifted-base
+microlens-platform
+monad-control
+monad-logger
+mtl
+network
+optparse-applicative
+parallel
+parsec
+pattern-arrows
+process
+protolude
+regex-tdfa
+safe
+scientific
+semigroups
+sourcemap
+split
+stm
+stringsearch
+syb
+text
+time
+transformers
+transformers-base
+transformers-compat
+unordered-containers
+utf8-string
+vector
+wai
+wai-websockets
+warp
+websockets
+];
+doHaddock = false;
+doCheck = false;
+homepage = "http://www.purescript.org/";
+description = "PureScript Programming Language Compiler";
+license = stdenv.lib.licenses.bsd3;
+
+}) {};
 "purescript-bridge" = callPackage
 ({
   mkDerivation
@@ -65385,33 +65582,6 @@ doCheck = false;
 homepage = "https://github.com/ocramz/sparse-linear-algebra";
 description = "Numerical computing in native Haskell";
 license = stdenv.lib.licenses.gpl3;
-
-}) {};
-"spdx" = callPackage
-({
-  mkDerivation
-, base
-, Cabal
-, containers
-, stdenv
-, transformers
-}:
-mkDerivation {
-
-pname = "spdx";
-version = "1";
-sha256 = "6dbadaaf26de5d7f88ea1d27ed19b0b42fda8bd5759a96d7fb8f6a8324be86ef";
-libraryHaskellDepends = [
-base
-Cabal
-containers
-transformers
-];
-doHaddock = false;
-doCheck = false;
-homepage = "https://github.com/phadej/spdx";
-description = "SPDX license expression language, Extras";
-license = stdenv.lib.licenses.bsd3;
 
 }) {};
 "special-values" = callPackage
