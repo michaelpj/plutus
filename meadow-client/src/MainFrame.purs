@@ -427,7 +427,7 @@ evalF (CompileProgram next) = do
   case mContents of
     Nothing -> pure next
     Just contents -> do
-      result <- runAjaxTo _compilationResult $ postContractHaskell $ SourceCode contents
+      result <- runAjaxTo _compilationResult $ unwrap <$> (postContractHaskell $ SourceCode contents)
       -- Update the error display.
       -- Update the error display.
       -- Update the error display.
