@@ -19,7 +19,7 @@ import           Auth                                       (AuthRole, AuthStatu
 import qualified Auth
 import           Control.Applicative                        (empty, (<|>))
 import           Control.Lens                               (set, (&))
-import           Control.Monad.Representable.Reader         (MonadReader)
+import           Control.Monad.Reader                       (MonadReader)
 import qualified Data.ByteString                            as BS
 import           Data.Monoid                                ()
 import           Data.Proxy                                 (Proxy (Proxy))
@@ -64,13 +64,13 @@ import           Wallet.API                                 (WalletAPIError)
 import           Wallet.Emulator.Types                      (EmulatorEvent, Wallet)
 import           Wallet.Graph                               (FlowGraph, FlowLink, TxRef, UtxOwner, UtxoLocation)
 
-psNonEmpty :: MonadReader BridgeData m => m PSType
-psNonEmpty = TypeInfo "" "Data.RawJson" "JsonNonEmptyList" <$> psTypeParameters
-
 psLedgerMap :: MonadReader BridgeData m => m PSType
 psLedgerMap =
     TypeInfo "plutus-playground-client" "Ledger.Extra" "LedgerMap" <$>
     psTypeParameters
+
+psNonEmpty :: MonadReader BridgeData m => m PSType
+psNonEmpty = TypeInfo "" "Data.RawJson" "JsonNonEmptyList" <$> psTypeParameters
 
 psJson :: PSType
 psJson = TypeInfo "" "Data.RawJson" "RawJson" []
