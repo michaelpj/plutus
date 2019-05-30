@@ -69,6 +69,7 @@ with pkgs.lib;
 let
   localLib = import ./lib.nix { inherit config system; } ;
   src = localLib.iohkNix.cleanSourceHaskell ./.;
+  purescriptNixpkgs = import (localLib.iohkNix.fetchNixpkgs ./purescript-nixpkgs-src.json) {};
 
   packages = self: (rec {
     inherit pkgs localLib;
@@ -183,7 +184,7 @@ let
         '';
         in
         pkgs.callPackage ./plutus-playground-client {
-          inherit pkgs;
+          pkgs = purescriptNixpkgs;
           inherit (dev) yarn2nix pp2nSrc;
           psSrc = generated-purescript;
         };
@@ -215,7 +216,7 @@ let
         '';
         in
         pkgs.callPackage ./meadow-client {
-          inherit pkgs;
+          pkgs = purescriptNixpkgs;
           inherit (dev) yarn2nix pp2nSrc;
           psSrc = generated-purescript;
         };

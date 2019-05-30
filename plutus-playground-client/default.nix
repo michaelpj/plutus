@@ -52,7 +52,7 @@ in yarn2nix.mkYarnPackage {
     cp ${./packages.json} .psc-package/local/.set/packages.json
 
     # for some reason, mkYarnPackage creates an empty node_modules in deps/plutus-playground.
-    rm -Rf /build/plutus-playground-client/deps/plutus-playground/node_modules
+    rm -Rf ./node_modules
 
     # Everything is correctly in the top level node_modules though so we link it
     ln -s ../../node_modules

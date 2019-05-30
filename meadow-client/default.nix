@@ -33,7 +33,7 @@ in yarn2nix.mkYarnPackage {
   nodejs = nodejs-10_x; 
 
   buildInputs = [ git cacert python2 webCommon ];
-  nativeBuildInputs = [ psc-package ];
+  nativeBuildInputs = [ psc-package purescript ];
 
   buildPhase = ''
     export HOME=$NIX_BUILD_TOP
@@ -52,7 +52,7 @@ in yarn2nix.mkYarnPackage {
     cp ${./packages.json} .psc-package/local/.set/packages.json
 
     # for some reason, mkYarnPackage creates an empty node_modules in deps/meadow.
-    rm -Rf /build/meadow-client/deps/meadow/node_modules
+    rm -Rf ./node_modules
 
     # Everything is correctly in the top level node_modules though so we link it
     ln -s ../../node_modules
