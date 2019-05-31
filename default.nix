@@ -71,6 +71,23 @@ let
   src = localLib.iohkNix.cleanSourceHaskell ./.;
   purescriptNixpkgs = import (localLib.iohkNix.fetchNixpkgs ./purescript-nixpkgs-src.json) {};
 
+  pp2nSrc = pkgs.fetchFromGitHub {
+    owner = "justinwoo";
+    repo = "psc-package2nix";
+    rev = "6e8f6dc6dea896c71b30cc88a2d95d6d1e48a6f0";
+    sha256 = "0fa6zaxxmqxva1xmnap9ng7b90zr9a55x1l5xk8igdw2nldqfa46";
+  };
+
+  yarn2nixSrc = pkgs.fetchFromGitHub {
+    owner = "moretea";
+    repo = "yarn2nix";
+    rev = "3cc020e384ce2a439813adb7a0cc772a034d90bb";
+    sha256 = "0h2kzdfiw43rbiiffpqq9lkhvdv8mgzz2w29pzrxgv8d39x67vr9";
+  };
+
+  pp2n = import pp2nSrc { inherit pkgs; };
+  yarn2nix = import yarn2nixSrc { inherit pkgs; };
+
   packages = self: (rec {
     inherit pkgs localLib;
 
@@ -185,7 +202,7 @@ let
         in
         pkgs.callPackage ./plutus-playground-client {
           pkgs = purescriptNixpkgs;
-          inherit (dev) yarn2nix pp2nSrc;
+          inherit yarn2nix pp2nSrc;
           psSrc = generated-purescript;
         };
     };
@@ -217,7 +234,7 @@ let
         in
         pkgs.callPackage ./meadow-client {
           pkgs = purescriptNixpkgs;
-          inherit (dev) yarn2nix pp2nSrc;
+          inherit yarn2nix pp2nSrc;
           psSrc = generated-purescript;
         };
     };
@@ -346,23 +363,6 @@ let
           echo Done
         '';
       };
-
-      pp2nSrc = pkgs.fetchFromGitHub {
-        owner = "justinwoo";
-        repo = "psc-package2nix";
-        rev = "6e8f6dc6dea896c71b30cc88a2d95d6d1e48a6f0";
-        sha256 = "0fa6zaxxmqxva1xmnap9ng7b90zr9a55x1l5xk8igdw2nldqfa46";
-      };
-
-      yarn2nixSrc = pkgs.fetchFromGitHub {
-        owner = "moretea";
-        repo = "yarn2nix";
-        rev = "3cc020e384ce2a439813adb7a0cc772a034d90bb";
-        sha256 = "0h2kzdfiw43rbiiffpqq9lkhvdv8mgzz2w29pzrxgv8d39x67vr9";
-      };
-
-      pp2n = import pp2nSrc { inherit pkgs; };
-      yarn2nix = import yarn2nixSrc { inherit pkgs; };
 
       withDevTools = env: env.overrideAttrs (attrs: { nativeBuildInputs = attrs.nativeBuildInputs ++ [ packages.cabal-install ]; });
     };
