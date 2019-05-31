@@ -85,8 +85,8 @@ let
     sha256 = "0h2kzdfiw43rbiiffpqq9lkhvdv8mgzz2w29pzrxgv8d39x67vr9";
   };
 
-  pp2n = import pp2nSrc {};
-  yarn2nix = import yarn2nixSrc {};
+  pp2n = import pp2nSrc { inherit pkgs; };
+  yarn2nix = import yarn2nixSrc { inherit pkgs; };
 
   packages = self: (rec {
     inherit pkgs localLib;
