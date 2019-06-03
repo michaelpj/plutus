@@ -1,0 +1,13 @@
+{
+    "iohk-nix": {
+        "url": "https://github.com/input-output-hk/iohk-nix/archive/a2a976a26119662756327e278b6ca9cd20e2f6f0.tar.gz",
+        "owner": "input-output-hk",
+        "branch": "master",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
+        "repo": "iohk-nix",
+        "type": "builtin-tarball",
+        "sha256": "1qcwvzgp86cixzvd9lmfy6fcr4yw62nn8cnxkm2lp8dkik8yhx87",
+        "description": "nix scripts shared across projects",
+        "rev": "a2a976a26119662756327e278b6ca9cd20e2f6f0"
+    }
+}
