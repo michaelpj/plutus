@@ -19,7 +19,7 @@ import           Language.PlutusTx.Prelude
 import           Ledger.Validation         (PendingTx)
 import qualified Ledger.Validation         as V
 
--- | Specification of a state machine
+-- | Specification of a state machine.
 data StateMachine s i = StateMachine {
       smTransition :: s -> i -> s
     , smStateEq    :: s -> s -> Bool
@@ -38,7 +38,7 @@ transition :: forall s i. s -> i -> (s, Maybe i)
 transition newState input = (newState, Just input)
 
 {-# INLINABLE mkValidator #-}
--- | Turn a transition function 's -> i -> s' into a validator script.
+-- | Turn a transition function @s -> i -> s@ into a validator script.
 mkValidator :: StateMachine s i -> (s, Maybe i) -> (s, Maybe i) -> PendingTx -> Bool
 mkValidator sm (currentState, _) (newState, Just input) p =
     let

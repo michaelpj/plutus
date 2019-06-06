@@ -76,6 +76,7 @@ import           Prelude                    as Prelude hiding (all, any, error, 
 -- The PlutusTx Prelude is a replacement for the Haskell Prelude that works
 -- better with Plutus Tx. You should use it if you're writing code that
 -- will be compiled with the Plutus Tx compiler.
+--
 -- @
 --     {-# LANGUAGE NoImplicitPrelude #-}
 --     import Language.PlutusTx.Prelude
