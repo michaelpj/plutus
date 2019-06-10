@@ -141,10 +141,13 @@ It would be nice to resolve the inconsistency, but this would probably require c
 Plutus Core to use reified declarations.
 -}
 
+type Alt tyname name a = ([VarDecl tyname name a], Term tyname name a)
+
 -- See note [PIR as a PLC extension]
 data Term tyname name a =
                         -- Plutus Core (ish) forms, see note [Declarations in Plutus Core]
                           Let a Recursivity [Binding tyname name a] (Term tyname name a)
+                        | Case a Strictness (Term tyname name a) (Type tyname a) [Alt tyname name a]
                         | Var a (name a)
                         | TyAbs a (tyname a) (Kind a) (Term tyname name a)
                         | LamAbs a (name a) (Type tyname a) (Term tyname name a)
@@ -178,6 +181,7 @@ instance TermLike (Term tyname name) tyname name where
 termSubterms :: Traversal' (Term tyname name a) (Term tyname name a)
 termSubterms f = \case
     Let x r bs t -> Let x r <$> (traverse . bindingSubterms) f bs <*> f t
+    Case x s m ty bs -> Case x s <$> f m <*> pure ty <*> (traverse . _2) f bs
     TyAbs x tn k t -> TyAbs x tn k <$> f t
     LamAbs x n ty t -> LamAbs x n ty <$> f t
     Apply x t1 t2 -> Apply x <$> f t1 <*> f t2
@@ -194,6 +198,7 @@ termSubterms f = \case
 termSubtypes :: Traversal' (Term tyname name a) (Type tyname a)
 termSubtypes f = \case
     Let x r bs t -> Let x r <$> (traverse . bindingSubtypes) f bs <*> pure t
+    Case x s m ty bs -> Case x s m <$> f ty <*> (traverse . _1 . traverse . varDeclSubtypes) f bs
     LamAbs x n ty t -> LamAbs x n <$> f ty <*> pure t
     TyInst x t ty -> TyInst x t <$> f ty
     IWrap x ty1 ty2 t -> IWrap x <$> f ty1 <*> f ty2 <*> pure t
@@ -256,6 +261,7 @@ instance (PLC.PrettyClassicBy configName (tyname a), PLC.PrettyClassicBy configN
         PrettyBy (PLC.PrettyConfigClassic configName) (Term tyname name a) where
     prettyBy config = \case
         Let _ r bs t -> parens' ("let" </> vsep' [prettyBy config r, vsep' $ fmap (prettyBy config) bs, prettyBy config t])
+        Case _ s m ty bs -> parens' ("case" </> vsep' [prettyBy config s, prettyBy config m, prettyByConfig ty, vsep' $ fmap (prettyBy config) bs])
         Var _ n -> prettyBy config n
         TyAbs _ tn k t -> parens' ("abs" </> vsep' [prettyBy config tn, prettyBy config k, prettyBy config t])
         LamAbs _ n ty t -> parens' ("lam" </> vsep' [prettyBy config n, prettyBy config ty, prettyBy config t])

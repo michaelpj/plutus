@@ -21,6 +21,7 @@ import qualified Data.Text.Prettyprint.Doc  as PP
 -- the original AST.
 data Provenance a = Original a
                   | LetBinding Recursivity (Provenance a)
+                  | CaseExpression (Provenance a)
                   | TermBinding String (Provenance a)
                   | TypeBinding String (Provenance a)
                   | DatatypeComponent DatatypeComponent (Provenance a)
