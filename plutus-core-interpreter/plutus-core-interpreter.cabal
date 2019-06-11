@@ -23,12 +23,6 @@ flag eventlog
     default: False
     manual: True
 
-flag development
-    description:
-        Enable `-Werror`
-    default: False
-    manual: True
-
 library
     exposed-modules:
         Language.PlutusCore.Interpreter.CekMachine
@@ -53,9 +47,6 @@ library
         mtl -any,
         lens -any,
         language-plutus-core -any
-
-    if (flag(development) && impl(ghc <8.4))
-        ghc-options: -Werror
 
     if impl(ghc >=8.4)
         ghc-options: -Wmissing-export-lists
@@ -90,9 +81,6 @@ test-suite plutus-core-interpreter-test
     if flag(eventlog)
         ghc-options: -eventlog
 
-    if (flag(development) && impl(ghc <8.4))
-        ghc-options: -Werror
-
     if impl(ghc >=8.4)
         ghc-options: -Wmissing-export-lists
 
@@ -114,9 +102,6 @@ benchmark plutus-core-interpreter-bench
     if flag(eventlog)
         ghc-options: -eventlog
 
-    if flag(development)
-        ghc-options: -Werror
-
     if impl(ghc >=8.4)
         ghc-options: -Wmissing-export-lists
 
@@ -137,9 +122,6 @@ benchmark plutus-core-interpreter-weigh
 
     if flag(eventlog)
         ghc-options: -eventlog
-
-    if flag(development)
-        ghc-options: -Werror
 
     if impl(ghc >=8.4)
         ghc-options: -Wmissing-export-lists

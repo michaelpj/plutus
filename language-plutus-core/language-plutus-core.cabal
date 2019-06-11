@@ -25,12 +25,6 @@ flag eventlog
     default: False
     manual: True
 
-flag development
-    description:
-        Enable `-Werror`
-    default: False
-    manual: True
-
 library
     exposed-modules:
         Language.PlutusCore
@@ -160,9 +154,6 @@ library
         cryptonite,
         cardano-crypto
 
-    if (flag(development) && impl(ghc <8.4))
-        ghc-options: -Werror
-
     if impl(ghc >=8.4)
         ghc-options: -Wmissing-export-lists
 
@@ -177,9 +168,6 @@ executable language-plutus-core-generate-evaluation-test
         base -any,
         language-plutus-core -any,
         text -any
-
-    if (flag(development) && impl(ghc <8.4))
-        ghc-options: -Werror
 
     if impl(ghc >=8.4)
         ghc-options: -Wmissing-export-lists
@@ -227,9 +215,6 @@ test-suite language-plutus-core-test
     if flag(eventlog)
         ghc-options: -eventlog
 
-    if (flag(development) && impl(ghc <8.4))
-        ghc-options: -Werror
-
     if impl(ghc >=8.4)
         ghc-options: -Wmissing-export-lists
 
@@ -251,9 +236,6 @@ benchmark language-plutus-core-bench
 
     if flag(eventlog)
         ghc-options: -eventlog
-
-    if flag(development)
-        ghc-options: -Werror
 
     if impl(ghc >=8.4)
         ghc-options: -Wmissing-export-lists

@@ -65,18 +65,6 @@ extra-deps:
 - time-units-1.0.0@sha256:27cf54091c4a0ca73d504fc11d5c31ab4041d17404fe3499945e2055697746c1
 - wl-pprint-1.2.1@sha256:aea676cff4a062d7d912149d270e33f5bb0c01b68a9db46ff13b438141ff4b7c
 flags:
-  language-plutus-core:
-    development: true
-  plutus-wallet-api:
-    development: true
-  plutus-exe:
-    development: true
-  plutus-core-interpreter:
-    development: true
-  plutus-playground-server:
-    development: true
-  plutus-contract-exe:
-    development: true
 extra-package-dbs: []
 nix:
   packages: [gmp, openssl]
