@@ -299,7 +299,10 @@ runCompiler opts expr = do
     when (poDumpPlc opts) $ liftIO $ print $ PP.pretty plcP
 
     -- We do this after dumping the programs so that if we fail typechecking we still get the dump
-    when (poDoTypecheck opts) $ void $ do
+    when (poDoTypecheck opts) $ do
         stringBuiltinTypes <- PLC.getStringBuiltinTypes ()
-        PLC.typecheckPipeline (PLC.offChainConfig stringBuiltinTypes) plcP
+        inferredType <- PLC.typecheckPipeline (PLC.offChainConfig stringBuiltinTypes) plcP
+        let origType = GHC.exprType expr
+
+
     pure (pirP, plcP)
