@@ -7,7 +7,7 @@ stdenv.mkDerivation {
   buildPhase = ''
     asciidoctor plutus.adoc -b html5 -o plutus.html
 
-    asciidoctor-pdf plutus.adoc -o plutus.pdf
+    asciidoctor-pdf -r asciidoctor-mathematical plutus.adoc -o plutus.pdf
 
     # TODO: run epubcheck on the epub (it's not in our nixpkgs yet)
     asciidoctor plutus.adoc -b docbook5 -o plutus.docbook

@@ -81,6 +81,8 @@ scenes when Plutus code is used to generate a transaction.
 
 .. reference to Edsko and Duncans Wallet spec
 
+[stem]
+++++
 \begin{align*}
 \mathit{ins} \restrictdom \mathit{utxo}
 & = \{ i \mapsto o \mid i \mapsto o \in \mathit{utxo}, ~ i \in \mathit{ins} \}
@@ -94,5 +96,4 @@ scenes when Plutus code is used to generate a transaction.
 & = \{ i \mapsto o \mid i \mapsto o \in \mathit{utxo}, ~ o \in \mathit{outs} \}
 & \text{range restriction}
 \end{align*}
-
-...
+++++
