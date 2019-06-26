@@ -29,6 +29,7 @@ import           Language.PlutusTx.Lift    (makeLift)
 import           Language.PlutusTx.Prelude hiding (all, lookup)
 import qualified Language.PlutusTx.Prelude as P
 import           Language.PlutusTx.These
+import           Schema                    (ToSchema, ToTypeName)
 
 {-# ANN module ("HLint: ignore Use newtype instead of data"::String) #-}
 
@@ -37,6 +38,9 @@ newtype Map k v = Map { unMap :: [(k, v)] }
     deriving (Show)
     deriving stock (Generic)
     deriving newtype (Eq, Ord)
+    deriving anyclass (ToTypeName)
+
+deriving anyclass instance (Generic k, Generic v) => ToSchema (Map k v)
 
 instance Functor (Map k) where
     {-# INLINABLE fmap #-}

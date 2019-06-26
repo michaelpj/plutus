@@ -65,6 +65,7 @@ library
         bytestring -any,
         template-haskell >=2.13.0.0,
         language-plutus-core -any,
+        playground-common -any,
         plutus-core-interpreter -any,
         plutus-tx-compiler -any
 
@@ -108,6 +109,7 @@ library plutus-tx-compiler
         serialise -any,
         template-haskell -any,
         th-abstraction <0.3.0.0,
+        playground-common -any,
         text -any,
         transformers -any
 
