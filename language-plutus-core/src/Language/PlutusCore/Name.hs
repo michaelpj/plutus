@@ -4,10 +4,14 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs                  #-}
 {-# LANGUAGE OverloadedStrings      #-}
+{-# LANGUAGE TemplateHaskell        #-}
 
 module Language.PlutusCore.Name ( -- * Types
                                   IdentifierState
                                 , Name (..)
+                                , nameAttribute
+                                , nameString
+                                , nameUnique
                                 , TyName (..)
                                 , Unique (..)
                                 , TypeUnique (..)
@@ -24,8 +28,6 @@ module Language.PlutusCore.Name ( -- * Types
                                 , newIdentifier
                                 , emptyIdentifierState
                                 , identifierStateFrom
-                                , mapNameString
-                                , mapTyNameString
                                 , newtypeUnique
                                 , PrettyConfigName (..)
                                 , HasPrettyConfigName (..)
@@ -43,12 +45,22 @@ import qualified Data.Text                  as T
 import           Instances.TH.Lift          ()
 import           Language.Haskell.TH.Syntax (Lift)
 
+-- N.B. the constructors for 'Unique' are exported for the sake of the test
+-- suite; I don't know if there is an easier/better way to do this
+-- | A unique identifier
+newtype Unique = Unique { unUnique :: Int }
+    deriving (Eq, Show, Ord, Lift, Generic)
+    deriving newtype (NFData, Pretty)
+instance Wrapped Unique
+
 -- | A 'Name' represents variables/names in Plutus Core.
-data Name a = Name { nameAttribute :: a
-                   , nameString    :: T.Text -- ^ The identifier name, for use in error messages.
-                   , nameUnique    :: Unique -- ^ A 'Unique' assigned to the name, allowing for cheap comparisons in the compiler.
+data Name a = Name { _nameAttribute :: a
+                   , _nameString    :: T.Text -- ^ The identifier name, for use in error messages.
+                   , _nameUnique    :: Unique -- ^ A 'Unique' assigned to the name, allowing for cheap comparisons in the compiler.
                    }
             deriving (Show, Functor, Generic, NFData, Lift)
+
+makeLenses ''Name
 
 -- | We use a @newtype@ to enforce separation between names used for types and
 -- those used for terms.
@@ -57,36 +69,23 @@ newtype TyName a = TyName { unTyName :: Name a }
     deriving newtype (Eq, Ord, Functor, NFData)
 instance Wrapped (TyName a)
 
--- | Apply a function to the string representation of a 'Name'.
-mapNameString :: (T.Text -> T.Text) -> Name a -> Name a
-mapNameString f name = name { nameString = f $ nameString name }
-
--- | Apply a function to the string representation of a 'TyName'.
-mapTyNameString :: (T.Text -> T.Text) -> TyName a -> TyName a
-mapTyNameString f (TyName name) = TyName $ mapNameString f name
-
 instance Eq (Name a) where
-    (==) = (==) `on` nameUnique
+    (==) = (==) `on` view nameUnique
 
 instance Ord (Name a) where
-    (<=) = (<=) `on` nameUnique
-
--- N.B. the constructors for 'Unique' are exported for the sake of the test
--- suite; I don't know if there is an easier/better way to do this
--- | A unique identifier
-newtype Unique = Unique { unUnique :: Int }
-    deriving (Eq, Show, Ord, Lift)
-    deriving newtype (NFData, Pretty)
+    (<=) = (<=) `on` view nameUnique
 
 -- | The unique of a type-level name.
 newtype TypeUnique = TypeUnique
     { unTypeUnique :: Unique
-    }
+    } deriving Generic
+instance Wrapped TypeUnique
 
 -- | The unique of a term-level name.
 newtype TermUnique = TermUnique
     { unTermUnique :: Unique
-    }
+    } deriving Generic
+instance Wrapped TermUnique
 
 -- | The default implementation of 'HasUnique' for newtypes.
 newtypeUnique
@@ -99,9 +98,7 @@ class Coercible Unique unique => HasUnique a unique | a -> unique where
     unique :: Lens' a unique
 
 instance HasUnique (Name a) TermUnique where
-    unique = lens g s where
-        g = TermUnique . nameUnique
-        s n (TermUnique u) = n{nameUnique=u}
+    unique = nameUnique . _Unwrapped'
 
 instance HasUnique (TyName a) TypeUnique where
     unique = newtypeUnique
@@ -159,7 +156,7 @@ newIdentifier str = do
     case M.lookup str ss of
         Just k -> pure k
         Nothing -> do
-            let nextU' = Unique $ unUnique nextU + 1
+            let nextU' = nextU & _Wrapped' +~ 1
             put (M.insert str nextU ss, nextU')
             pure nextU
 

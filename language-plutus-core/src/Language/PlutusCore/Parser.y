@@ -1,5 +1,6 @@
 {
     {-# LANGUAGE OverloadedStrings  #-}
+    {-# LANGUAGE GADTs  #-}
     module Language.PlutusCore.Parser ( parse
                                       , parseST
                                       , parseTermST
@@ -17,6 +18,7 @@ import qualified Data.Text as T
 import Data.Text.Prettyprint.Doc.Internal (Doc (Text))
 import Control.Monad.Except
 import Control.Monad.State
+import Control.Lens
 import Language.PlutusCore.Error
 import Language.PlutusCore.Lexer.Type
 import Language.PlutusCore.Lexer
@@ -101,7 +103,7 @@ Name : var { Name (loc $1) (name $1) (identifier $1) }
 
 TyName : Name { TyName $1 }
 
-Term : Name { Var (nameAttribute $1) $1 }
+Term : Name { Var (view nameAttribute $1) $1 }
      | openParen abs TyName Kind Term closeParen { TyAbs $2 $3 $4 $5 }
      | openBrace Term some(Type) closeBrace { tyInst $1 $2 (NE.reverse $3) }
      | openParen lam Name Type Term closeParen { LamAbs $2 $3 $4 $5 }
@@ -115,7 +117,7 @@ Term : Name { Var (nameAttribute $1) $1 }
 BuiltinType : integer { TyBuiltin $1 TyInteger }
             | bytestring { TyBuiltin $1 TyByteString }
 
-Type : TyName { TyVar (nameAttribute (unTyName $1)) $1 }
+Type : TyName { TyVar (view (_Wrapped' . nameAttribute) $1) $1 }
      | openParen fun Type Type closeParen { TyFun $2 $3 $4 }
      | openParen all TyName Kind Type closeParen { TyForall $2 $3 $4 $5 }
      | openParen lam TyName Kind Type closeParen { TyLam $2 $3 $4 $5 }
@@ -180,7 +182,7 @@ parseType str = mapParseRun (parseTypeST str)
 --
 -- >>> :set -XOverloadedStrings
 -- >>> parse "(program 0.1.0 [(con addInteger) x y])"
--- Right (Program (AlexPn 1 1 2) (Version (AlexPn 9 1 10) 0 1 0) (Apply (AlexPn 15 1 16) (Apply (AlexPn 15 1 16) (Constant (AlexPn 17 1 18) (BuiltinName (AlexPn 21 1 22) AddInteger)) (Var (AlexPn 33 1 34) (Name {nameAttribute = AlexPn 33 1 34, nameString = "x", nameUnique = Unique {unUnique = 0}}))) (Var (AlexPn 35 1 36) (Name {nameAttribute = AlexPn 35 1 36, nameString = "y", nameUnique = Unique {unUnique = 1}}))))
+-- Right (Program (AlexPn 1 1 2) (Version (AlexPn 9 1 10) 0 1 0) (Apply (AlexPn 15 1 16) (Apply (AlexPn 15 1 16) (Constant (AlexPn 17 1 18) (BuiltinName (AlexPn 21 1 22) AddInteger)) (Var (AlexPn 33 1 34) (Name {_nameAttribute = AlexPn 33 1 34, _nameString = "x", _nameUnique = Unique {unUnique = 0}}))) (Var (AlexPn 35 1 36) (Name {_nameAttribute = AlexPn 35 1 36, _nameString = "y", _nameUnique = Unique {unUnique = 1}}))))
 parse :: BSL.ByteString -> Either (ParseError AlexPosn) (Program TyName Name AlexPosn)
 parse str = fmap fst $ runExcept $ runStateT (parseST str) emptyIdentifierState
 
