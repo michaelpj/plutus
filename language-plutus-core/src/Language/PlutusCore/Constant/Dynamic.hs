@@ -10,3 +10,4 @@ import           Language.PlutusCore.Constant.Dynamic.Emit        as Export
 import           Language.PlutusCore.Constant.Dynamic.Instances   as Export
 import           Language.PlutusCore.Constant.Dynamic.OffChain    as Export
 import           Language.PlutusCore.Constant.Dynamic.OnChain     as Export
+import           Language.PlutusCore.Constant.Dynamic.Sealed      as Export
