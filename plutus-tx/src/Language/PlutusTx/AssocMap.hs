@@ -24,12 +24,13 @@ module Language.PlutusTx.AssocMap (
     , all
     ) where
 
+import           Data.Typeable             (Typeable)
 import           GHC.Generics              (Generic)
 import           Language.PlutusTx.Lift    (makeLift)
 import           Language.PlutusTx.Prelude hiding (all, lookup)
 import qualified Language.PlutusTx.Prelude as P
 import           Language.PlutusTx.These
-import           Schema                    (ToSchema, ToTypeName)
+import           Schema                    (ToSchema)
 
 {-# ANN module ("HLint: ignore Use newtype instead of data"::String) #-}
 
@@ -38,9 +39,8 @@ newtype Map k v = Map { unMap :: [(k, v)] }
     deriving (Show)
     deriving stock (Generic)
     deriving newtype (Eq, Ord)
-    deriving anyclass (ToTypeName)
 
-deriving anyclass instance (Generic k, Generic v) => ToSchema (Map k v)
+deriving anyclass instance (Typeable k, Typeable v) => ToSchema (Map k v)
 
 instance Functor (Map k) where
     {-# INLINABLE fmap #-}

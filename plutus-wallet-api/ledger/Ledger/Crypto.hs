@@ -45,7 +45,7 @@ import qualified Language.PlutusTx.Prelude  as P
 import           Ledger.TxId
 import           LedgerBytes                (LedgerBytes)
 import qualified LedgerBytes                as KB
-import           Schema                     (ToSchema, ToTypeName)
+import           Schema                     (ToSchema)
 import           Servant.API                (FromHttpApiData (parseUrlPiece), ToHttpApiData (toUrlPiece))
 
 -- | A cryptographic public key.
@@ -60,7 +60,6 @@ newtype PubKey =
                     , Newtype
                     , ToJSONKey
                     , FromJSONKey
-                    , ToTypeName
                     )
   deriving newtype (P.Eq, P.Ord, Serialise)
 

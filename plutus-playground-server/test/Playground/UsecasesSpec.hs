@@ -28,7 +28,8 @@ import qualified Playground.Interpreter       as PI
 import           Playground.Interpreter.Util  (TraceResult)
 import           Playground.Usecases          (crowdfunding, game, messages, vesting)
 import           Schema                       (Constructor (Record), ConstructorName (ConstructorName),
-                                               DataType (DataType), Reference (Reference))
+                                               DataType (DataType), TypeSignature (TypeSignature), argumentSignatures,
+                                               constructorName, moduleName)
 import           Test.Hspec                   (Spec, describe, it, shouldBe, shouldSatisfy)
 import           Wallet.Emulator.Types        (Wallet (Wallet), walletPubKey)
 
@@ -70,16 +71,33 @@ vestingSpec =
                       { functionName = Fn "vestFunds"
                       , argumentSchema =
                             [ DataType
-                                  "Main.Vesting"
-                                  []
+                                  (TypeSignature
+                                       { moduleName = "Main"
+                                       , constructorName = "Vesting"
+                                       , argumentSignatures = []
+                                       })
                                   [ Record
                                         (ConstructorName "Vesting")
                                         [ ( "vestingTranche1"
-                                          , Reference "Main.VestingTranche")
+                                          , TypeSignature
+                                                { moduleName = "Main"
+                                                , constructorName =
+                                                      "VestingTranche"
+                                                , argumentSignatures = []
+                                                })
                                         , ( "vestingTranche2"
-                                          , Reference "Main.VestingTranche")
+                                          , TypeSignature
+                                                { moduleName = "Main"
+                                                , constructorName =
+                                                      "VestingTranche"
+                                                , argumentSignatures = []
+                                                })
                                         , ( "vestingOwner"
-                                          , Reference "Ledger.Crypto.PubKey")
+                                          , TypeSignature
+                                                { moduleName = "Ledger.Crypto"
+                                                , constructorName = "PubKey"
+                                                , argumentSignatures = []
+                                                })
                                         ]
                                   ]
                             ]
@@ -88,16 +106,33 @@ vestingSpec =
                       { functionName = Fn "registerVestingScheme"
                       , argumentSchema =
                             [ DataType
-                                  "Main.Vesting"
-                                  []
+                                  (TypeSignature
+                                       { moduleName = "Main"
+                                       , constructorName = "Vesting"
+                                       , argumentSignatures = []
+                                       })
                                   [ Record
                                         (ConstructorName "Vesting")
                                         [ ( "vestingTranche1"
-                                          , Reference "Main.VestingTranche")
+                                          , TypeSignature
+                                                { moduleName = "Main"
+                                                , constructorName =
+                                                      "VestingTranche"
+                                                , argumentSignatures = []
+                                                })
                                         , ( "vestingTranche2"
-                                          , Reference "Main.VestingTranche")
+                                          , TypeSignature
+                                                { moduleName = "Main"
+                                                , constructorName =
+                                                      "VestingTranche"
+                                                , argumentSignatures = []
+                                                })
                                         , ( "vestingOwner"
-                                          , Reference "Ledger.Crypto.PubKey")
+                                          , TypeSignature
+                                                { moduleName = "Ledger.Crypto"
+                                                , constructorName = "PubKey"
+                                                , argumentSignatures = []
+                                                })
                                         ]
                                   ]
                             ]
@@ -106,26 +141,83 @@ vestingSpec =
                       { functionName = Fn "withdraw"
                       , argumentSchema =
                             [ DataType
-                                  "Main.Vesting"
-                                  []
+                                  (TypeSignature
+                                       { moduleName = "Main"
+                                       , constructorName = "Vesting"
+                                       , argumentSignatures = []
+                                       })
                                   [ Record
                                         (ConstructorName "Vesting")
                                         [ ( "vestingTranche1"
-                                          , Reference "Main.VestingTranche")
+                                          , TypeSignature
+                                                { moduleName = "Main"
+                                                , constructorName =
+                                                      "VestingTranche"
+                                                , argumentSignatures = []
+                                                })
                                         , ( "vestingTranche2"
-                                          , Reference "Main.VestingTranche")
+                                          , TypeSignature
+                                                { moduleName = "Main"
+                                                , constructorName =
+                                                      "VestingTranche"
+                                                , argumentSignatures = []
+                                                })
                                         , ( "vestingOwner"
-                                          , Reference "Ledger.Crypto.PubKey")
+                                          , TypeSignature
+                                                { moduleName = "Ledger.Crypto"
+                                                , constructorName = "PubKey"
+                                                , argumentSignatures = []
+                                                })
                                         ]
                                   ]
                             , DataType
-                                  "Ledger.Value.Value"
-                                  []
+                                  (TypeSignature
+                                       { moduleName = "Ledger.Value"
+                                       , constructorName = "Value"
+                                       , argumentSignatures = []
+                                       })
                                   [ Record
                                         (ConstructorName "Value")
                                         [ ( "getValue"
-                                          , Reference
-                                                "Language.PlutusTx.AssocMap.Map")
+                                          , TypeSignature
+                                                { moduleName =
+                                                      "Language.PlutusTx.AssocMap"
+                                                , constructorName = "Map"
+                                                , argumentSignatures =
+                                                      [ TypeSignature
+                                                            { moduleName =
+                                                                  "Ledger.Value"
+                                                            , constructorName =
+                                                                  "CurrencySymbol"
+                                                            , argumentSignatures =
+                                                                  []
+                                                            }
+                                                      , TypeSignature
+                                                            { moduleName =
+                                                                  "Language.PlutusTx.AssocMap"
+                                                            , constructorName =
+                                                                  "Map"
+                                                            , argumentSignatures =
+                                                                  [ TypeSignature
+                                                                        { moduleName =
+                                                                              "Ledger.Value"
+                                                                        , constructorName =
+                                                                              "TokenName"
+                                                                        , argumentSignatures =
+                                                                              []
+                                                                        }
+                                                                  , TypeSignature
+                                                                        { moduleName =
+                                                                              "GHC.Integer.Type"
+                                                                        , constructorName =
+                                                                              "Integer"
+                                                                        , argumentSignatures =
+                                                                              []
+                                                                        }
+                                                                  ]
+                                                            }
+                                                      ]
+                                                })
                                         ]
                                   ]
                             ]
@@ -134,21 +226,71 @@ vestingSpec =
                       { functionName = Fn "payToWallet_"
                       , argumentSchema =
                             [ DataType
-                                  "Ledger.Value.Value"
-                                  []
+                                  (TypeSignature
+                                       { moduleName = "Ledger.Value"
+                                       , constructorName = "Value"
+                                       , argumentSignatures = []
+                                       })
                                   [ Record
                                         (ConstructorName "Value")
                                         [ ( "getValue"
-                                          , Reference
-                                                "Language.PlutusTx.AssocMap.Map")
+                                          , TypeSignature
+                                                { moduleName =
+                                                      "Language.PlutusTx.AssocMap"
+                                                , constructorName = "Map"
+                                                , argumentSignatures =
+                                                      [ TypeSignature
+                                                            { moduleName =
+                                                                  "Ledger.Value"
+                                                            , constructorName =
+                                                                  "CurrencySymbol"
+                                                            , argumentSignatures =
+                                                                  []
+                                                            }
+                                                      , TypeSignature
+                                                            { moduleName =
+                                                                  "Language.PlutusTx.AssocMap"
+                                                            , constructorName =
+                                                                  "Map"
+                                                            , argumentSignatures =
+                                                                  [ TypeSignature
+                                                                        { moduleName =
+                                                                              "Ledger.Value"
+                                                                        , constructorName =
+                                                                              "TokenName"
+                                                                        , argumentSignatures =
+                                                                              []
+                                                                        }
+                                                                  , TypeSignature
+                                                                        { moduleName =
+                                                                              "GHC.Integer.Type"
+                                                                        , constructorName =
+                                                                              "Integer"
+                                                                        , argumentSignatures =
+                                                                              []
+                                                                        }
+                                                                  ]
+                                                            }
+                                                      ]
+                                                })
                                         ]
                                   ]
                             , DataType
-                                  "Wallet.Emulator.Types.Wallet"
-                                  []
+                                  (TypeSignature
+                                       { moduleName = "Wallet.Emulator.Types"
+                                       , constructorName = "Wallet"
+                                       , argumentSignatures = []
+                                       })
                                   [ Record
                                         (ConstructorName "Wallet")
-                                        [("getWallet", Reference "Int")]
+                                        [ ( "getWallet"
+                                          , TypeSignature
+                                                { moduleName =
+                                                      "GHC.Integer.Type"
+                                                , constructorName = "Integer"
+                                                , argumentSignatures = []
+                                                })
+                                        ]
                                   ]
                             ]
                       }
