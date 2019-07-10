@@ -92,9 +92,9 @@ The index `Ix` is necessary because there may be more than one output,
 and each must have a unique identifier within the set of outputs
 of a given transaction.
 The values in the UTxO finite map are pairs of a coin value and an
-address, whose type is by `TxOut = Addr * Coin`.
+address, whose type is `TxOut = Addr * Coin`.
 Note that users' addresses are always public keys, and the funds at them
-belong to the entity who is able to prove that they possess they corresponding
+belong to the entity who is able to prove that they possess the corresponding
 private key. Script (or smart contract) addresses are slightly different, as we will see later.
 
 As for the structure of the transaction itself,
@@ -105,16 +105,17 @@ The keys of the finite map are distinct index values within the context
 of the finite map, such that the
 combination of a transaction ID and an index will be a globally unique
 identifier for the output of a transaction.
-In UTxO accounting scheme, we relate
+In the UTxO accounting scheme, we relate
 output values to the inputs from which they come by means of this composite
 global identifier.
 
-The inputs are also a list, however, the elements of this list contain neither
+The inputs, whose order does not matter, are a set and not a list.
+The elements of this set contain neither
 a coin value to be spent, nor the address which the money is coming from.
 This is the main distinction between traditional accounting and UTxO accounting:
-the money being spent is only referred by the unspent outputs of
+the money being spent is only referred to by the unspent outputs of
 previously processed transactions on the ledger that reside currently on the blockchain.
-Each element of the inputs list is a pair of a transaction ID and an index.
+Each element of the inputs set is a pair of a transaction ID and an index.
 Which, as explained above, uniquely identifies the unspent output in the UTxO
 which is to be spent.
 
