@@ -1,0 +1,20 @@
+site:
+  title: Plutus Documentation
+  start_page: tutorial::index.adoc
+content:
+  sources: 
+  - url: ..
+    start_path: plutus-doc/tutorial
+    branches: HEAD
+ui:
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/master/raw/build/ui-bundle.zip?job=bundle-stable
+    snapshot: true
+asciidoc:
+  attributes:
+    # unfortunately, asciidoctor likes to parse these as definition lists :(
+    # https://github.com/asciidoctor/asciidoctor/issues/1066
+    2c: "::"
+    playground: "https://prod.playground.plutus.iohkdev.io/"
+    haddock: "https://input-output-hk.github.io/plutus"
+    wallet-api-haddock: "{haddock}/plutus-wallet-api-0.1.0.0/html"

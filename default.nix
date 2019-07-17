@@ -96,6 +96,8 @@ let
     # Our nixpkgs is so old it doesn't have epubcheck.
     asciidoctorWithEpub3 = pkgs.callPackage ./nix/asciidoctor { epubcheck = null; };
 
+    inherit (pkgs.callPackage ./nix/antora { }) antora antora-gen;
+
     # The git revision comes from `rev` if available (Hydra), otherwise
     # it is read using IFD and git, which is avilable on local builds.
     git-rev = if isNull rev then localLib.iohkNix.commitIdFromGitRepo ./.git else rev;
