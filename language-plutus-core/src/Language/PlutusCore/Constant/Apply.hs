@@ -130,17 +130,22 @@ liftConstAppResult = EvaluateT . lift . yield
 makeConstAppResult :: KnownType a => a -> ConstAppResultDef
 makeConstAppResult = pure . makeKnown
 
-data SatArgs t r where
+data SatArgs a r where
     NoArgs :: SatArgs a a
     SomeArgs :: a -> SatArgs b r -> SatArgs (a -> b) r
 
-data SatApp r = forall a . SatApp a (SatArgs a r)
+data SatApp a r = SatApp a (SatArgs a r)
 
-evaluateSatApp :: SatApp r -> r
+evaluateSatApp :: SatApp a r -> r
 evaluateSatApp (r `SatApp` NoArgs) = r
 evaluateSatApp (f `SatApp` SomeArgs a rest) = evaluateSatApp $ f a `SatApp` rest
 
-mkSatApp :: Monad m => TypeScheme a r -> a -> [Value TyName Name ()] -> EvaluateConstApp m (SatApp r)
+evaluateSatAppValue :: TypeScheme a r -> SatApp a r -> Value TyName Name ()
+evaluateSatAppValue (TypeSchemeResult _) (r `SatApp` NoArgs) = makeKnown r
+evaluateSatAppValue (TypeSchemeArrow _ schB) (f `SatApp` SomeArgs a rest) = evaluateSatAppValue schB $ f a `SatApp` rest
+evaluateSatAppValue (TypeSchemeAllType _ schK) app = evaluateSatAppValue (schK Proxy) app
+
+mkSatApp :: Monad m => TypeScheme a r -> a -> [Value TyName Name ()] -> EvaluateConstApp m (SatApp a r)
 mkSatApp sch f args = do
     sargs <- mkSatArgs sch args
     pure $ f `SatApp` sargs
@@ -178,6 +183,12 @@ extractBuiltin value =
         nat EvaluationFailure              = ConstAppFailure
         nat (EvaluationSuccess (Left err)) = ConstAppError $ UnreadableBuiltinConstAppError value err
         nat (EvaluationSuccess (Right x )) = ConstAppSuccess x
+
+-- | Apply a 'TypedBuiltinName' to a list of 'Constant's (unwrapped from 'Value's)
+-- Checks that the constants are of expected types.
+applyTypeSchemed
+    :: Monad m => TypeScheme a r -> a -> [Value TyName Name ()] -> EvaluateConstAppDef m
+applyTypeSchemed schema f vs = evaluateSatAppValue schema <$> mkSatApp schema f vs
 
 -- | Apply a 'TypedBuiltinName' to a list of 'Constant's (unwrapped from 'Value's)
 -- Checks that the constants are of expected types.
