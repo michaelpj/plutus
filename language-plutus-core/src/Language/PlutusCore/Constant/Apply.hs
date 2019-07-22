@@ -134,21 +134,21 @@ data SatArgs a r where
     NoArgs :: SatArgs a a
     SomeArgs :: a -> SatArgs b r -> SatArgs (a -> b) r
 
-data SatApp a r = SatApp a (SatArgs a r)
+data SatApp a r = SatApp (TypeScheme a r) a (SatArgs a r)
 
-evaluateSatApp :: SatApp a r -> r
-evaluateSatApp (r `SatApp` NoArgs) = r
-evaluateSatApp (f `SatApp` SomeArgs a rest) = evaluateSatApp $ f a `SatApp` rest
+data KnownValue a where
+    KnownValue :: KnownType a => a -> KnownValue a
 
-evaluateSatAppValue :: TypeScheme a r -> SatApp a r -> Value TyName Name ()
-evaluateSatAppValue (TypeSchemeResult _) (r `SatApp` NoArgs) = makeKnown r
-evaluateSatAppValue (TypeSchemeArrow _ schB) (f `SatApp` SomeArgs a rest) = evaluateSatAppValue schB $ f a `SatApp` rest
-evaluateSatAppValue (TypeSchemeAllType _ schK) app = evaluateSatAppValue (schK Proxy) app
+knownValueAsValue :: KnownValue a -> Value TyName Name ()
+knownValueAsValue (KnownValue a) = makeKnown a
+
+evaluateSatApp :: SatApp a r -> KnownValue r
+evaluateSatApp (SatApp (TypeSchemeResult _ ) r NoArgs) = KnownValue r
+evaluateSatApp (SatApp (TypeSchemeArrow _ schB) f (SomeArgs a rest)) = evaluateSatApp $ SatApp schB (f a) rest
+evaluateSatApp (SatApp (TypeSchemeAllType _ schK) v args) = evaluateSatApp (SatApp (schK Proxy) v args)
 
 mkSatApp :: Monad m => TypeScheme a r -> a -> [Value TyName Name ()] -> EvaluateConstApp m (SatApp a r)
-mkSatApp sch f args = do
-    sargs <- mkSatArgs sch args
-    pure $ f `SatApp` sargs
+mkSatApp sch f args = SatApp sch f <$> mkSatArgs sch args
 
 -- | Apply a function with a known 'TypeScheme' to a list of 'Constant's (unwrapped from 'Value's).
 -- Checks that the constants are of expected types.
@@ -188,7 +188,7 @@ extractBuiltin value =
 -- Checks that the constants are of expected types.
 applyTypeSchemed
     :: Monad m => TypeScheme a r -> a -> [Value TyName Name ()] -> EvaluateConstAppDef m
-applyTypeSchemed schema f vs = evaluateSatAppValue schema <$> mkSatApp schema f vs
+applyTypeSchemed schema f vs = knownValueAsValue . evaluateSatApp <$> mkSatApp schema f vs
 
 -- | Apply a 'TypedBuiltinName' to a list of 'Constant's (unwrapped from 'Value's)
 -- Checks that the constants are of expected types.
