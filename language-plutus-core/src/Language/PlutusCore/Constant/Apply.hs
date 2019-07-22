@@ -146,6 +146,9 @@ evaluateSatApp :: SatApp a r -> KnownValue r
 evaluateSatApp (SatApp (TypeSchemeResult _ ) r NoArgs) = KnownValue r
 evaluateSatApp (SatApp (TypeSchemeArrow _ schB) f (SomeArgs a rest)) = evaluateSatApp $ SatApp schB (f a) rest
 evaluateSatApp (SatApp (TypeSchemeAllType _ schK) v args) = evaluateSatApp (SatApp (schK Proxy) v args)
+-- These cases should be impossible ...
+evaluateSatApp (SatApp (TypeSchemeResult _ ) _ (SomeArgs _ _)) = undefined
+evaluateSatApp (SatApp (TypeSchemeArrow _ _ ) _ NoArgs) = undefined
 
 mkSatApp :: Monad m => TypeScheme a r -> a -> [Value TyName Name ()] -> EvaluateConstApp m (SatApp a r)
 mkSatApp sch f args = SatApp sch f <$> mkSatArgs sch args
