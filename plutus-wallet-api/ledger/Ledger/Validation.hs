@@ -169,7 +169,8 @@ data OracleValue a = OracleValue {
         ovSlot      :: Slot,
         ovValue     :: a
     }
-    deriving (Generic)
+    deriving stock (Generic)
+    deriving anyclass (ToJSON, FromJSON)
 
 {- Note [Hashes in validator scripts]
 

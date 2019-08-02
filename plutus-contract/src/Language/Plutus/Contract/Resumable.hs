@@ -25,6 +25,7 @@ module Language.Plutus.Contract.Resumable(
     ) where
 
 import           Control.Applicative
+import           Control.Monad.Base              (MonadBase (..))
 import           Control.Monad.Except
 import           Control.Monad.Morph
 import           Control.Monad.Writer
@@ -199,6 +200,13 @@ instance Applicative f => Alternative (Resumable f) where
 
 instance Applicative f => Monad (Resumable f) where
     (>>=) = CBind
+
+instance Applicative f => MonadBase (Resumable f) (Resumable f) where
+    liftBase = id
+
+instance Applicative f => MonadPlus (Resumable f) where
+    mplus = (<|>)
+    mzero = empty
 
 -- | Interpret a 'Resumable' program in some other monad.
 lowerM
