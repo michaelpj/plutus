@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE DerivingStrategies    #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -8,9 +9,11 @@
 -- | A version of 'Language.Plutus.Contract.Contract' that
 --   writes checkpoints.
 module Language.Plutus.Contract.Resumable(
-    Resumable
+    Resumable(..)
     , ResumableError(..)
     , Step(..)
+    , mapI
+    , mapO
     , step
     , checkpoint
     , pretty
@@ -27,6 +30,7 @@ module Language.Plutus.Contract.Resumable(
 import           Control.Applicative
 import           Control.Monad.Except
 import           Control.Monad.Morph
+import           Control.Monad.Reader
 import           Control.Monad.Writer
 import qualified Data.Aeson                      as Aeson
 import qualified Data.Aeson.Types                as Aeson
@@ -80,6 +84,14 @@ ever need to evaluate 'n' again.
 --   response pair: We offer the response (in form of 'i'), and only if it
 --   is the wrong response do we record the request in form of 'o'.
 newtype Step i o a = Step { runStep :: i -> Either o a }
+    deriving stock Functor
+    deriving (Applicative, Monad, MonadReader i, MonadError o) via (ReaderT i (Either o))
+
+mapI :: (i -> j) -> Step j o a -> Step i o a
+mapI f (Step a) = Step (a . f)
+
+mapO :: (o -> p) -> Step i o a -> Step i p a
+mapO f (Step a) = Step (fmap (first f) a)
 
 -- | A resumable program made up of 'Step's.
 data Resumable f a where

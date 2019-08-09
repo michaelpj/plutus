@@ -48,6 +48,7 @@ library
         Language.Plutus.Contract.Effects.ExposeEndpoint
         Language.Plutus.Contract.Effects.WatchAddress
         Language.Plutus.Contract.Effects.WriteTx
+        Language.Plutus.Contract.Request
         Language.Plutus.Contract.Test
         Language.Plutus.Contract.Trace
         Language.Plutus.Contract.Prompt.Event
@@ -81,7 +82,8 @@ library
         monad-control -any,
         mmorph -any,
         tasty -any,
-        tasty-hunit -any
+        tasty-hunit -any,
+        row-types -any
 
 test-suite contract-doctests
     type: exitcode-stdio-1.0
