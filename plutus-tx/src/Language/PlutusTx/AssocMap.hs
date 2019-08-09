@@ -20,6 +20,8 @@ module Language.PlutusTx.AssocMap (
     , toList
     , keys
     , lookup
+    , insert
+    , delete
     , union
     , all
     , mapThese
@@ -73,6 +75,18 @@ lookup c (Map xs) =
         go []            = Nothing
         go ((c', i):xs') = if c' == c then Just i else go xs'
     in go xs
+
+{-# INLINABLE insert #-}
+insert :: forall k v . k -> v -> Map k v -> Map k v
+insert k v (Map ls) = Map ((k, v) : ls)
+
+{-# INLINABLE delete #-}
+delete :: forall k v . (Eq k) => k -> Map k v -> Map k v
+delete key (Map ls) = Map (go ls)
+  where
+    go [] = []
+    go ((k, v) : rest) | k == key = rest
+                       | otherwise = (k, v) : go rest
 
 {-# INLINABLE keys #-}
 -- | The keys of a 'Map'.
