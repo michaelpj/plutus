@@ -1,20 +1,23 @@
-{-# LANGUAGE RebindableSyntax    #-}
--- {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE ConstraintKinds     #-}
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE DerivingVia         #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE KindSignatures      #-}
-{-# LANGUAGE OverloadedLabels    #-}
-{-# LANGUAGE PolyKinds           #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE TypeOperators       #-}
-{-# LANGUAGE NoImplicitPrelude   #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE ConstraintKinds      #-}
+{-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE DerivingVia          #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE GADTs                #-}
+{-# LANGUAGE KindSignatures       #-}
+{-# LANGUAGE NoImplicitPrelude    #-}
+{-# LANGUAGE OverloadedLabels     #-}
+{-# LANGUAGE PolyKinds            #-}
+{-# LANGUAGE RankNTypes           #-}
+{-# LANGUAGE TypeApplications     #-}
+{-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Language.Plutus.Contract.Request where
 
+import           Data.Aeson                         (FromJSON, ToJSON, (.:))
 import qualified Data.Aeson                         as Aeson
+import qualified Data.Aeson.Types                   as Aeson
 import           Data.Proxy                         (Proxy (..))
 import           Data.Row
 import           Data.Row.Internal                  (Subset, Unconstrained1)
@@ -23,19 +26,19 @@ import qualified Data.Row.Variants                  as Variants
 import           Data.Semigroup
 import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
+import           Data.Text                          (Text)
 import           GHC.TypeLits                       (Symbol, symbolVal)
-import GHC.OverloadedLabels (fromLabel)
 import           Language.Plutus.Contract.Resumable
 import           Ledger.Slot                        (Slot)
 import           Ledger.Tx                          (Address, Tx)
 
-import Prelude hiding ((>>=), return, (>>))
+import           Prelude                            hiding (return, (>>), (>>=))
 import qualified Prelude
 
 -- | @Con ρ σ a@ is a contract that expects input events of type @ρ@ and produces
---   requests (describing the acceptable input) of type @σ@. The two type parameters 
---   are 'Data.Row.Row' rows 
---   
+--   requests (describing the acceptable input) of type @σ@. The two type parameters
+--   are 'Data.Row.Row' rows
+--
 type Con (ρ :: Row *) (σ :: Row *) a = Resumable (Step (Maybe (Var ρ)) (Endo (Rec σ))) a
 
 awaitSlot :: Slot -> Con ("slot" .== Slot) ("slot" .== Maybe (Min Slot)) Slot
@@ -108,7 +111,7 @@ cAlt l r = CAlt l' r' where
 cEmpty :: forall ρ σ a. Con ρ σ a
 cEmpty = CEmpty
 
-cBind :: forall ρ₁ σ₁ ρ₂ σ₂ a b. ( Join ρ₁ σ₁ ρ₂ σ₂) => Con ρ₁ σ₁ a -> (a -> Con ρ₂ σ₂ b) -> Con (ρ₁ .\/ ρ₂) (σ₁ .\/ σ₂) b
+cBind :: forall ρ₁ σ₁ ρ₂ σ₂ a b. (Join ρ₁ σ₁ ρ₂ σ₂) => Con ρ₁ σ₁ a -> (a -> Con ρ₂ σ₂ b) -> Con (ρ₁ .\/ ρ₂) (σ₁ .\/ σ₂) b
 cBind l f = CBind (mapStep (mapO s1 . mapI g1) l) (fmap (mapStep (mapO s2 . mapI g2)) f) where
   g1 s = s Prelude.>>= Variants.restrict
   g2 s = s Prelude.>>= Variants.restrict
@@ -121,7 +124,7 @@ cBind l f = CBind (mapStep (mapO s1 . mapI g1) l) (fmap (mapStep (mapO s2 . mapI
 (>>) :: forall ρ₁ σ₁ ρ₂ σ₂ a b. ( Join ρ₁ σ₁ ρ₂ σ₂) => Con ρ₁ σ₁ a -> Con ρ₂ σ₂ b -> Con (ρ₁ .\/ ρ₂) (σ₁ .\/ σ₂) b
 l >> r = l >>= const r
 
-return :: forall ρ σ a. a -> Con ρ σ a
+return :: forall a. a -> Con Empty Empty a
 return = CStep . Prelude.return
 
 cStep :: forall ρ σ a. Step (Maybe (Var ρ)) (Endo (Rec σ)) a -> Con ρ σ a
@@ -130,19 +133,17 @@ cStep = CStep
 cJSONCheckpoint :: forall ρ σ a. (Aeson.FromJSON a, Aeson.ToJSON a) => Con ρ σ a -> Con ρ σ a
 cJSONCheckpoint = CJSONCheckpoint
 
-h = awaitSlot 1 >> awaitSlot 2 >>= const (exposeEndpoint @"my endpoint" @Int >>= const (exposeEndpoint @"my endpoint " @Bool))
+newtype JsonRow v ρ = JsonRow { unJsonRow :: v ρ }
 
-j = do
-  _ <- awaitSlot 1
-  _ <- awaitSlot 2
-  l <- exposeEndpoint @"my endpoint" @Slot
-  r <- exposeEndpoint @"my endpoint2" @Bool
-  if r then awaitSlot l else awaitSlot l
+instance Forall ρ ToJSON => ToJSON (JsonRow Rec ρ) where
+  toJSON = Aeson.object . Records.eraseWithLabels @ToJSON @ρ @Text @Aeson.Value Aeson.toJSON . unJsonRow
+
+instance (AllUniqueLabels ρ, Forall ρ FromJSON) => FromJSON (JsonRow Var ρ) where
+  parseJSON vl = fmap JsonRow (Variants.fromLabels @FromJSON @ρ @Aeson.Parser (\lbl -> Aeson.withObject "Var" (\obj -> do { tg <- obj .: "tag"; if tg == (show lbl) then (obj .: "value") Prelude.>>= Aeson.parseJSON else fail "Wrong label" }) vl))
 
 emptyRec :: forall ρ. (Forall ρ Monoid, AllUniqueLabels ρ) => Rec ρ
 emptyRec = Records.default' @Monoid @ρ mempty
-  
--- needed because of RebindableSyntax
-ifThenElse :: Bool -> a -> a -> a
-ifThenElse True a _ = a
-ifThenElse False _ b = b
+
+
+-- TODO:
+-- mkSchema :: forall ρ. Forall ρ ToSchema => Schema (metamorph)
