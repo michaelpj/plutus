@@ -43,17 +43,11 @@ library
     exposed-modules:
         Language.Plutus.Contract
         Language.Plutus.Contract.App
-        Language.Plutus.Contract.Effects
-        Language.Plutus.Contract.Effects.AwaitSlot
-        Language.Plutus.Contract.Effects.ExposeEndpoint
-        Language.Plutus.Contract.Effects.WatchAddress
-        Language.Plutus.Contract.Effects.WriteTx
         Language.Plutus.Contract.Request
         Language.Plutus.Contract.Test
         Language.Plutus.Contract.Trace
-        Language.Plutus.Contract.Prompt.Event
-        Language.Plutus.Contract.Prompt.Hooks
         Language.Plutus.Contract.Record
+        Language.Plutus.Contract.Schema
         Language.Plutus.Contract.Servant
         Language.Plutus.Contract.Resumable
         Language.Plutus.Contract.Tx
@@ -77,7 +71,6 @@ library
         profunctors -any,
         transformers -any,
         warp -any,
-        extensible-effects -any,
         transformers-base -any,
         monad-control -any,
         mmorph -any,

@@ -1,41 +1,18 @@
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE UndecidableInstances  #-}
--- | Write an 'UnbalancedTx' to be transferred to the wallet for
---   balancing and signing.
+{-# LANGUAGE DataKinds        #-}
+{-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators    #-}
 module Language.Plutus.Contract.Effects.WriteTx where
 
-import           Language.Plutus.Contract.Tx
+import           Data.Row
 
-import           Control.Eff
-import           Control.Eff.Exception
-import           Control.Eff.Extend
-import           Control.Eff.Reader.Lazy
-import           Data.Function                         (fix)
-import           Language.Plutus.Contract.Prompt.Event as Event
-import           Language.Plutus.Contract.Prompt.Hooks as Hooks
+import           Language.Plutus.Contract.Request as Req
+import           Language.Plutus.Contract.Tx      (UnbalancedTx)
 
-data WriteTx v where
-  WriteTx :: UnbalancedTx -> WriteTx ()
 
-writeTx :: Member WriteTx r => UnbalancedTx -> Eff r ()
-writeTx tx = send $ WriteTx tx
+type TxReq = ("tx" .== [UnbalancedTx])
+type TxResp = ("tx" .== ())
 
-instance (Member (Reader (Maybe Event)) r, Member (Exc (Hook ())) r) => Handle WriteTx r a k where
-  handle step cor req = case req of
-    WriteTx t -> step (comp (singleK promptTx) cor ^$ t)
-
-runWriteTx :: (Member (Reader (Maybe Event)) r, Member (Exc (Hook ())) r) => Eff (WriteTx ': r) a -> Eff r a
-runWriteTx = fix (handle_relay pure)
-
-promptTx :: (Member (Reader (Maybe Event)) r, Member (Exc (Hook ())) r) => UnbalancedTx -> Eff r ()
-promptTx t = do
-  sl <- reader (>>= Event.txSubmissionEvent)
-  case sl of
-    Just () -> pure ()
-    _       -> throwError @(Hook ()) (Hooks.txHook t)
+--  | Send an unbalanced transaction to the wallet.
+writeTx :: UnbalancedTx -> Contract TxResp TxReq ()
+writeTx t = mkRequest [t] Just
