@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE AllowAmbiguousTypes  #-}
 {-# LANGUAGE ConstraintKinds      #-}
 {-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE DerivingVia          #-}
@@ -6,8 +6,10 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE GADTs                #-}
 {-# LANGUAGE KindSignatures       #-}
+{-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE NoImplicitPrelude    #-}
 {-# LANGUAGE OverloadedLabels     #-}
+{-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE PolyKinds            #-}
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE TypeApplications     #-}
@@ -18,6 +20,8 @@ module Language.Plutus.Contract.Request where
 import           Data.Aeson                         (FromJSON, ToJSON, (.:))
 import qualified Data.Aeson                         as Aeson
 import qualified Data.Aeson.Types                   as Aeson
+import           Data.Functor.Const
+import           Data.Functor.Identity
 import           Data.Proxy                         (Proxy (..))
 import           Data.Row
 import           Data.Row.Internal                  (Subset, Unconstrained1)
@@ -139,11 +143,36 @@ instance Forall ρ ToJSON => ToJSON (JsonRow Rec ρ) where
   toJSON = Aeson.object . Records.eraseWithLabels @ToJSON @ρ @Text @Aeson.Value Aeson.toJSON . unJsonRow
 
 instance (AllUniqueLabels ρ, Forall ρ FromJSON) => FromJSON (JsonRow Var ρ) where
-  parseJSON vl = fmap JsonRow (Variants.fromLabels @FromJSON @ρ @Aeson.Parser (\lbl -> Aeson.withObject "Var" (\obj -> do { tg <- obj .: "tag"; if tg == (show lbl) then (obj .: "value") Prelude.>>= Aeson.parseJSON else fail "Wrong label" }) vl))
+  parseJSON vl = fmap JsonRow (Variants.fromLabels @FromJSON @ρ @Aeson.Parser (\lbl -> Aeson.withObject "Var" (\obj -> do { tg <- obj .: "tag"; if tg == show lbl then (obj .: "value") Prelude.>>= Aeson.parseJSON else fail "Wrong label" }) vl))
 
 emptyRec :: forall ρ. (Forall ρ Monoid, AllUniqueLabels ρ) => Rec ρ
 emptyRec = Records.default' @Monoid @ρ mempty
 
+newtype Schema = Schema String
+  deriving Show
 
--- TODO:
--- mkSchema :: forall ρ. Forall ρ ToSchema => Schema (metamorph)
+class HasSchema a where
+  schema :: Proxy a -> Schema
+
+instance HasSchema Int where
+  schema _ = Schema "Int"
+
+instance HasSchema String where
+  schema _ = Schema "String"
+
+mksConst :: forall l a. (KnownSymbol l, HasSchema a) => Label l -> (Const [(String, Schema)]) a
+mksConst Label = Const [(symbolVal (Proxy @l), schema (Proxy @a))]
+
+mkSchema :: forall ρ. (AllUniqueLabels ρ, Forall ρ HasSchema) => Rec (Records.Map (Const [(String, Schema)]) ρ)
+mkSchema = runIdentity (Records.fromLabelsMapA @HasSchema @Identity @(Const [(String, Schema)]) @ρ (Identity . mksConst))
+
+unSchema :: forall ρ. Forall ρ Unconstrained1 => Rec (Records.Map (Const [(String, Schema)]) ρ) -> Const [(String, Schema)] (Rec ρ)
+unSchema = Records.sequence
+
+mkS :: forall ρ. (AllUniqueLabels ρ, Forall ρ HasSchema, Forall ρ Unconstrained1) => Const [(String, Schema)] (Rec ρ)
+mkS = unSchema @ρ (mkSchema @ρ)
+
+req :: IO ()
+req = do
+  let Const s = mkS @("a" .== Int .\/ "b" .== String)
+  print s
