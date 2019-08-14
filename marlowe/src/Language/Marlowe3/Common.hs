@@ -100,12 +100,22 @@ import           Language.PlutusTx.Lift     (makeLift)
 import qualified Language.PlutusTx.AssocMap as Map
 import           Language.PlutusTx.AssocMap (Map)
 import           Language.PlutusTx.Prelude
-import           Ledger                     (PubKey (..), Signature (..), Slot (..))
+import           Ledger                     ( PubKey(..)
+                                            , Signature(..)
+                                            , Slot(..)
+                                            , applyScript
+                                            , compileScript
+                                            , lifted
+                                            )
 import           Ledger.Ada                 (Ada)
 import qualified Ledger.Ada                 as Ada
 import           Ledger.Interval            (Interval (..))
 import           Ledger.Slot                    (SlotRange)
-import           Ledger.Scripts             (DataScriptHash (..), RedeemerHash (..))
+import           Ledger.Scripts             ( HashedDataScript(..)
+                                            , ValidatorScript(..)
+                                            , DataScriptHash(..)
+                                            , RedeemerHash(..)
+                                            )
 import           Ledger.Validation
 import           LedgerBytes                (LedgerBytes (..))
 
@@ -268,49 +278,49 @@ inBounds :: ChosenNum -> [Bound] -> Bool
 inBounds num = any (\(l, u) -> num >= l && num <= u)
 
 
-{-# INLINABLE evaluateValue #-}
+{-# INLINABLE evalValue #-}
 {-|
     Evaluates @Value@ given current @State@ and @Environment@
 -}
-evaluateValue :: Environment -> State -> Value -> Integer
-evaluateValue Environment{..} State{..} value = let
-    evalValue :: Value -> Integer
-    evalValue value = case value of
+evalValue :: Environment -> State -> Value -> Integer
+evalValue Environment{..} State{..} value = go value
+  where
+    go :: Value -> Integer
+    go value = case value of
         AvailableMoney accountId -> case Map.lookup accountId accounts of
             Just x  -> Ada.toInt x
             Nothing -> 0
         Constant v -> v
-        NegValue v -> (-1) * evalValue v
-        AddValue lhs rhs -> evalValue lhs `Builtins.addInteger` evalValue rhs
-        SubValue lhs rhs -> evalValue lhs `Builtins.multiplyInteger` evalValue rhs
+        NegValue v -> (-1) * go v
+        AddValue lhs rhs -> go lhs `Builtins.addInteger` go rhs
+        SubValue lhs rhs -> go lhs `Builtins.multiplyInteger` go rhs
         ChoiceValue choiceId def -> case Map.lookup choiceId choices of
             Just x  -> x
-            Nothing -> evalValue def
+            Nothing -> go def
         SlotIntervalStart -> maybe 0 getSlot (ivFrom slotRange) -- TODO fixme
         SlotIntervalEnd -> maybe 0 getSlot (ivTo slotRange) -- TODO fixme
         UseValue valueId -> case Map.lookup valueId boundValues of
           Just x  -> x
           Nothing -> 0
-    in evalValue value
 
 
 -- | Evaluate 'Observation' to 'Bool'.
-{-# INLINABLE evaluateObservation #-}
-evaluateObservation :: Environment -> State -> Observation -> Bool
-evaluateObservation env (state@State{..}) obs = go obs
+{-# INLINABLE evalObservation #-}
+evalObservation :: Environment -> State -> Observation -> Bool
+evalObservation env (state@State{..}) obs = go obs
   where
-    evalValue = evaluateValue env state
+    goVal = evalValue env state
     go :: Observation -> Bool
     go obs = case obs of
         AndObs obs1 obs2 -> go obs1 && go obs2
         OrObs obs1 obs2 -> go obs1 || go obs2
         NotObs obs -> not (go obs)
         ChoseSomething choiceId -> isJust (Map.lookup choiceId choices)
-        ValueGE a b -> evalValue a >= evalValue b
-        ValueGT a b -> evalValue a >  evalValue b
-        ValueLT a b -> evalValue a <  evalValue b
-        ValueLE a b -> evalValue a <= evalValue b
-        ValueEQ a b -> evalValue a == evalValue b
+        ValueGE a b -> goVal a >= goVal b
+        ValueGT a b -> goVal a >  goVal b
+        ValueLT a b -> goVal a <  goVal b
+        ValueLE a b -> goVal a <= goVal b
+        ValueEQ a b -> goVal a == goVal b
         TrueObs -> True
         FalseObs -> False
 
@@ -345,14 +355,6 @@ updateMoneyInAccount :: AccountId -> Money -> Map AccountId Money -> Map Account
 updateMoneyInAccount accId money | money <= 0 = Map.delete accId
                                  | otherwise = Map.insert accId money
 
-{-| Gives the given amount of money to the given payee.
-    Returns the appropriate effect and updated accounts
--}
-{-# INLINABLE giveMoney #-}
-giveMoney :: Payee -> Money -> Map AccountId Money -> (ReduceEffect, Map AccountId Money)
-giveMoney (Party   party) money accounts = (ReduceNormalPay party money, accounts)
-giveMoney (Account accId) money accounts = (ReduceNoEffect, newAccs)
-  where newAccs = addMoneyToAccount accId money accounts
 
 -- Withdraw up to the given amount of money from an account
 -- Return the amount of money withdrawn
@@ -365,6 +367,16 @@ withdrawMoneyFromAccount accId money accounts = (withdrawnMoney, newAcc)
   withdrawnMoney = min avMoney money
   newAvMoney     = avMoney - withdrawnMoney
   newAcc         = updateMoneyInAccount accId newAvMoney accounts
+
+
+{-| Gives the given amount of money to the given payee.
+    Returns the appropriate effect and updated accounts
+-}
+{-# INLINABLE giveMoney #-}
+giveMoney :: Payee -> Money -> Map AccountId Money -> (ReduceEffect, Map AccountId Money)
+giveMoney (Party   party) money accounts = (ReduceNormalPay party money, accounts)
+giveMoney (Account accId) money accounts = (ReduceNoEffect, newAccs)
+  where newAccs = addMoneyToAccount accId money accounts
 
 
 -- | Carry a step of the contract with no inputs
@@ -386,19 +398,22 @@ reduce env state@State{..} contract = case contract of
                           else ReduceNoWarning
                 (payEffect, finalAccs) = giveMoney payee paidMoney newAccs
             in Reduced warning payEffect (state { accounts = finalAccs }) cont
-      where amountToPay = evaluateValue env state val
+      where amountToPay = evalValue env state val
     If obs cont1 cont2 -> Reduced ReduceNoWarning ReduceNoEffect state cont
-      where cont = if evaluateObservation env state obs then cont1 else cont2
+      where cont = if evalObservation env state obs then cont1 else cont2
     When _ timeout cont
+        -- if timeout in future – do not reduce
         | endSlot < timeout -> NotReduced
-        | startSlot >= timeout -> Reduced ReduceNoWarning ReduceNoEffect state cont
+        -- if timeout in the past – reduce to timeout continuation
+        | timeout <= startSlot -> Reduced ReduceNoWarning ReduceNoEffect state cont
+        -- if timeout in the slot range – issue an ambiguity error
         | otherwise -> ReduceError ReduceAmbiguousSlotInterval
       where
         startSlot = maybe 0 id (ivFrom $ slotRange env)
         endSlot = maybe 0 id (ivTo $ slotRange env)
     Let valId val cont -> Reduced warn ReduceNoEffect newState cont
       where
-        evVal = evaluateValue env state val
+        evVal = evalValue env state val
         newState = state { boundValues = Map.insert valId evVal boundValues }
         warn = case Map.lookup valId boundValues of
                   Just oldVal -> ReduceShadowing valId oldVal evVal
@@ -422,3 +437,121 @@ reduceAll env state contract = reduceAllAux env state contract [] []
             in  reduceAllAux env newState cont newWarnings newEffects
         ReduceError err -> ReduceAllError err
         NotReduced -> ReducedAll (reverse warnings) (reverse effects) state contract
+
+data ApplyError = ApplyNoMatch
+  deriving (Show)
+
+data ApplyResult = Applied State Contract
+                 | ApplyError ApplyError
+  deriving (Show)
+
+-- Apply a single Input to the contract (assumes the contract is reduced)
+applyCases :: Environment -> State -> Input -> [Case] -> ApplyResult
+applyCases env state@State{..} input cases = case (input, cases) of
+    (IDeposit accId1 party1 money, Case (Deposit accId2 party2 val) cont : _)
+      | accId1 == accId2 && party1 == party2 && Ada.toInt money == amount -> Applied newState cont
+      where
+        amount = evalValue env state val
+        newState = state { accounts = addMoneyToAccount accId1 money accounts }
+    (IChoice choId1 choice, Case (Choice choId2 bounds) cont : _)
+      | choId1 == choId2 && inBounds choice bounds -> Applied newState cont
+      where newState = state { choices = Map.insert choId1 choice choices }
+    (_, Case (Notify obs) cont : _) | evalObservation env state obs -> Applied state cont
+    (_, _ : rest) -> applyCases env state input rest
+    (_, []) -> ApplyError ApplyNoMatch
+
+apply :: Environment -> State -> Input -> Contract -> ApplyResult
+apply env state input (When cases _ _) = applyCases env state input cases
+apply _ _ _ _                          = ApplyError ApplyNoMatch
+
+
+data ApplyAllResult = AppliedAll [ReduceWarning] [ReduceEffect] State Contract
+                    | AAApplyError ApplyError
+                    | AAReduceError ReduceError
+                    deriving (Show)
+
+
+applyAll :: Environment -> State -> Contract -> [Input] -> ApplyAllResult
+applyAll env state contract inputs = applyAllAux env state contract inputs [] []
+  where
+    -- Apply a list of Inputs to the contract
+    applyAllAux :: Environment -> State -> Contract
+        -> [Input]
+        -> [ReduceWarning]
+        -> [ReduceEffect]
+        -> ApplyAllResult
+    applyAllAux env state contract inputs warnings effects = case reduceAll env state contract of
+        ReduceAllError error -> AAReduceError error
+        ReducedAll warns effs curState cont -> case inputs of
+            [] -> AppliedAll (warnings ++ warns) (effects ++ effs) curState cont
+            (input : rest) -> case apply env curState input cont of
+                Applied newState cont ->
+                    applyAllAux env newState cont rest (warnings ++ warns) (effects ++ effs)
+                ApplyError error -> AAApplyError error
+
+
+type TransactionSignatures = Map Party Bool
+
+-- | Extract necessary signatures from transaction inputs
+getSignatures :: [Input] -> Map Party Bool
+getSignatures = foldl addSig (Map.empty())
+  where
+    addSig acc (IDeposit _ p _)           = Map.insert p True acc
+    addSig acc (IChoice (ChoiceId _ p) _) = Map.insert p True acc
+    addSig acc INotify                    = acc
+
+
+data ProcessError = PEReduceError ReduceError
+                  | PEApplyError ApplyError
+  deriving (Show)
+
+data ProcessResult = Processed [ReduceWarning]
+                               [ReduceEffect]
+                               State
+                               Contract
+                   | ProcessError ProcessError
+
+
+processTransaction :: Environment -> State -> Contract -> [Input] -> PendingTx -> ProcessResult
+processTransaction env state contract inputs pendingTx =
+    case applyAll env state contract inputs of
+        AppliedAll warnings effects newState cont ->
+            Processed warnings effects newState cont
+        AAApplyError error  -> ProcessError (PEApplyError error)
+        AAReduceError error -> ProcessError (PEReduceError error)
+
+
+{-|
+    Marlowe Interpreter ValidatorScript generator.
+-}
+{-# INLINABLE mkValidator #-}
+mkValidator
+  :: PubKey -> MarloweData -> ([Input], Sealed (HashedDataScript MarloweData)) -> PendingTx -> Bool
+mkValidator creator MarloweData{..} (inputs, sealedMarloweData) PendingTx{..} = let
+    HashedDataScript (MarloweData expectedState expectedContract) _ = unseal sealedMarloweData
+    {-  Embed contract creator public key. This makes validator script unique,
+        which makes a particular contract to have a unique script address.
+        That makes it easier to watch for contract actions inside a wallet. -}
+    contractCreatorPK = creator
+
+    {-  We require Marlowe Tx to have both lower bound and upper bounds in 'SlotRange'.
+    -}
+    (minSlot, maxSlot) = case pendingTxValidRange of
+        Interval (Just l)  (Just h) -> (l, h)
+        _ -> traceH "Tx valid slot must have lower bound and upper bounds" Builtins.error ()
+
+    -- TxIn we're validating is obviously a Script TxIn.
+    PendingTxIn _ (Just (inputValidatorHash, RedeemerHash redeemerHash)) scriptInValue =
+        pendingTxIn
+
+
+    scriptInAdaValue = Ada.fromValue scriptInValue
+
+    env = Environment pendingTxValidRange
+    state = marloweState
+    in Builtins.error ()
+
+
+validatorScript :: PubKey -> ValidatorScript
+validatorScript creator = ValidatorScript $
+    $$(Ledger.compileScript [|| mkValidator ||]) `Ledger.applyScript` Ledger.lifted creator

@@ -1,0 +1,76 @@
+
+contract Escrow {
+  Alice = 0x1
+  Bob = 0x2
+  Carol = 0x3
+
+  Alice commits 450 Ada before block 10 timeout block 100 as escrow {
+      when Alice chose and (Bob chose or Carol chose) timeout block 90 {
+          if (Alice chose 1 and (Bob chose 1 or Carol chose 1))
+              or (Bob chose 1 and Carol chose 1) then
+                  Alice pays Bob escrow before 100
+          else redeem escrow
+      } else redeem escrow
+  } else redeem escrow
+}
+
+contract Escrow {
+  Alice = 0x1
+  Bob = 0x2
+  Carol = 0x3
+
+  Alice commits 450 Ada before block 10 timeout block 100 as escrow {
+      when Alice chose as AliceVote and (Bob chose as BobVote or Carol chose as CarolVote)
+        timeout block 90 {
+          if (AliceVote is 1 and (BobVote is 1 or CarolVote is 1))
+              or (Bob chose 1 and Carol chose 1) then
+                  Alice pays Bob escrow before 100 end
+          else redeem escrow
+      } else redeem escrow
+  }
+}
+
+
+contract ChristmasPresent {
+  Santa = 0x1
+  Bob = 0x2
+  presentValue = 1000 Ada
+  Christmas = '25 Dec 2018'
+  Santa commits presentValue before '15 Dec 2018' timeout Christmas as present then {
+    Santa pays Bob presentValue before Christmas
+  } else redeem present
+}
+
+===========================
+
+PubKey :: = HexAddress
+Person :: = PubKey | Identifier
+Oracle ::= 'oracle' PubKey
+Block ::= 'block' Integer | "'" ISODateTime "'"
+Currency ::= Positive ('Ada' | 'L')
+Value ::= Currency
+      | Value '+' Value
+      | Value '*' Value
+      | Value '-' Value
+      | Value '/' Value '?' Value
+      | Oracle '?' Value
+Observation ::= 'now' '<' Block
+            | Observation ('and' | 'or') Observation
+            | 'not' Observation
+            | Identifier 'chose' (Integer)? ('as' Identifier)?
+            | Identifier 'is' (Integer)
+            | 'true' | 'false'
+            | Value CmpOp Value
+CmpOp ::= '<' | '<=' | '==' | '>' | '>=' | '!='
+Let :: = Identifier '=' (Person | Oracle | Block | Value | Observation | Identifier)
+Commit ::= Person 'commits' Currency 'before' Block 'timeout' Block
+          ('as' Identifier)? Body ('else' Body)?
+Pay ::= Person 'pays' Person Value 'before' Block ('else' Body)?
+Redeem ::= 'redeem' Identifier
+If ::= 'if' Observation 'then' Contract ('else' Body)
+When ::= 'when' Observation 'timeout' Block Body ('else' Body)?
+Null ::= 'end'
+Contract ::= Commit | When | If | Redeem | Pay | Null |Contract ';' Contract
+Body :: = '{' (Let* Contract) '}' | Let* Contract
+ContractDef ::= 'contract' Identifier Body
+File ::= ContractDef*

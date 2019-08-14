@@ -45,14 +45,8 @@ library
                       GeneralizedNewtypeDeriving DeriveFunctor DeriveFoldable
                       DeriveTraversable
   exposed-modules:
-    Language.Marlowe
-    Language.Marlowe.Client
-    Language.Marlowe.Escrow
-    Language.Marlowe.Actus
-    Language.Marlowe.Pretty
-    Marlowe
+    Language.Marlowe3.Common
   other-modules:
-    Language.Marlowe.Common
   ghc-options:
     -Wall -Wnoncanonical-monad-instances
     -Wincomplete-uni-patterns -Wincomplete-record-updates
@@ -69,9 +63,9 @@ test-suite marlowe-test
     type: exitcode-stdio-1.0
     main-is: Spec.hs
     other-modules:
-      Spec.Common
-      Spec.Marlowe
-      Spec.Actus
+      -- Spec.Common
+      -- Spec.Marlowe
+      -- Spec.Actus
     build-depends:
         base >=4.9 && <5,
         containers -any,

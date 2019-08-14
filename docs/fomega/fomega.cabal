@@ -1,8 +1,10 @@
--- This file has been generated from package.yaml by hpack version 0.28.2.
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b7d37f2e5d15616c5c328230dd89daf584a0ee424665fe95c683c6778a9a920b
+-- hash: 36a69d0da6c9f254b3e9e268d73057a412fdce49ff843d9ac4e86c01bc190f79
 
 name:           fomega
 version:        0.1.0.0
@@ -14,10 +16,9 @@ maintainer:     example@example.com
 copyright:      2018 Author name here
 license:        BSD3
 build-type:     Simple
-cabal-version:  >= 1.10
 extra-source-files:
-    ChangeLog.md
     README.md
+    ChangeLog.md
 
 source-repository head
   type: git
