@@ -123,11 +123,10 @@ throwRecordmismatchError = throwError . RecordMismatch
 throwAesonError :: MonadError ResumableError m => String -> m a
 throwAesonError = throwError . AesonError
 
-runStepWriter :: (MonadWriter o m, MonadError ResumableError m) => Step i (Either String o) a -> i -> m (Maybe a)
+runStepWriter :: (MonadWriter o m) => Step i o a -> i -> m (Maybe a)
 runStepWriter s i = case runStep s i of
-    Left (Left e)  -> throwAesonError e
-    Left (Right o) -> writer (Nothing, o)
-    Right a        -> pure (Just a)
+    Left o  -> writer (Nothing, o)
+    Right a -> pure (Just a)
 
 mapStep :: (forall b. f b -> g b) -> Resumable f a -> Resumable g a
 mapStep f = \case
@@ -142,7 +141,7 @@ mapStep f = \case
 initialise
     :: ( MonadError ResumableError m
        , MonadWriter o m )
-    => Resumable (Step (Maybe i) (Either String o)) a
+    => Resumable (Step (Maybe i) o) a
     -> m (Either (OpenRecord i) (ClosedRecord i, a))
 initialise = \case
     CMap f con -> fmap (fmap f) <$> initialise con
@@ -236,7 +235,7 @@ lowerM fj fc = \case
 --   for any inputs.
 runClosed
     :: ( MonadError ResumableError m )
-    => Resumable (Step (Maybe i) (Either String o)) a
+    => Resumable (Step (Maybe i) o) a
     -> ClosedRecord i
     -> m a
 runClosed con rc =
@@ -248,11 +247,10 @@ runClosed con rc =
                         CStep con' -> do
                             let r = runStep con' evt
                             case r of
-                                Left (Left err) ->
-                                    throwAesonError err
-                                Left (Right _) ->
+                                Left _ -> 
                                     throwRecordmismatchError "ClosedLeaf, contract not finished"
-                                Right a  -> pure a
+                                Right a  -> 
+                                    pure a
                         _ -> throwRecordmismatchError "ClosedLeaf, expected CStep "
                 ClosedLeaf (FinalJSON vl) ->
                     case con of
@@ -278,7 +276,7 @@ runClosed con rc =
 runOpen
     :: ( MonadWriter o m
        , MonadError ResumableError m)
-    => Resumable (Step (Maybe i) (Either String o)) a
+    => Resumable (Step (Maybe i) o) a
     -> OpenRecord i
     -> m (Either (OpenRecord i) (ClosedRecord i, a))
 runOpen con opr =
@@ -354,7 +352,7 @@ runOpen con opr =
 
 insertAndUpdate
     :: Monoid o
-    => Resumable (Step (Maybe i) (Either String o)) a
+    => Resumable (Step (Maybe i) o) a
     -> Record i
     -> i
     -> Either ResumableError (Record i, o)
@@ -362,7 +360,7 @@ insertAndUpdate con rc e = updateRecord con (insert e rc)
 
 updateRecord
     :: Monoid o
-    => Resumable (Step (Maybe i) (Either String o)) a
+    => Resumable (Step (Maybe i) o) a
     -> Record i
     -> Either ResumableError (Record i, o)
 updateRecord con rc =
@@ -378,10 +376,14 @@ updateRecord con rc =
             $ runWriterT
             $ runOpen con cl
 
-execResumable :: Monoid o => [i] -> Resumable (Step (Maybe i) (Either String o)) a -> Either ResumableError o
+execResumable :: Monoid o => [i] -> Resumable (Step (Maybe i) o) a -> Either ResumableError o
 execResumable es = fmap snd . runResumable es
 
-runResumable :: Monoid o => [i] -> Resumable (Step (Maybe i) (Either String o)) a -> Either ResumableError (Either (OpenRecord i) (ClosedRecord i, a), o)
+runResumable 
+    :: Monoid o 
+    => [i] 
+    -> Resumable (Step (Maybe i) o) a 
+    -> Either ResumableError (Either (OpenRecord i) (ClosedRecord i, a), o)
 runResumable es con = do
     initial <- runExcept $ runWriterT (initialise con)
     foldM go initial es where

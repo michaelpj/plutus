@@ -9,6 +9,7 @@ module Language.Plutus.Contract.Effects.AwaitSlot where
 import           Data.Row
 import           Data.Row.Internal                (Subset, Unconstrained1)
 import           Data.Semigroup
+import           GHC.OverloadedLabels
 import           Prelude                          hiding (return, until, (>>=))
 
 import           Language.Plutus.Contract.Request as Req
@@ -25,6 +26,22 @@ awaitSlot :: Slot -> Contract SlotResp SlotReq Slot
 awaitSlot sl =
   let s = Just $ Min sl in
   mkRequest s $ \sl' -> if sl' >= sl then Just sl' else Nothing
+
+event
+    :: forall ρ.
+    ( HasType "slot" Slot ρ
+    , AllUniqueLabels ρ)
+    => Slot
+    -> Var ρ
+event = IsJust #slot
+
+nextSlot
+    :: forall ρ.
+    ( HasType "slot" (Maybe (Min Slot)) ρ)
+    => Rec ρ
+    -> Maybe Slot
+nextSlot r = fmap getMin (r .! #slot)
+    
 
 -- | Run a contract until the given slot has been reached.
 until

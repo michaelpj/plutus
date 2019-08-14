@@ -1,11 +1,14 @@
-{-# LANGUAGE DataKinds          #-}
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE FlexibleContexts   #-}
-{-# LANGUAGE LambdaCase         #-}
-{-# LANGUAGE TypeApplications   #-}
-{-# LANGUAGE TypeOperators      #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE DeriveAnyClass       #-}
+{-# LANGUAGE DeriveGeneric        #-}
+{-# LANGUAGE DerivingStrategies   #-}
+{-# LANGUAGE DerivingVia          #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE LambdaCase           #-}
+{-# LANGUAGE TypeApplications     #-}
+{-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Language.Plutus.Contract.Servant(
       contractServer
     , contractApp
@@ -15,54 +18,62 @@ module Language.Plutus.Contract.Servant(
     , Response(..)
     ) where
 
-import           Control.Monad.Except                  (MonadError (..), runExcept)
+import           Control.Monad.Except               (MonadError (..), runExcept)
 import           Control.Monad.Writer
-import qualified Data.Aeson                            as Aeson
+import           Data.Aeson                         (FromJSON(..))
+import qualified Data.Aeson                         as Aeson
 import           Data.Bifunctor
-import           Data.Proxy                            (Proxy (..))
-import           Data.String                           (IsString (fromString))
-import           GHC.Generics                          (Generic)
-import           Servant                               ((:<|>) ((:<|>)), (:>), Get, JSON, Post, ReqBody, err500,
-                                                        errBody)
-import           Servant.Server                        (Application, ServantErr, Server, serve)
+import           Data.Proxy                         (Proxy (..))
+import           Data.Row
+import           Data.String                        (IsString (fromString))
+import           GHC.Generics                       (Generic)
+import           Servant                            ((:<|>) ((:<|>)), (:>), Get, JSON, Post, ReqBody, err500, errBody)
+import           Servant.Server                     (Application, ServantErr, Server, serve)
 
 import           Language.Plutus.Contract
-import           Language.Plutus.Contract.Effects      (ContractEffects)
-import           Language.Plutus.Contract.Prompt.Event (Event)
-import           Language.Plutus.Contract.Prompt.Hooks (Hooks)
 import           Language.Plutus.Contract.Record
-import           Language.Plutus.Contract.Resumable    (ResumableError)
-import qualified Language.Plutus.Contract.Resumable    as Resumable
+import           Language.Plutus.Contract.Request   (Event, Hooks, applyEndo)
+import           Language.Plutus.Contract.Resumable (ResumableError)
+import qualified Language.Plutus.Contract.Resumable as Resumable
+import           Language.Plutus.Contract.Schema    (JsonRow (..))
 
-newtype State = State { record :: Record Event }
-    deriving stock (Eq, Show, Generic)
-    deriving newtype (Aeson.FromJSON, Aeson.ToJSON)
+newtype State e = State { record :: Record e }
+    deriving stock (Generic)
 
-data Request = Request
-    { oldState :: State
-    , event    :: Event
+instance (Forall ρ FromJSON, AllUniqueLabels ρ) => FromJSON (State (Event ρ)) where
+    parseJSON v = fmap (State . fmap (fmap unJsonRow)) (parseJSON v)
+
+instance Forall ρ Eq => Eq (State (Event ρ))
+
+data Request ρ = Request
+    { oldState :: State (Event ρ)
+    , event    :: Event ρ
     }
-    deriving stock (Eq, Show, Generic)
-    deriving anyclass (Aeson.FromJSON, Aeson.ToJSON)
+    deriving stock (Generic)
 
-data Response = Response
-    { newState :: State
-    , hooks    :: Hooks
+data Response ρ σ = Response
+    { newState :: State (Event ρ)
+    , hooks    :: Hooks σ
     }
-    deriving stock (Eq, Show, Generic)
-    deriving anyclass (Aeson.FromJSON, Aeson.ToJSON)
 
-type ContractAPI =
-       "initialise" :> Get '[JSON] Response
-  :<|> "run" :> ReqBody '[JSON] Request :> Post '[JSON] Response
+instance (Forall σ Eq, Forall ρ Eq) => Eq (Response ρ σ)
+
+type ContractAPI ρ σ =
+       "initialise" :> Get '[JSON] (Response ρ σ)
+  :<|> "run" :> ReqBody '[JSON] (Request ρ) :> Post '[JSON] (Response ρ σ)
 
 -- | Serve a 'PlutusContract' via the contract API.
-contractServer :: Contract (ContractEffects '[]) () -> Server ContractAPI
+contractServer 
+    :: forall ρ σ. 
+       ( AllUniqueLabels ρ
+       , Forall σ Monoid )
+    => Contract ρ σ ()
+    -> Server (ContractAPI ρ σ)
 contractServer con = initialise :<|> run where
     initialise = servantResp (initialResponse con)
     run req = servantResp (runUpdate con req)
 
-servantResp :: MonadError ServantErr m => Either ResumableError Response -> m Response
+servantResp :: MonadError ServantErr m => Either ResumableError (Response ρ σ) -> m (Response ρ σ)
 servantResp = \case
         Left err ->
             let bd = "'insertAndUpdate' failed. " in
@@ -70,18 +81,25 @@ servantResp = \case
         Right r -> pure r
 
 -- | A servant 'Application' that serves a Plutus contract
-contractApp :: Contract (ContractEffects '[]) () -> Application
-contractApp = serve (Proxy @ContractAPI) . contractServer
+contractApp 
+    :: forall ρ σ. 
+       ( AllUniqueLabels ρ
+       , Forall σ Monoid )
+    => Contract ρ σ () -> Application
+contractApp = serve (Proxy @(ContractAPI ρ σ)) . contractServer
 
-runUpdate :: Contract (ContractEffects '[]) () -> Request -> Either ResumableError Response
+runUpdate 
+    :: forall ρ σ.
+       ( AllUniqueLabels ρ
+       , Forall σ Monoid)
+    => Contract ρ σ () -> Request ρ -> Either ResumableError (Response ρ σ)
 runUpdate con (Request o e) =
     (\(r, h) -> Response (State r) h)
-    <$> Resumable.insertAndUpdate (convertContract con) (record o) e
+    <$> Resumable.insertAndUpdate (Resumable.mapStep (Resumable.mapO applyEndo) con) (record o) e
 
-initialResponse :: Contract (ContractEffects '[]) () -> Either ResumableError Response
+initialResponse :: Contract ρ σ () -> Either ResumableError (Response ρ σ)
 initialResponse =
     second (uncurry Response . first (State . fmap fst))
     . runExcept
     . runWriterT
     . Resumable.initialise
-    . convertContract

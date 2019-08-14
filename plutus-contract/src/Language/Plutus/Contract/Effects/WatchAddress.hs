@@ -1,9 +1,14 @@
+{-# LANGUAGE MonoLocalBinds   #-}
 {-# LANGUAGE DataKinds        #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators    #-}
 module Language.Plutus.Contract.Effects.WatchAddress where
 
 import           Control.Lens                               (at, (^.))
+import           Data.Map                                   (Map)
+import qualified Data.Map                                   as Map
 import           Data.Maybe                                 (fromMaybe)
 import           Data.Row
 import           Data.Set                                   (Set)
@@ -24,8 +29,8 @@ type AddrResp = "address change" .== (Address, Tx)
 -- | Wait for the next transaction that changes an address.
 nextTransactionAt :: Address -> Contract AddrResp AddrReq Tx
 nextTransactionAt addr =
-  let s = Set.singleton addr in
-  mkRequest s $ \(addr', tx) -> if addr == addr' then Just tx else Nothing
+    let s = Set.singleton addr in
+    mkRequest s $ \(addr', tx) -> if addr == addr' then Just tx else Nothing
 
 -- | Watch an address until the given slot, then return all known outputs
 --   at the address.
@@ -43,3 +48,22 @@ fundsAtAddressGt addr' vl = loopM go mempty where
             presentVal = fromMaybe mempty (AM.values cur' ^. at addr')
         if presentVal `V.gt` vl
         then pure (Right cur') else pure (Left cur')
+
+events
+    :: forall ρ.
+    ( HasType "address change" (Address, Tx) ρ
+    , AllUniqueLabels ρ)
+    => AddressMap
+    -> Tx
+    -> Map Address (Var ρ)
+events utxo tx =
+    Map.fromSet
+        (\addr -> IsJust (Label @"address change") (addr, tx))
+        (AM.addressesTouched utxo tx)
+
+addresses
+    :: forall ρ.
+    ( HasType "interesting addresses" (Set Address) ρ)
+    => Rec ρ
+    -> Set Address
+addresses r = r .! Label @"interesting addresses"

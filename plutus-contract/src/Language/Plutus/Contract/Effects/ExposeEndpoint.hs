@@ -1,14 +1,18 @@
-{-# LANGUAGE DataKinds        #-}
-{-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE TypeOperators    #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE OverloadedLabels    #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE TypeOperators       #-}
 module Language.Plutus.Contract.Effects.ExposeEndpoint where
 
 import           Data.Proxy
 import           Data.Row
 import           Data.Set                         (Set)
 import qualified Data.Set                         as Set
-import           GHC.TypeLits                     (symbolVal)
+import           GHC.TypeLits                     (Symbol, symbolVal)
 
 import           Language.Plutus.Contract.Request as Req
 
@@ -23,3 +27,14 @@ endpoint :: forall s a. (KnownSymbol s) => Contract (EndpointResp s a) (Endpoint
 endpoint = mkRequest s Just where
   s = Set.singleton $ EndpointDescription $ symbolVal (Proxy @s)
 
+event
+  :: forall (s :: Symbol) ρ a. (KnownSymbol s, HasType s a ρ, AllUniqueLabels ρ)
+  => a
+  -> Var ρ
+event = IsJust (Label @s)
+
+isActive
+  :: forall (s :: Symbol) ρ. (KnownSymbol s, HasType s (Set EndpointDescription) ρ)
+  => Rec ρ
+  -> Bool
+isActive r = not $ Set.null $ r .! Label @s

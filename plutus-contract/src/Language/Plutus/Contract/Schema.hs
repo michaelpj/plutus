@@ -16,7 +16,9 @@
 module Language.Plutus.Contract.Schema(
   Schema(..)
   , HasSchema(..)
+  , JsonRow(..)
   , schemaMap
+  , emptyRec
   ) where
 
 import           Data.Aeson                       (FromJSON, ToJSON, (.:))
@@ -28,13 +30,12 @@ import           Data.Map                         (Map)
 import qualified Data.Map                         as Map
 import           Data.Proxy                       (Proxy (..))
 import           Data.Row
-import           Data.Row.Internal                (Subset, Unconstrained1)
+import           Data.Row.Internal                (Unconstrained1)
 import qualified Data.Row.Records                 as Records
 import qualified Data.Row.Variants                as Variants
 import           Data.Text                        (Text)
 import           GHC.Generics                     (Generic)
 import           GHC.TypeLits                     (symbolVal)
-import           Language.Plutus.Contract.Request hiding ((>>=))
 
 newtype JsonRow v ρ = JsonRow { unJsonRow :: v ρ }
 
@@ -47,7 +48,7 @@ instance (AllUniqueLabels ρ, Forall ρ FromJSON) => FromJSON (JsonRow Var ρ) w
 emptyRec :: forall ρ. (Forall ρ Monoid, AllUniqueLabels ρ) => Rec ρ
 emptyRec = Records.default' @Monoid @ρ mempty
 
-newtype Schema = Schema String
+newtype Schema = Schema String -- Dummy schema TODO: replace with real schema
   deriving (Eq, Ord, Show, Generic)
 
 class HasSchema a where
