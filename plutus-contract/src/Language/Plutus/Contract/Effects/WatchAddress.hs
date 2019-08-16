@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds  #-}
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds   #-}
@@ -26,6 +27,9 @@ import           Language.Plutus.Contract.Rows.Instances    (Event (..), Hooks (
 
 type AddrReq = "interesting addresses" .== Set Address
 type AddrResp = "address change" .== (Address, Tx)
+type AddressPrompt ρ σ =
+    ( HasType "interesting addresses" (Set Address) σ
+    , HasType "address change" (Address, Tx) ρ)
 
 -- | Wait for the next transaction that changes an address.
 nextTransactionAt :: Address -> Contract AddrResp AddrReq Tx

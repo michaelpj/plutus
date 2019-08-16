@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds  #-}
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds   #-}
@@ -14,6 +15,9 @@ import           Language.Plutus.Contract.Tx             (UnbalancedTx)
 
 type TxReq = ("tx" .== [UnbalancedTx])
 type TxResp = ("tx" .== ())
+type TxPrompt ρ σ =
+    ( HasType "tx" () ρ
+    , HasType "tx" [UnbalancedTx] σ)
 
 --  | Send an unbalanced transaction to the wallet.
 writeTx :: UnbalancedTx -> Contract TxResp TxReq ()

@@ -27,9 +27,11 @@ library
     exposed-modules:
         Language.PlutusTx.Coordination.Contracts
         Language.PlutusTx.Coordination.Contracts.CrowdFunding
+        Language.PlutusTx.Coordination.Contracts.Crowdfunding.Types
         Language.PlutusTx.Coordination.Contracts.Currency
         Language.PlutusTx.Coordination.Contracts.Future
         Language.PlutusTx.Coordination.Contracts.Game
+        Language.PlutusTx.Coordination.Contracts.Game.Types
         Language.PlutusTx.Coordination.Contracts.GameStateMachine
         Language.PlutusTx.Coordination.Contracts.MultiSig
         Language.PlutusTx.Coordination.Contracts.MultiSigStateMachine

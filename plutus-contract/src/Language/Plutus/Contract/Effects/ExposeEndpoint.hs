@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ConstraintKinds     #-}
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE OverloadedLabels    #-}
@@ -22,6 +23,9 @@ newtype EndpointDescription = EndpointDescription String
 
 type EndpointReq s = s .== Set EndpointDescription
 type EndpointResp s a = s .== a
+type HasEndpoint s a ρ σ =
+    ( HasType s (Set EndpointDescription) σ
+    , HasType s a ρ)
 
 -- | Expose an endpoint, return the data that was entered
 endpoint :: forall s a. (KnownSymbol s) => Contract (EndpointResp s a) (EndpointReq s) a

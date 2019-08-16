@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds  #-}
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLabels #-}
@@ -10,7 +11,7 @@ import           Data.Row
 import           Data.Row.Internal                       (Subset, Unconstrained1)
 import           Data.Semigroup
 import           GHC.OverloadedLabels
-import           Prelude                                 hiding (return, until, (>>=))
+import           Prelude                                 hiding (Monad (..), until)
 
 import           Language.Plutus.Contract.Request        as Req
 import           Language.Plutus.Contract.Rows.Instances (Event (..), Hooks (..))
@@ -20,6 +21,9 @@ import           Ledger.Slot                             (Slot)
 
 type SlotReq = ("slot" .== Maybe (Min Slot))
 type SlotResp = ("slot" .== Slot)
+type SlotPrompt ρ σ =
+  ( HasType "slot" (Maybe (Min Slot)) σ
+  , HasType "slot" (Slot) ρ)
 
 -- | A contract that waits until the slot is reached, then returns the
 --   current slot.

@@ -56,7 +56,7 @@ import qualified Data.Sequence                                   as Seq
 import           Data.Set                                        (Set)
 import qualified Data.Set                                        as Set
 
-import           Language.Plutus.Contract                        (Contract)
+import           Language.Plutus.Contract                        (AddressPrompt, Contract, TxPrompt)
 import           Language.Plutus.Contract.Resumable              (ResumableError)
 import qualified Language.Plutus.Contract.Resumable              as State
 import           Language.Plutus.Contract.Tx                     (UnbalancedTx)
@@ -273,9 +273,8 @@ addBlocks i =
 --   and inform all wallets about new transactions
 handleBlockchainEvents
     :: ( MonadEmulator m
-       , HasType "address change" (Address, Tx) ρ
-       , HasType "tx" [UnbalancedTx] σ
-       , HasType "tx" () ρ
+       , AddressPrompt ρ σ
+       , TxPrompt ρ σ
        , AllUniqueLabels σ
        , Forall σ Monoid
        , Forall σ Semigroup
@@ -290,7 +289,7 @@ handleBlockchainEvents wllt = do
 -- | Notify the wallet of all interesting addresses
 notifyInterestingAddresses
     :: ( MonadEmulator m
-       , HasType "interesting addresses" (Set Address) σ
+       , AddressPrompt ρ σ
        , AllUniqueLabels σ
        , Forall σ Monoid
        , Forall σ Semigroup
