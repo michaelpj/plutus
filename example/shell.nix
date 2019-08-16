@@ -20,8 +20,7 @@ let
   # Install stable HIE for GHC 8.6.5
   hies = all-hies.selection { selector = p: { inherit (p) ghc865; }; };
 in
-with pkgs; stdenv.mkDerivation {
-  name = "example-project-shell";
+with pkgs; mkShell {
   buildInputs = [
     ghc 
     openssl
@@ -29,5 +28,4 @@ with pkgs; stdenv.mkDerivation {
     cabal-install
     vscode
   ];
-
 }

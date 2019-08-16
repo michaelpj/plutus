@@ -1,21 +1,8 @@
 # Plutus example project
 
-## NixOS
-
-This directory also includes a `configuration.nix` file which can be used in a NixOS installation. This makes sure the correct system libraries are available as well as adding the Haskell IDE Engine cachix nix cache. This `configuration.nix` file can be used on a clean NixOS installation and everything will just work.
-
-You can use this to easily setup a Virtual Box VM:
-
-1. download the VirtualBox appliance from https://nixos.org/nixos/download.html
-2. import the appliance
-3. before starting the VM make sure you give it plenty of memory, 6Gb should be plenty
-4. start the machine
-5. run `sudo -i` with password `demo`
-6. replace `/etc/nixos/configuration.nix` with the file in this directory
-7. run `nixos-rebuild switch`
-8. run `exit` to get back to the demo user shell
-
 ## Getting started
+
+The following should work on any machine that has nix installed however if you wish to avoid any problems you can setup a NixOS virtual machine, see the [NixOS section](#nixos) for more info.
 
 ```bash
 # The plutus project contains this example project
@@ -45,3 +32,18 @@ code --install-extension alanz.vscode-hie-server
 # You must run `code` from within the nix shell in order for Haskell IDE Engine to work correctly
 code
 ```
+
+## NixOS
+
+This directory also includes a `configuration.nix` file which can be used in a NixOS installation. This makes sure the correct system libraries are available as well as adding the Haskell IDE Engine cachix nix cache. This `configuration.nix` file can be used on a clean NixOS installation and everything will just work.
+
+You can use this to easily setup a Virtual Box VM:
+
+1. download the VirtualBox appliance from https://nixos.org/nixos/download.html
+2. import the appliance
+3. before starting the VM make sure you give it plenty of memory, 6Gb should be plenty
+4. start the machine
+5. run `sudo -i` with password `demo`
+6. replace `/etc/nixos/configuration.nix` with the file in this directory
+7. run `nixos-rebuild switch`
+8. run `exit` to get back to the demo user shell

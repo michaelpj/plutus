@@ -13,7 +13,6 @@ license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
-    ChangeLog.md
 
 source-repository head
   type: git
@@ -23,7 +22,6 @@ library
   exposed-modules:
       Lib
   other-modules:
-      Paths_example
   hs-source-dirs:
       src
   build-depends:
@@ -34,7 +32,6 @@ library
 executable example-exe
   main-is: Main.hs
   other-modules:
-      Paths_example
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
@@ -47,7 +44,6 @@ test-suite example-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_example
   hs-source-dirs:
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
