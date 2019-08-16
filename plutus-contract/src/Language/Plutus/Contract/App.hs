@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DataKinds #-}
 -- | Run a Plutus contract as a servant application.
 module Language.Plutus.Contract.App(
@@ -8,26 +9,44 @@ module Language.Plutus.Contract.App(
 
 import           Control.Monad                    (foldM_)
 import qualified Data.Aeson                       as Aeson
+import           Data.Aeson                       (ToJSON, FromJSON)
 import qualified Data.ByteString.Lazy.Char8       as BSL
 import           Data.Foldable                    (traverse_)
 import qualified Data.Map                         as Map
+import           Data.Row
 import           Language.Plutus.Contract
-import           Language.Plutus.Contract.Effects (ContractEffects)
 import           Language.Plutus.Contract.Servant (Request (..), Response (..), contractApp, initialResponse, runUpdate)
 import           Language.Plutus.Contract.Trace   (ContractTrace, EmulatorAction, execTrace)
 import qualified Network.Wai.Handler.Warp         as Warp
 import           System.Environment               (getArgs)
 import           Wallet.Emulator                  (Wallet (..))
 
+import Language.Plutus.Contract.Rows.Instances    ()
+
 -- | Run the contract as an HTTP server with servant/warp
-run :: Contract (ContractEffects '[]) () -> IO ()
+run 
+    :: forall ρ σ. 
+       ( AllUniqueLabels ρ
+       , AllUniqueLabels σ
+       , Forall σ Monoid
+       , Forall σ ToJSON
+       , Forall ρ FromJSON
+       , Forall ρ ToJSON )
+    => Contract ρ σ () -> IO ()
 run st = runWithTraces st []
 
 -- | Run the contract as an HTTP server with servant/warp, and
 --   print the 'Request' values for the given traces.
 runWithTraces
-    :: Contract (ContractEffects '[]) ()
-    -> [(String, (Wallet, ContractTrace EmulatorAction () ()))]
+    :: forall ρ σ. 
+       ( AllUniqueLabels ρ
+       , AllUniqueLabels σ
+       , Forall σ Monoid
+       , Forall σ ToJSON
+       , Forall ρ FromJSON
+       , Forall ρ ToJSON )
+    => Contract ρ σ ()
+    -> [(String, (Wallet, ContractTrace ρ σ EmulatorAction () ()))]
     -> IO ()
 runWithTraces con traces = do
     let mp = Map.fromList traces
@@ -48,7 +67,15 @@ printTracesAndExit mp = do
 
 -- | Run a trace on the mockchain and print the 'Request' JSON objects
 --   for each intermediate state to stdout.
-printTrace :: Contract (ContractEffects '[]) () -> Wallet -> ContractTrace EmulatorAction () () -> IO ()
+printTrace 
+    :: forall ρ σ. 
+       ( AllUniqueLabels σ
+       , Forall σ Monoid
+       , Forall ρ ToJSON )
+    => Contract ρ σ () 
+    -> Wallet 
+    -> ContractTrace ρ σ EmulatorAction () () 
+    -> IO ()
 printTrace con wllt ctr = do
     let events = Map.findWithDefault [] wllt $ execTrace con ctr
         go previous evt = do

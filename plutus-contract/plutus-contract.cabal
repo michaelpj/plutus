@@ -43,6 +43,10 @@ library
     exposed-modules:
         Language.Plutus.Contract
         Language.Plutus.Contract.App
+        Language.Plutus.Contract.Effects.AwaitSlot
+        Language.Plutus.Contract.Effects.ExposeEndpoint
+        Language.Plutus.Contract.Effects.WatchAddress
+        Language.Plutus.Contract.Effects.WriteTx
         Language.Plutus.Contract.Request
         Language.Plutus.Contract.Test
         Language.Plutus.Contract.Trace

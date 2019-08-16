@@ -20,8 +20,7 @@ module Language.Plutus.Contract.Servant(
 
 import           Control.Monad.Except               (MonadError (..), runExcept)
 import           Control.Monad.Writer
-import           Data.Aeson                         (FromJSON(..))
-import qualified Data.Aeson                         as Aeson
+import           Data.Aeson                         (ToJSON, FromJSON)
 import           Data.Bifunctor
 import           Data.Proxy                         (Proxy (..))
 import           Data.Row
@@ -35,15 +34,12 @@ import           Language.Plutus.Contract.Record
 import           Language.Plutus.Contract.Request   (Event, Hooks, applyEndo)
 import           Language.Plutus.Contract.Resumable (ResumableError)
 import qualified Language.Plutus.Contract.Resumable as Resumable
-import           Language.Plutus.Contract.Schema    (JsonRow (..))
+
+import Language.Plutus.Contract.Rows.Instances()
 
 newtype State e = State { record :: Record e }
-    deriving stock (Generic)
-
-instance (Forall ρ FromJSON, AllUniqueLabels ρ) => FromJSON (State (Event ρ)) where
-    parseJSON v = fmap (State . fmap (fmap unJsonRow)) (parseJSON v)
-
-instance Forall ρ Eq => Eq (State (Event ρ))
+    deriving stock (Generic, Eq)
+    deriving newtype (ToJSON, FromJSON)
 
 data Request ρ = Request
     { oldState :: State (Event ρ)
@@ -51,12 +47,17 @@ data Request ρ = Request
     }
     deriving stock (Generic)
 
+instance (AllUniqueLabels ρ, Forall ρ FromJSON) => FromJSON (Request ρ)
+instance (Forall ρ ToJSON) => ToJSON (Request ρ)
+
 data Response ρ σ = Response
     { newState :: State (Event ρ)
     , hooks    :: Hooks σ
     }
+    deriving stock (Generic)
 
-instance (Forall σ Eq, Forall ρ Eq) => Eq (Response ρ σ)
+instance (AllUniqueLabels ρ, AllUniqueLabels σ, Forall ρ FromJSON, Forall σ FromJSON) => FromJSON (Response ρ σ)
+instance (Forall ρ ToJSON, Forall σ ToJSON) => ToJSON (Response ρ σ)
 
 type ContractAPI ρ σ =
        "initialise" :> Get '[JSON] (Response ρ σ)
@@ -65,7 +66,7 @@ type ContractAPI ρ σ =
 -- | Serve a 'PlutusContract' via the contract API.
 contractServer 
     :: forall ρ σ. 
-       ( AllUniqueLabels ρ
+       ( AllUniqueLabels σ
        , Forall σ Monoid )
     => Contract ρ σ ()
     -> Server (ContractAPI ρ σ)
@@ -84,22 +85,34 @@ servantResp = \case
 contractApp 
     :: forall ρ σ. 
        ( AllUniqueLabels ρ
-       , Forall σ Monoid )
+       , AllUniqueLabels σ
+       , Forall σ Monoid
+       , Forall σ ToJSON
+       , Forall ρ FromJSON
+       , Forall ρ ToJSON )
     => Contract ρ σ () -> Application
 contractApp = serve (Proxy @(ContractAPI ρ σ)) . contractServer
 
 runUpdate 
     :: forall ρ σ.
-       ( AllUniqueLabels ρ
+       (AllUniqueLabels σ
        , Forall σ Monoid)
     => Contract ρ σ () -> Request ρ -> Either ResumableError (Response ρ σ)
 runUpdate con (Request o e) =
-    (\(r, h) -> Response (State r) h)
-    <$> Resumable.insertAndUpdate (Resumable.mapStep (Resumable.mapO applyEndo) con) (record o) e
+    ((\(r, h) -> Response (State r) h) . fmap applyEndo)
+    <$> Resumable.insertAndUpdate con (record o) e
 
-initialResponse :: Contract ρ σ () -> Either ResumableError (Response ρ σ)
+initialResponse 
+    :: forall ρ σ.
+       ( AllUniqueLabels σ
+       , Forall σ Monoid
+       )
+    => Contract ρ σ ()
+    -> Either ResumableError (Response ρ σ)
 initialResponse =
-    second (uncurry Response . first (State . fmap fst))
+    fmap (uncurry Response)
+    . fmap (fmap applyEndo)
+    . fmap (first (State . fmap fst))
     . runExcept
-    . runWriterT
+    . runWriterT 
     . Resumable.initialise
