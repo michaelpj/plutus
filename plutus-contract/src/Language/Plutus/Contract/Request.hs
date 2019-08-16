@@ -15,46 +15,37 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Language.Plutus.Contract.Request where
 
-import qualified Data.Aeson                         as Aeson
+import qualified Control.Applicative                     as Applicative
+import qualified Data.Aeson                              as Aeson
 import           Data.Row
-import           Data.Row.Internal                  (Subset, Unconstrained1)
-import qualified Data.Row.Records                   as Records
-import qualified Data.Row.Variants                  as Variants
-import           Data.Semigroup
+import           Data.Row.Internal                       (Subset, Unconstrained1)
+import qualified Data.Row.Records                        as Records
+import qualified Data.Row.Variants                       as Variants
 import           Language.Plutus.Contract.Resumable
-import qualified Language.Plutus.Contract.Util      as Util
+import           Language.Plutus.Contract.Rows.Instances (Event (..), Hooks (..), generalise)
+import qualified Language.Plutus.Contract.Util           as Util
 
-import           Prelude                            hiding (return, (>>=))
+import           Prelude                                 hiding (return, (>>=))
 import qualified Prelude
 
 -- | @Contract ρ σ a@ is a contract that expects input events of type @ρ@ and produces
 --   requests (describing the acceptable input) of type @σ@. The two type parameters
 --   are 'Data.Row.Row' rows
 --
-type Contract (ρ :: Row *) (σ :: Row *) a = Resumable (Step (Maybe (Event ρ)) (Endo (Hooks σ))) a
+type Contract (ρ :: Row *) (σ :: Row *) a = Resumable (Step (Maybe (Event ρ)) (Hooks σ)) a
 
-type Event ρ = Var ρ
-type Hooks σ = Rec σ
-
-convertContract 
-  :: ( Forall σ Monoid
-     , AllUniqueLabels σ)
-  => Contract ρ σ a
-  -> Resumable (Step (Maybe (Var ρ)) (Rec σ)) a
-convertContract = mapStep (mapO applyEndo)
-
-applyEndo
-  :: ( Forall σ Monoid
-     , AllUniqueLabels σ)
-  => Endo (Rec σ)
-  -> Rec σ
-applyEndo e = appEndo e emptyRec
-
-mkRequest :: forall sReq sResp req resp a. (KnownSymbol sReq, KnownSymbol sResp, Semigroup req) => req -> (resp -> Maybe a) -> Contract (sResp .== resp) (sReq .== req) a
+mkRequest
+  :: forall sReq sResp req resp a.
+     ( KnownSymbol sReq
+     , KnownSymbol sResp
+     )
+    => req
+    -> (resp -> Maybe a)
+    -> Contract (sResp .== resp) (sReq .== req) a
 mkRequest out check = CStep (Step go) where
-  upd = Left $ Endo $ \r -> Records.update (Label @sReq) (r .! Label @sReq <> out) r
+  upd = Left $ Hooks $ (Label @sReq) .==  out
   go Nothing = upd
-  go (Just rho) = case trial rho (Label @sResp) of
+  go (Just (Event rho)) = case trial rho (Label @sResp) of
     Left resp -> maybe upd Right (check resp)
     _         -> upd
 
@@ -76,10 +67,10 @@ type Join ρ₁ σ₁ ρ₂ σ₂ =
 
 joinBoth :: forall ρ₁ σ₁ ρ₂ σ₂ a b. Join ρ₁ σ₁ ρ₂ σ₂ => Contract ρ₁ σ₁ a -> Contract ρ₂ σ₂ b -> (Contract (ρ₁ .\/ ρ₂) (σ₁ .\/ σ₂) a, Contract (ρ₁ .\/ ρ₂) (σ₁ .\/ σ₂) b)
 joinBoth l r = (mapStep (mapO s1 . mapI g1) l, mapStep (mapO s2 . mapI g2) r) where
-  g1 s = s Prelude.>>= Variants.restrict
-  g2 s = s Prelude.>>= Variants.restrict
-  s1 (Endo f) = Endo $ \b -> (\b' -> b' .// emptyRec @(σ₁ .\/ σ₂)) $ f $ Records.restrict b
-  s2 (Endo f) = Endo $ \b -> (\b' -> b' .// emptyRec @(σ₁ .\/ σ₂)) $ f $ Records.restrict b
+  g1 s = s Prelude.>>= fmap Event . Variants.restrict . unEvent
+  g2 s = s Prelude.>>= fmap Event . Variants.restrict . unEvent
+  s1 = generalise @σ₁ @(σ₁ .\/ σ₂)
+  s2 = generalise @σ₂ @(σ₁ .\/ σ₂)
 
 cMap :: forall ρ σ a b. (a -> b) -> Contract ρ σ a -> Contract ρ σ b
 cMap = CMap
@@ -101,16 +92,23 @@ cEmpty = CEmpty
 
 cBind :: forall ρ₁ σ₁ ρ₂ σ₂ a b. (Join ρ₁ σ₁ ρ₂ σ₂) => Contract ρ₁ σ₁ a -> (a -> Contract ρ₂ σ₂ b) -> Contract (ρ₁ .\/ ρ₂) (σ₁ .\/ σ₂) b
 cBind l f = CBind (mapStep (mapO s1 . mapI g1) l) (fmap (mapStep (mapO s2 . mapI g2)) f) where
-  g1 s = s Prelude.>>= Variants.restrict
-  g2 s = s Prelude.>>= Variants.restrict
-  s1 (Endo f') = Endo $ \b -> (\b' -> b' .// emptyRec @(σ₁ .\/ σ₂)) $ f' $ Records.restrict b
-  s2 (Endo f') = Endo $ \b -> (\b' -> b' .// emptyRec @(σ₁ .\/ σ₂)) $ f' $ Records.restrict b
+  g1 s = s Prelude.>>= fmap Event . Variants.restrict . unEvent
+  g2 s = s Prelude.>>= fmap Event . Variants.restrict . unEvent
+  s1 = generalise @σ₁ @(σ₁ .\/ σ₂)
+  s2 = generalise @σ₂ @(σ₁ .\/ σ₂)
 
 (>>=) :: forall ρ₁ σ₁ ρ₂ σ₂ a b. ( Join ρ₁ σ₁ ρ₂ σ₂) => Contract ρ₁ σ₁ a -> (a -> Contract ρ₂ σ₂ b) -> Contract (ρ₁ .\/ ρ₂) (σ₁ .\/ σ₂) b
 (>>=) = cBind
 
 (>>) :: forall ρ₁ σ₁ ρ₂ σ₂ a b. ( Join ρ₁ σ₁ ρ₂ σ₂) => Contract ρ₁ σ₁ a -> Contract ρ₂ σ₂ b -> Contract (ρ₁ .\/ ρ₂) (σ₁ .\/ σ₂) b
 l >> r = l >>= const r
+
+select :: forall ρ₁ σ₁ ρ₂ σ₂ a. ( Join ρ₁ σ₁ ρ₂ σ₂) => Contract ρ₁ σ₁ a -> Contract ρ₂ σ₂ a -> Contract (ρ₁ .\/ ρ₂) (σ₁ .\/ σ₂) a
+select l r = l' Applicative.<|> r' where
+  (l', r') = joinBoth l r
+
+(<|>) :: forall ρ₁ σ₁ ρ₂ σ₂ a. ( Join ρ₁ σ₁ ρ₂ σ₂) => Contract ρ₁ σ₁ a -> Contract ρ₂ σ₂ a -> Contract (ρ₁ .\/ ρ₂) (σ₁ .\/ σ₂) a
+l <|> r = select l r
 
 selectEither :: forall ρ₁ σ₁ ρ₂ σ₂ a b. ( Join ρ₁ σ₁ ρ₂ σ₂) => Contract ρ₁ σ₁ a -> Contract ρ₂ σ₂ b -> Contract (ρ₁ .\/ ρ₂) (σ₁ .\/ σ₂) (Either a b)
 selectEither l r = Util.selectEither l' r' where
@@ -123,7 +121,7 @@ both l r = Util.both l' r' where
 return :: forall a. a -> Contract Empty Empty a
 return = CStep . Prelude.return
 
-cStep :: forall ρ σ a. Step (Maybe (Var ρ)) (Endo (Rec σ)) a -> Contract ρ σ a
+cStep :: forall ρ σ a. Step (Maybe (Event ρ)) (Hooks σ) a -> Contract ρ σ a
 cStep = CStep
 
 cJSONCheckpoint :: forall ρ σ a. (Aeson.FromJSON a, Aeson.ToJSON a) => Contract ρ σ a -> Contract ρ σ a

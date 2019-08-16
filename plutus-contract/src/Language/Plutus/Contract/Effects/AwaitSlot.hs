@@ -7,15 +7,16 @@
 module Language.Plutus.Contract.Effects.AwaitSlot where
 
 import           Data.Row
-import           Data.Row.Internal                (Subset, Unconstrained1)
+import           Data.Row.Internal                       (Subset, Unconstrained1)
 import           Data.Semigroup
 import           GHC.OverloadedLabels
-import           Prelude                          hiding (return, until, (>>=))
+import           Prelude                                 hiding (return, until, (>>=))
 
-import           Language.Plutus.Contract.Request as Req
-import           Language.Plutus.Contract.Util    (foldMaybe)
+import           Language.Plutus.Contract.Request        as Req
+import           Language.Plutus.Contract.Rows.Instances (Event (..), Hooks (..))
+import           Language.Plutus.Contract.Util           (foldMaybe)
 
-import           Ledger.Slot                      (Slot)
+import           Ledger.Slot                             (Slot)
 
 type SlotReq = ("slot" .== Maybe (Min Slot))
 type SlotResp = ("slot" .== Slot)
@@ -32,16 +33,16 @@ event
     ( HasType "slot" Slot ρ
     , AllUniqueLabels ρ)
     => Slot
-    -> Var ρ
-event = IsJust #slot
+    -> Event ρ
+event = Event . IsJust #slot
 
 nextSlot
     :: forall ρ.
     ( HasType "slot" (Maybe (Min Slot)) ρ)
-    => Rec ρ
+    => Hooks ρ
     -> Maybe Slot
-nextSlot r = fmap getMin (r .! #slot)
-    
+nextSlot (Hooks r) = fmap getMin (r .! #slot)
+
 
 -- | Run a contract until the given slot has been reached.
 until

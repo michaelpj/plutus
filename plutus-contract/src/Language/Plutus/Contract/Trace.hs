@@ -2,10 +2,10 @@
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE KindSignatures      #-}
+{-# LANGUAGE MonoLocalBinds      #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TupleSections       #-}
 {-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE MonoLocalBinds      #-}
 -- | A trace is a sequence of actions by simulated wallets that can be run
 --   on the mockchain. This module contains the functions needed to build
 --   traces.
@@ -57,7 +57,6 @@ import           Data.Set                                        (Set)
 import qualified Data.Set                                        as Set
 
 import           Language.Plutus.Contract                        (Contract)
-import           Language.Plutus.Contract.Request                (applyEndo, emptyRec)
 import           Language.Plutus.Contract.Resumable              (ResumableError)
 import qualified Language.Plutus.Contract.Resumable              as State
 import           Language.Plutus.Contract.Tx                     (UnbalancedTx)
@@ -68,7 +67,7 @@ import qualified Language.Plutus.Contract.Effects.ExposeEndpoint as Endpoint
 import qualified Language.Plutus.Contract.Effects.WatchAddress   as WatchAddress
 import qualified Language.Plutus.Contract.Effects.WriteTx        as WriteTx
 
-import           Language.Plutus.Contract.Request                (Event, Hooks)
+import           Language.Plutus.Contract.Rows.Instances         (Event, Hooks)
 
 import           Ledger.Ada                                      (Ada)
 import qualified Ledger.Ada                                      as Ada
@@ -112,13 +111,14 @@ addEvent w e = ctsEvents %= Map.alter go w where
 getHooks
     :: ( Monad m
        , Forall σ Monoid
+       , Forall σ Semigroup
        , AllUniqueLabels σ
        )
     => Wallet -> ContractTrace ρ σ m a (Either ResumableError (Hooks σ))
 getHooks w = do
     contract <- use ctsContract
     evts <- gets (foldMap toList . view (at w) . _ctsEvents)
-    return $ fmap applyEndo (State.execResumable evts contract)
+    return $ State.execResumable evts contract
 
 data ContractTraceResult ρ σ a =
     ContractTraceResult
@@ -184,14 +184,14 @@ runWallet w t = do
 
 -- | Call the endpoint on the contract
 callEndpoint
-    :: forall s a ρ σ m.
+    :: forall s a b ρ σ m.
        ( MonadEmulator m
        , KnownSymbol s
        , HasType s a ρ
        , AllUniqueLabels ρ)
     => Wallet
     -> a
-    -> ContractTrace ρ σ m a ()
+    -> ContractTrace ρ σ m b ()
 callEndpoint w = addEvent w . Endpoint.event @s
 
 -- | Balance, sign and submit the unbalanced transaction in the context
@@ -228,23 +228,25 @@ unbalancedTransactions
     :: ( MonadEmulator m
        , HasType "tx" [UnbalancedTx] σ
        , Forall σ Monoid
+       , Forall σ Semigroup
        , AllUniqueLabels σ
        )
     => Wallet
     -> ContractTrace ρ σ m a [UnbalancedTx]
-unbalancedTransactions w = WriteTx.transactions . either (const emptyRec) id <$> getHooks w
+unbalancedTransactions w = WriteTx.transactions . either (const mempty) id <$> getHooks w
 
 -- | Get the addresses that are of interest to the wallet's contract instance
 interestingAddresses
     :: ( MonadEmulator m
        , HasType "interesting addresses" (Set Address) σ
        , Forall σ Monoid
+       , Forall σ Semigroup
        , AllUniqueLabels σ
        )
     => Wallet
     -> ContractTrace ρ σ m a [Address]
 interestingAddresses =
-    fmap (Set.toList . WatchAddress.addresses . either (const emptyRec) id) . getHooks
+    fmap (Set.toList . WatchAddress.addresses . either (const mempty) id) . getHooks
 
 -- | Add a 'SlotChange' event to the wallet's event trace, informing the
 --   contract of the current slot
@@ -276,6 +278,7 @@ handleBlockchainEvents
        , HasType "tx" () ρ
        , AllUniqueLabels σ
        , Forall σ Monoid
+       , Forall σ Semigroup
        , AllUniqueLabels ρ
        )
     => Wallet
@@ -290,6 +293,7 @@ notifyInterestingAddresses
        , HasType "interesting addresses" (Set Address) σ
        , AllUniqueLabels σ
        , Forall σ Monoid
+       , Forall σ Semigroup
        )
     => Wallet
     -> ContractTrace ρ σ m a ()

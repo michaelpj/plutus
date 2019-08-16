@@ -10,11 +10,12 @@ module Language.Plutus.Contract.Effects.ExposeEndpoint where
 
 import           Data.Proxy
 import           Data.Row
-import           Data.Set                         (Set)
-import qualified Data.Set                         as Set
-import           GHC.TypeLits                     (Symbol, symbolVal)
+import           Data.Set                                (Set)
+import qualified Data.Set                                as Set
+import           GHC.TypeLits                            (Symbol, symbolVal)
 
-import           Language.Plutus.Contract.Request as Req
+import           Language.Plutus.Contract.Request        as Req
+import           Language.Plutus.Contract.Rows.Instances (Event (..), Hooks (..))
 
 newtype EndpointDescription = EndpointDescription String
     deriving (Eq, Ord)
@@ -30,11 +31,11 @@ endpoint = mkRequest s Just where
 event
   :: forall (s :: Symbol) ρ a. (KnownSymbol s, HasType s a ρ, AllUniqueLabels ρ)
   => a
-  -> Var ρ
-event = IsJust (Label @s)
+  -> Event ρ
+event = Event . IsJust (Label @s)
 
 isActive
   :: forall (s :: Symbol) ρ. (KnownSymbol s, HasType s (Set EndpointDescription) ρ)
-  => Rec ρ
+  => Hooks ρ
   -> Bool
-isActive r = not $ Set.null $ r .! Label @s
+isActive (Hooks r) = not $ Set.null $ r .! Label @s

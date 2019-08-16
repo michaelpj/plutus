@@ -1,5 +1,5 @@
+{-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE DataKinds #-}
 -- | Run a Plutus contract as a servant application.
 module Language.Plutus.Contract.App(
       run
@@ -7,28 +7,30 @@ module Language.Plutus.Contract.App(
     , Wallet(..)
     ) where
 
-import           Control.Monad                    (foldM_)
-import qualified Data.Aeson                       as Aeson
-import           Data.Aeson                       (ToJSON, FromJSON)
-import qualified Data.ByteString.Lazy.Char8       as BSL
-import           Data.Foldable                    (traverse_)
-import qualified Data.Map                         as Map
+import           Control.Monad                           (foldM_)
+import           Data.Aeson                              (FromJSON, ToJSON)
+import qualified Data.Aeson                              as Aeson
+import qualified Data.ByteString.Lazy.Char8              as BSL
+import           Data.Foldable                           (traverse_)
+import qualified Data.Map                                as Map
 import           Data.Row
 import           Language.Plutus.Contract
-import           Language.Plutus.Contract.Servant (Request (..), Response (..), contractApp, initialResponse, runUpdate)
-import           Language.Plutus.Contract.Trace   (ContractTrace, EmulatorAction, execTrace)
-import qualified Network.Wai.Handler.Warp         as Warp
-import           System.Environment               (getArgs)
-import           Wallet.Emulator                  (Wallet (..))
+import           Language.Plutus.Contract.Servant        (Request (..), Response (..), contractApp, initialResponse,
+                                                          runUpdate)
+import           Language.Plutus.Contract.Trace          (ContractTrace, EmulatorAction, execTrace)
+import qualified Network.Wai.Handler.Warp                as Warp
+import           System.Environment                      (getArgs)
+import           Wallet.Emulator                         (Wallet (..))
 
-import Language.Plutus.Contract.Rows.Instances    ()
+import           Language.Plutus.Contract.Rows.Instances ()
 
 -- | Run the contract as an HTTP server with servant/warp
-run 
-    :: forall ρ σ. 
+run
+    :: forall ρ σ.
        ( AllUniqueLabels ρ
        , AllUniqueLabels σ
        , Forall σ Monoid
+       , Forall σ Semigroup
        , Forall σ ToJSON
        , Forall ρ FromJSON
        , Forall ρ ToJSON )
@@ -38,10 +40,11 @@ run st = runWithTraces st []
 -- | Run the contract as an HTTP server with servant/warp, and
 --   print the 'Request' values for the given traces.
 runWithTraces
-    :: forall ρ σ. 
+    :: forall ρ σ.
        ( AllUniqueLabels ρ
        , AllUniqueLabels σ
        , Forall σ Monoid
+       , Forall σ Semigroup
        , Forall σ ToJSON
        , Forall ρ FromJSON
        , Forall ρ ToJSON )
@@ -67,14 +70,15 @@ printTracesAndExit mp = do
 
 -- | Run a trace on the mockchain and print the 'Request' JSON objects
 --   for each intermediate state to stdout.
-printTrace 
-    :: forall ρ σ. 
+printTrace
+    :: forall ρ σ.
        ( AllUniqueLabels σ
        , Forall σ Monoid
+       , Forall σ Semigroup
        , Forall ρ ToJSON )
-    => Contract ρ σ () 
-    -> Wallet 
-    -> ContractTrace ρ σ EmulatorAction () () 
+    => Contract ρ σ ()
+    -> Wallet
+    -> ContractTrace ρ σ EmulatorAction () ()
     -> IO ()
 printTrace con wllt ctr = do
     let events = Map.findWithDefault [] wllt $ execTrace con ctr

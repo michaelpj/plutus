@@ -1,6 +1,6 @@
-{-# LANGUAGE MonoLocalBinds   #-}
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds   #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators    #-}
@@ -22,6 +22,7 @@ import qualified Ledger.Value                               as V
 
 import           Language.Plutus.Contract.Effects.AwaitSlot
 import           Language.Plutus.Contract.Request           (Contract, mkRequest)
+import           Language.Plutus.Contract.Rows.Instances    (Event (..), Hooks (..))
 
 type AddrReq = "interesting addresses" .== Set Address
 type AddrResp = "address change" .== (Address, Tx)
@@ -55,15 +56,15 @@ events
     , AllUniqueLabels ρ)
     => AddressMap
     -> Tx
-    -> Map Address (Var ρ)
+    -> Map Address (Event ρ)
 events utxo tx =
     Map.fromSet
-        (\addr -> IsJust (Label @"address change") (addr, tx))
+        (\addr -> Event $ IsJust (Label @"address change") (addr, tx))
         (AM.addressesTouched utxo tx)
 
 addresses
     :: forall ρ.
     ( HasType "interesting addresses" (Set Address) ρ)
-    => Rec ρ
+    => Hooks ρ
     -> Set Address
-addresses r = r .! Label @"interesting addresses"
+addresses (Hooks r) = r .! Label @"interesting addresses"

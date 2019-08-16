@@ -1,5 +1,9 @@
 module Language.Plutus.Contract(
       Contract
+    , both
+    , selectEither
+    , select
+    , (<|>)
     -- * Dealing with time
     , awaitSlot
     , until
@@ -29,6 +33,7 @@ import           Language.Plutus.Contract.Effects.ExposeEndpoint
 import           Language.Plutus.Contract.Effects.WatchAddress
 import           Language.Plutus.Contract.Effects.WriteTx
 
-import           Language.Plutus.Contract.Request                (Contract, ifThenElse, return, (>>), (>>=))
+import           Language.Plutus.Contract.Request                (Contract, both, ifThenElse, return, select,
+                                                                  selectEither, (<|>), (>>), (>>=))
 import           Language.Plutus.Contract.Tx                     as Tx
 import           Prelude                                         hiding (return, until, (>>), (>>=))

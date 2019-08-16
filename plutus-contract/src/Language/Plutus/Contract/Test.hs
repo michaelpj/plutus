@@ -36,7 +36,6 @@ import qualified Data.Map                                        as Map
 import           Data.Maybe                                      (fromMaybe)
 import           Data.Proxy                                      (Proxy(..))
 import           Data.Row
-import           Data.Row.Records                                (Rec)
 import           Data.Semigroup                                  (Min)
 import           Data.Sequence                                   (Seq)
 import qualified Data.Sequence                                   as Seq
@@ -67,7 +66,7 @@ import qualified Ledger.Value                                    as V
 import           Wallet.Emulator                                 (EmulatorAction, EmulatorEvent, Wallet)
 import qualified Wallet.Emulator                                 as EM
 
-import           Language.Plutus.Contract.Request                (Event, Hooks, applyEndo, emptyRec)
+import Language.Plutus.Contract.Rows.Instances (Event(..), Hooks(..))
 import           Language.Plutus.Contract.Trace                  as X
 
 newtype PredF f a = PredF { unPredF :: a -> f Bool }
@@ -84,17 +83,26 @@ type TracePredicate ρ σ a = PredF (Writer (Seq String)) (InitialDistribution, 
 
 hooks
     :: ( Forall σ Monoid
+       , Forall σ Semigroup
        , AllUniqueLabels σ
        )
     => Wallet
     -> ContractTraceResult ρ σ a
-    -> Rec σ
+    -> Hooks σ
 hooks w rs =
     let evts = rs ^. ctrTraceState . ctsEvents . at w . folded . to toList
         con  = rs ^. ctrTraceState . ctsContract
-    in either (const emptyRec) applyEndo (State.execResumable evts con)
+    in either (const mempty) id (State.execResumable evts con)
 
-record :: Wallet -> ContractTraceResult ρ σ a -> Either ResumableError (Record (Event ρ ))
+record 
+    :: forall ρ σ a.
+       ( AllUniqueLabels σ
+       , Forall σ Semigroup
+       , Forall σ Monoid
+       )
+    => Wallet 
+    -> ContractTraceResult ρ σ a
+    -> Either ResumableError (Record (Event ρ))
 record w rs =
     let evts = rs ^. ctrTraceState . ctsEvents . at w . folded . to toList
         con  = rs ^. ctrTraceState . ctsContract
@@ -125,7 +133,9 @@ endpointAvailable
        ( HasType s (Set EndpointDescription) σ
        , KnownSymbol s
        , AllUniqueLabels σ
-       , Forall σ Monoid)
+       , Forall σ Monoid
+       , Forall σ Semigroup
+       )
     => Wallet
     -> TracePredicate ρ σ a
 endpointAvailable w = PredF $ \(_, r) -> do
@@ -139,7 +149,9 @@ interestingAddress
     :: forall ρ σ a.
        ( HasType "interesting addresses" (Set Address) σ
        , AllUniqueLabels σ
-       , Forall σ Monoid)
+       , Forall σ Monoid
+       , Forall σ Semigroup
+       )
     => Wallet
     -> Address
     -> TracePredicate ρ σ a
@@ -155,7 +167,8 @@ tx
     :: forall ρ σ a.
        ( HasType "tx" [UnbalancedTx] σ
        , AllUniqueLabels σ
-       , Forall σ Monoid)
+       , Forall σ Monoid
+       , Forall σ Semigroup)
     => Wallet
     -> (UnbalancedTx -> Bool)
     -> String
@@ -220,7 +233,9 @@ waitingForSlot
     :: forall ρ σ a.
        ( HasType "slot" (Maybe (Min Slot)) σ
        , AllUniqueLabels σ
-       , Forall σ Monoid)
+       , Forall σ Monoid
+       , Forall σ Semigroup
+       )
     => Wallet
     -> Slot
     -> TracePredicate ρ σ a
@@ -254,7 +269,9 @@ anyTx
     :: forall ρ σ a. 
        ( HasType "tx" [UnbalancedTx] σ
        , AllUniqueLabels σ
-       , Forall σ Monoid)
+       , Forall σ Monoid
+       , Forall σ Semigroup
+       )
     => Wallet
     -> TracePredicate ρ σ a
 anyTx w = tx w (const True) "anyTx"
@@ -263,6 +280,7 @@ assertHooks
     :: forall ρ σ a. 
        ( AllUniqueLabels σ 
        , Forall σ Monoid
+       , Forall σ Semigroup
        , Forall σ Show
        )
     => Wallet
@@ -279,7 +297,11 @@ assertHooks w p nm = PredF $ \(_, rs) ->
 
 assertRecord 
     :: forall ρ σ a. 
-       (Forall ρ Show)
+       ( Forall ρ Show
+       , Forall σ Semigroup
+       , Forall σ Monoid
+       , AllUniqueLabels σ
+       )
     => Wallet 
     -> (Record (Event ρ) -> Bool)
     -> String
@@ -297,7 +319,11 @@ assertRecord w p nm = PredF $ \(_, rs) ->
 
 assertResult
     :: forall ρ σ a. 
-       (Forall ρ Show)
+       ( Forall ρ Show
+       , AllUniqueLabels σ
+       , Forall σ Semigroup
+       , Forall σ Monoid
+       )
     => Wallet
     -> (Maybe a -> Bool)
     -> String

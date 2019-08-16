@@ -21,21 +21,21 @@ module Language.Plutus.Contract.Schema(
   , emptyRec
   ) where
 
-import           Data.Aeson                       (FromJSON, ToJSON, (.:))
-import qualified Data.Aeson                       as Aeson
-import qualified Data.Aeson.Types                 as Aeson
+import           Data.Aeson            (FromJSON, ToJSON, (.:))
+import qualified Data.Aeson            as Aeson
+import qualified Data.Aeson.Types      as Aeson
 import           Data.Functor.Const
 import           Data.Functor.Identity
-import           Data.Map                         (Map)
-import qualified Data.Map                         as Map
-import           Data.Proxy                       (Proxy (..))
+import           Data.Map              (Map)
+import qualified Data.Map              as Map
+import           Data.Proxy            (Proxy (..))
 import           Data.Row
-import           Data.Row.Internal                (Unconstrained1)
-import qualified Data.Row.Records                 as Records
-import qualified Data.Row.Variants                as Variants
-import           Data.Text                        (Text)
-import           GHC.Generics                     (Generic)
-import           GHC.TypeLits                     (symbolVal)
+import           Data.Row.Internal     (Unconstrained1)
+import qualified Data.Row.Records      as Records
+import qualified Data.Row.Variants     as Variants
+import           Data.Text             (Text)
+import           GHC.Generics          (Generic)
+import           GHC.TypeLits          (symbolVal)
 
 newtype JsonRow v ρ = JsonRow { unJsonRow :: v ρ }
 

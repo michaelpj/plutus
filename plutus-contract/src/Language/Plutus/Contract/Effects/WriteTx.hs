@@ -1,14 +1,15 @@
-{-# LANGUAGE MonoLocalBinds   #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DataKinds        #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds   #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE TypeOperators    #-}
 module Language.Plutus.Contract.Effects.WriteTx where
 
 import           Data.Row
 
-import           Language.Plutus.Contract.Request as Req
-import           Language.Plutus.Contract.Tx      (UnbalancedTx)
+import           Language.Plutus.Contract.Request        as Req
+import           Language.Plutus.Contract.Rows.Instances (Event (..), Hooks (..))
+import           Language.Plutus.Contract.Tx             (UnbalancedTx)
 
 
 type TxReq = ("tx" .== [UnbalancedTx])
@@ -18,14 +19,14 @@ type TxResp = ("tx" .== ())
 writeTx :: UnbalancedTx -> Contract TxResp TxReq ()
 writeTx t = mkRequest [t] Just
 
-event 
+event
   :: forall ρ. (HasType "tx" () ρ, AllUniqueLabels ρ)
-  => Var ρ
-event = IsJust #tx ()
+  => Event ρ
+event = Event (IsJust #tx ())
 
 transactions
-  :: forall ρ. 
+  :: forall ρ.
   ( HasType "tx" [UnbalancedTx] ρ )
-   => Rec ρ
+   => Hooks ρ
    -> [UnbalancedTx]
-transactions r = r .! #tx
+transactions (Hooks r) = r .! #tx

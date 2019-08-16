@@ -1,10 +1,10 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE DeriveAnyClass       #-}
 {-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE DerivingStrategies   #-}
 {-# LANGUAGE DerivingVia          #-}
 {-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeOperators        #-}
@@ -18,24 +18,24 @@ module Language.Plutus.Contract.Servant(
     , Response(..)
     ) where
 
-import           Control.Monad.Except               (MonadError (..), runExcept)
+import           Control.Monad.Except                    (MonadError (..), runExcept)
 import           Control.Monad.Writer
-import           Data.Aeson                         (ToJSON, FromJSON)
+import           Data.Aeson                              (FromJSON, ToJSON)
 import           Data.Bifunctor
-import           Data.Proxy                         (Proxy (..))
+import           Data.Proxy                              (Proxy (..))
 import           Data.Row
-import           Data.String                        (IsString (fromString))
-import           GHC.Generics                       (Generic)
-import           Servant                            ((:<|>) ((:<|>)), (:>), Get, JSON, Post, ReqBody, err500, errBody)
-import           Servant.Server                     (Application, ServantErr, Server, serve)
+import           Data.String                             (IsString (fromString))
+import           GHC.Generics                            (Generic)
+import           Servant                                 ((:<|>) ((:<|>)), (:>), Get, JSON, Post, ReqBody, err500,
+                                                          errBody)
+import           Servant.Server                          (Application, ServantErr, Server, serve)
 
 import           Language.Plutus.Contract
 import           Language.Plutus.Contract.Record
-import           Language.Plutus.Contract.Request   (Event, Hooks, applyEndo)
-import           Language.Plutus.Contract.Resumable (ResumableError)
-import qualified Language.Plutus.Contract.Resumable as Resumable
+import           Language.Plutus.Contract.Resumable      (ResumableError)
+import qualified Language.Plutus.Contract.Resumable      as Resumable
 
-import Language.Plutus.Contract.Rows.Instances()
+import           Language.Plutus.Contract.Rows.Instances (Event, Hooks)
 
 newtype State e = State { record :: Record e }
     deriving stock (Generic, Eq)
@@ -64,10 +64,12 @@ type ContractAPI ρ σ =
   :<|> "run" :> ReqBody '[JSON] (Request ρ) :> Post '[JSON] (Response ρ σ)
 
 -- | Serve a 'PlutusContract' via the contract API.
-contractServer 
-    :: forall ρ σ. 
+contractServer
+    :: forall ρ σ.
        ( AllUniqueLabels σ
-       , Forall σ Monoid )
+       , Forall σ Monoid
+       , Forall σ Semigroup
+       )
     => Contract ρ σ ()
     -> Server (ContractAPI ρ σ)
 contractServer con = initialise :<|> run where
@@ -82,37 +84,40 @@ servantResp = \case
         Right r -> pure r
 
 -- | A servant 'Application' that serves a Plutus contract
-contractApp 
-    :: forall ρ σ. 
+contractApp
+    :: forall ρ σ.
        ( AllUniqueLabels ρ
        , AllUniqueLabels σ
        , Forall σ Monoid
+       , Forall σ Semigroup
        , Forall σ ToJSON
        , Forall ρ FromJSON
        , Forall ρ ToJSON )
     => Contract ρ σ () -> Application
 contractApp = serve (Proxy @(ContractAPI ρ σ)) . contractServer
 
-runUpdate 
+runUpdate
     :: forall ρ σ.
        (AllUniqueLabels σ
-       , Forall σ Monoid)
+       , Forall σ Monoid
+       , Forall σ Semigroup
+       )
     => Contract ρ σ () -> Request ρ -> Either ResumableError (Response ρ σ)
 runUpdate con (Request o e) =
-    ((\(r, h) -> Response (State r) h) . fmap applyEndo)
+    ((\(r, h) -> Response (State r) h))
     <$> Resumable.insertAndUpdate con (record o) e
 
-initialResponse 
+initialResponse
     :: forall ρ σ.
        ( AllUniqueLabels σ
        , Forall σ Monoid
+       , Forall σ Semigroup
        )
     => Contract ρ σ ()
     -> Either ResumableError (Response ρ σ)
 initialResponse =
     fmap (uncurry Response)
-    . fmap (fmap applyEndo)
     . fmap (first (State . fmap fst))
     . runExcept
-    . runWriterT 
+    . runWriterT
     . Resumable.initialise
