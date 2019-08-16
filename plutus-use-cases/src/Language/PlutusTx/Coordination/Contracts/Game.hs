@@ -36,6 +36,7 @@ import qualified Data.Aeson                     as Aeson
 import qualified Data.Map                       as Map
 import           Data.Maybe                     (fromMaybe)
 import           GHC.Generics                   (Generic)
+import           Language.Plutus.Contract.IOTS                      (IotsType)
 import           Language.Plutus.Contract
 import           Language.Plutus.Contract.Trace (ContractTrace, MonadEmulator)
 import qualified Language.Plutus.Contract.Trace as Trace
@@ -79,14 +80,14 @@ data LockParams = LockParams
     , amount     :: Ada
     }
     deriving stock (Prelude.Eq, Prelude.Ord, Prelude.Show, Generic)
-    deriving anyclass (Aeson.FromJSON, Aeson.ToJSON)
+    deriving anyclass (Aeson.FromJSON, Aeson.ToJSON, IotsType)
 
 --  | Parameters for the "guess" endpoint
 newtype GuessParams = GuessParams
     { guessWord :: String
     }
     deriving stock (Prelude.Eq, Prelude.Ord, Prelude.Show, Generic)
-    deriving newtype (Aeson.FromJSON, Aeson.ToJSON)
+    deriving anyclass (Aeson.FromJSON, Aeson.ToJSON, IotsType)
 
 guess :: Contract _ _ ()
 guess = do

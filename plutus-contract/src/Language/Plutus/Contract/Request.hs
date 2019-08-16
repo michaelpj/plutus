@@ -15,17 +15,17 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Language.Plutus.Contract.Request where
 
-import qualified Control.Applicative                     as Applicative
-import qualified Data.Aeson                              as Aeson
+import qualified Control.Applicative                as Applicative
+import qualified Data.Aeson                         as Aeson
 import           Data.Row
-import           Data.Row.Internal                       (Subset, Unconstrained1)
-import qualified Data.Row.Records                        as Records
-import qualified Data.Row.Variants                       as Variants
+import           Data.Row.Internal                  (Subset, Unconstrained1)
+import qualified Data.Row.Records                   as Records
+import qualified Data.Row.Variants                  as Variants
+import           Language.Plutus.Contract.Events    (Event (..), Hooks (..), generalise)
 import           Language.Plutus.Contract.Resumable
-import           Language.Plutus.Contract.Rows.Instances (Event (..), Hooks (..), generalise)
-import qualified Language.Plutus.Contract.Util           as Util
+import qualified Language.Plutus.Contract.Util      as Util
 
-import           Prelude                                 hiding (return, (>>=))
+import           Prelude                            hiding (return, (>>=))
 import qualified Prelude
 
 -- | @Contract ρ σ a@ is a contract that expects input events of type @ρ@ and produces

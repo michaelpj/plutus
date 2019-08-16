@@ -18,24 +18,23 @@ module Language.Plutus.Contract.Servant(
     , Response(..)
     ) where
 
-import           Control.Monad.Except                    (MonadError (..), runExcept)
+import           Control.Monad.Except               (MonadError (..), runExcept)
 import           Control.Monad.Writer
-import           Data.Aeson                              (FromJSON, ToJSON)
+import           Data.Aeson                         (FromJSON, ToJSON)
 import           Data.Bifunctor
-import           Data.Proxy                              (Proxy (..))
+import           Data.Proxy                         (Proxy (..))
 import           Data.Row
-import           Data.String                             (IsString (fromString))
-import           GHC.Generics                            (Generic)
-import           Servant                                 ((:<|>) ((:<|>)), (:>), Get, JSON, Post, ReqBody, err500,
-                                                          errBody)
-import           Servant.Server                          (Application, ServantErr, Server, serve)
+import           Data.String                        (IsString (fromString))
+import           GHC.Generics                       (Generic)
+import           Servant                            ((:<|>) ((:<|>)), (:>), Get, JSON, Post, ReqBody, err500, errBody)
+import           Servant.Server                     (Application, ServantErr, Server, serve)
 
 import           Language.Plutus.Contract
 import           Language.Plutus.Contract.Record
-import           Language.Plutus.Contract.Resumable      (ResumableError)
-import qualified Language.Plutus.Contract.Resumable      as Resumable
+import           Language.Plutus.Contract.Resumable (ResumableError)
+import qualified Language.Plutus.Contract.Resumable as Resumable
 
-import           Language.Plutus.Contract.Rows.Instances (Event, Hooks)
+import           Language.Plutus.Contract.Events    (Event, Hooks)
 
 newtype State e = State { record :: Record e }
     deriving stock (Generic, Eq)

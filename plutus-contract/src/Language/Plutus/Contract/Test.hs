@@ -66,7 +66,7 @@ import qualified Ledger.Value                                    as V
 import           Wallet.Emulator                                 (EmulatorAction, EmulatorEvent, Wallet)
 import qualified Wallet.Emulator                                 as EM
 
-import Language.Plutus.Contract.Rows.Instances (Event(..), Hooks(..))
+import Language.Plutus.Contract.Events (Event(..), Hooks(..))
 import           Language.Plutus.Contract.Trace                  as X
 
 newtype PredF f a = PredF { unPredF :: a -> f Bool }

@@ -48,11 +48,11 @@ library
         Language.Plutus.Contract.Effects.WatchAddress
         Language.Plutus.Contract.Effects.WriteTx
         Language.Plutus.Contract.Request
-        Language.Plutus.Contract.Rows.Instances
+        Language.Plutus.Contract.Events
         Language.Plutus.Contract.Test
         Language.Plutus.Contract.Trace
         Language.Plutus.Contract.Record
-        Language.Plutus.Contract.Schema
+        Language.Plutus.Contract.IOTS
         Language.Plutus.Contract.Servant
         Language.Plutus.Contract.Resumable
         Language.Plutus.Contract.Tx
@@ -61,7 +61,8 @@ library
     hs-source-dirs: src
     build-depends:
         plutus-wallet-api -any,
-        plutus-emulator -any
+        plutus-emulator -any,
+        iots-export -any
     build-depends:
         aeson -any,
         base >=4.7 && <5,

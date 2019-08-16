@@ -8,16 +8,16 @@
 module Language.Plutus.Contract.Effects.AwaitSlot where
 
 import           Data.Row
-import           Data.Row.Internal                       (Subset, Unconstrained1)
+import           Data.Row.Internal                (Subset, Unconstrained1)
 import           Data.Semigroup
 import           GHC.OverloadedLabels
-import           Prelude                                 hiding (Monad (..), until)
+import           Prelude                          hiding (Monad (..), until)
 
-import           Language.Plutus.Contract.Request        as Req
-import           Language.Plutus.Contract.Rows.Instances (Event (..), Hooks (..))
-import           Language.Plutus.Contract.Util           (foldMaybe)
+import           Language.Plutus.Contract.Events  (Event (..), Hooks (..))
+import           Language.Plutus.Contract.Request as Req
+import           Language.Plutus.Contract.Util    (foldMaybe)
 
-import           Ledger.Slot                             (Slot)
+import           Ledger.Slot                      (Slot)
 
 type SlotReq = ("slot" .== Maybe (Min Slot))
 type SlotResp = ("slot" .== Slot)

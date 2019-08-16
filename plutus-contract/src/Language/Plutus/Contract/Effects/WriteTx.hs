@@ -8,9 +8,9 @@ module Language.Plutus.Contract.Effects.WriteTx where
 
 import           Data.Row
 
-import           Language.Plutus.Contract.Request        as Req
-import           Language.Plutus.Contract.Rows.Instances (Event (..), Hooks (..))
-import           Language.Plutus.Contract.Tx             (UnbalancedTx)
+import           Language.Plutus.Contract.Events  (Event (..), Hooks (..))
+import           Language.Plutus.Contract.Request as Req
+import           Language.Plutus.Contract.Tx      (UnbalancedTx)
 
 
 type TxReq = ("tx" .== [UnbalancedTx])

@@ -1,6 +1,8 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds     #-}
 {-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE DeriveAnyClass      #-}
+{-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE OverloadedLabels    #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -9,17 +11,20 @@
 {-# LANGUAGE TypeOperators       #-}
 module Language.Plutus.Contract.Effects.ExposeEndpoint where
 
+import           Data.Aeson                       (FromJSON, ToJSON)
 import           Data.Proxy
 import           Data.Row
-import           Data.Set                                (Set)
-import qualified Data.Set                                as Set
-import           GHC.TypeLits                            (Symbol, symbolVal)
+import           Data.Set                         (Set)
+import qualified Data.Set                         as Set
+import           GHC.Generics                     (Generic)
+import           GHC.TypeLits                     (Symbol, symbolVal)
 
-import           Language.Plutus.Contract.Request        as Req
-import           Language.Plutus.Contract.Rows.Instances (Event (..), Hooks (..))
+import           Language.Plutus.Contract.Events  (Event (..), Hooks (..))
+import           Language.Plutus.Contract.IOTS
+import           Language.Plutus.Contract.Request as Req
 
-newtype EndpointDescription = EndpointDescription String
-    deriving (Eq, Ord)
+newtype EndpointDescription = EndpointDescription { getEndpointDescription :: String }
+    deriving (Eq, Ord, Generic, ToJSON, FromJSON, IotsType)
 
 type EndpointReq s = s .== Set EndpointDescription
 type EndpointResp s a = s .== a

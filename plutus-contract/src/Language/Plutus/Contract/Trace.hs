@@ -67,7 +67,7 @@ import qualified Language.Plutus.Contract.Effects.ExposeEndpoint as Endpoint
 import qualified Language.Plutus.Contract.Effects.WatchAddress   as WatchAddress
 import qualified Language.Plutus.Contract.Effects.WriteTx        as WriteTx
 
-import           Language.Plutus.Contract.Rows.Instances         (Event, Hooks)
+import           Language.Plutus.Contract.Events                 (Event, Hooks)
 
 import           Ledger.Ada                                      (Ada)
 import qualified Ledger.Ada                                      as Ada

@@ -8,7 +8,7 @@ module Language.Plutus.Contract.App(
     , Wallet(..)
     ) where
 
-import           Control.Monad                    (foldM_, void)
+import           Control.Monad                    (foldM_)
 import           Data.Aeson                       (FromJSON, ToJSON)
 import qualified Data.Aeson                       as Aeson
 import qualified Data.ByteString.Lazy.Char8       as BSL
@@ -17,6 +17,9 @@ import           Data.Functor.Const               (Const (..))
 import qualified Data.Map                         as Map
 import           Data.Row
 import           Data.Row.Internal                (Unconstrained1)
+import           Data.Sequence                    (Seq)
+import           Data.Text                        (Text)
+import qualified Data.Text.IO                     as Text
 import           Language.Plutus.Contract
 import           Language.Plutus.Contract.Servant (Request (..), Response (..), contractApp, initialResponse, runUpdate)
 import           Language.Plutus.Contract.Trace   (ContractTrace, EmulatorAction, execTrace)
@@ -24,7 +27,7 @@ import qualified Network.Wai.Handler.Warp         as Warp
 import           System.Environment               (getArgs)
 import           Wallet.Emulator                  (Wallet (..))
 
-import           Language.Plutus.Contract.Schema  (HasSchema, Schema, schemaMap)
+import           Language.Plutus.Contract.IOTS    (IotsType, schemaMap)
 
 -- | Run the contract as an HTTP server with servant/warp
 run
@@ -34,7 +37,7 @@ run
        , Forall σ Monoid
        , Forall σ Semigroup
        , Forall σ ToJSON
-       , Forall ρ HasSchema
+       , Forall ρ IotsType
        , Forall ρ Unconstrained1
        , Forall ρ FromJSON
        , Forall ρ ToJSON )
@@ -50,7 +53,7 @@ runWithTraces
        , Forall σ Monoid
        , Forall σ Semigroup
        , Forall σ ToJSON
-       , Forall ρ HasSchema
+       , Forall ρ IotsType
        , Forall ρ Unconstrained1
        , Forall ρ FromJSON
        , Forall ρ ToJSON )
@@ -70,12 +73,9 @@ runWithTraces con traces = do
         _ -> printTracesAndExit mp
 
 -- | Print the schema and exit
-printSchemaAndExit :: Map.Map String Schema -> IO ()
-printSchemaAndExit = void . Map.traverseWithKey printSchema where
-    printSchema k v = do
-        putStr k
-        putStr " "
-        putStrLn (show v)
+printSchemaAndExit :: Seq Text -> IO ()
+printSchemaAndExit = traverse_ printSchema where
+    printSchema = Text.putStrLn
 
 -- | Print a list of available traces
 printTracesAndExit :: Map.Map String a -> IO ()

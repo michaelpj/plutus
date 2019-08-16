@@ -17,7 +17,7 @@
 {-# LANGUAGE UndecidableInstances    #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Language.Plutus.Contract.Rows.Instances(
+module Language.Plutus.Contract.Events(
       Hooks(..)
     , Event(..)
     , generalise
