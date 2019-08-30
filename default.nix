@@ -71,23 +71,12 @@ let
   localLib = import ./lib.nix { inherit config system; } ;
   src = localLib.iohkNix.cleanSourceHaskell ./.;
   latex = pkgs.callPackage ./nix/latex.nix {};
+  sources = import ./nix/sources.nix;
 
-  pp2nSrc = nativePkgs.fetchFromGitHub {
-    owner = "justinwoo";
-    repo = "psc-package2nix";
-    rev = "6e8f6dc6dea896c71b30cc88a2d95d6d1e48a6f0";
-    sha256 = "0fa6zaxxmqxva1xmnap9ng7b90zr9a55x1l5xk8igdw2nldqfa46";
-  };
-
-  yarn2nixSrc = nativePkgs.fetchFromGitHub {
-    owner = "moretea";
-    repo = "yarn2nix";
-    rev = "780e33a07fd821e09ab5b05223ddb4ca15ac663f";
-    sha256 = "1f83cr9qgk95g3571ps644rvgfzv2i4i7532q8pg405s4q5ada3h";
-  };
+  pp2nSrc = sources.psc-package2nix;
 
   pp2n = import pp2nSrc { inherit pkgs; };
-  yarn2nix = import yarn2nixSrc { inherit pkgs; };
+  yarn2nix = import (sources.yarn2nix) { inherit pkgs; };
 
   packages = self: (rec {
     inherit pkgs localLib;
@@ -344,12 +333,7 @@ let
         # Need to override the source this way
         name = "agda-stdlib-${version}";
         version = "1.0.1";
-        src = pkgs.fetchFromGitHub {
-          owner = "agda";
-          repo = "agda-stdlib";
-          rev = "v1.0.1";
-          sha256 = "0ia7mgxs5g9849r26yrx07lrx65vhlrxqqh5b6d69gfi1pykb4j2";
-        };
+        src = sources.agda-stdlib;
       });
     };
 

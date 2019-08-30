@@ -1,0 +1,62 @@
+{
+    "agda-stdlib": {
+        "branch": "master",
+        "description": "The Agda standard library",
+        "homepage": "http://wiki.portal.chalmers.se/agda/pmwiki.php",
+        "owner": "agda",
+        "repo": "agda-stdlib",
+        "rev": "v1.0.1",
+        "sha256": "0nnv8hqm5knf57nah3qzva9418d3237k1h65d21nyi4f4zn13glq",
+        "type": "builtin-tarball",
+        "url": "https://github.com/agda/agda-stdlib/archive/a62501b50cec47c51b4a1a12f853944f5bdb6e7e.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "iohk-nix": {
+        "branch": "master",
+        "description": "nix scripts shared across projects",
+        "homepage": null,
+        "owner": "input-output-hk",
+        "repo": "iohk-nix",
+        "rev": "3e85f93893770ea30055de860d3f664dbe913f7d",
+        "sha256": "024misnixil0scn6z9y353n1c1vksr40m99zp0hxndxxdxmix011",
+        "type": "builtin-tarball",
+        "url": "https://github.com/input-output-hk/iohk-nix/archive/3e85f93893770ea30055de860d3f664dbe913f7d.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs-unstable": {
+        "branch": "nixpkgs-unstable",
+        "description": "A read-only mirror of NixOS/nixpkgs tracking the released channels. Send issues and PRs to",
+        "homepage": "https://github.com/NixOS/nixpkgs",
+        "owner": "nixos",
+        "repo": "nixpkgs-channels",
+        "rev": "5c52b25283a6cccca443ffb7a358de6fe14b4a81",
+        "sha256": "0i4jscq2qy2vn9kr8ix9gr8ncf9dss24y09jrqhlpcpryi4i98dc",
+        "type": "builtin-tarball",
+        "url": "https://github.com/nixos/nixpkgs-channels/archive/8d1510abfb592339e13ce8f6db6f29c1f8b72924.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "psc-package2nix": {
+        "branch": "master",
+        "description": "Tool to derive a Nix expression from a psc-package.json configuration.",
+        "homepage": "",
+        "owner": "justinwoo",
+        "repo": "psc-package2nix",
+        "rev": "6e8f6dc6dea896c71b30cc88a2d95d6d1e48a6f0",
+        "sha256": "07gbqy3n3nbscxwni3rvq0bsr77x6xfdrqhzk9ci5r550ldzlqc5",
+        "type": "builtin-tarball",
+        "url": "https://github.com/justinwoo/psc-package2nix/archive/ec7452fa9dd969b07ffa22f5b3cef5f3655f0e88.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "yarn2nix": {
+        "branch": "master",
+        "description": "Generate nix expressions from a yarn.lock file",
+        "homepage": null,
+        "owner": "moretea",
+        "repo": "yarn2nix",
+        "rev": "780e33a07fd821e09ab5b05223ddb4ca15ac663f",
+        "sha256": "142av7dwviapsnahgj8r6779gs2zr17achzhr8b97s0hsl08dcl2",
+        "type": "builtin-tarball",
+        "url": "https://github.com/moretea/yarn2nix/archive/3f2dbb08724bf8841609f932bfe1d61a78277232.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    }
+}
