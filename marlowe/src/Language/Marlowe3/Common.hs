@@ -362,6 +362,14 @@ instance Eq Contract where
     _ == _ = False
 
 
+instance Eq State where
+    {-# INLINABLE (==) #-}
+    l == r = minSlot l == minSlot r
+        && accounts l == accounts r
+        && choices l == choices r
+        && boundValues l == boundValues r
+
+
 
 makeLift ''AccountId
 makeLift ''ChoiceId
@@ -683,13 +691,15 @@ contractLifespanUpperBound contract = case contract of
     Let _ _ cont -> contractLifespanUpperBound cont
 
 
+validatePayments a b = False
+
 {-|
     Marlowe Interpreter ValidatorScript generator.
 -}
 {-# INLINABLE mkValidator #-}
 mkValidator
   :: PubKey -> MarloweData -> ([Input], Sealed (HashedDataScript MarloweData)) -> PendingTx -> Bool
-mkValidator creator MarloweData{..} (inputs, sealedMarloweData) PendingTx{..} = let
+mkValidator creator MarloweData{..} (inputs, sealedMarloweData) pendingTx@PendingTx{..} = let
     HashedDataScript (MarloweData expectedState expectedContract) _ = unseal sealedMarloweData
     {-  Embed contract creator public key. This makes validator script unique,
         which makes a particular contract to have a unique script address.
@@ -700,7 +710,7 @@ mkValidator creator MarloweData{..} (inputs, sealedMarloweData) PendingTx{..} = 
     -}
     (minSlot, maxSlot) = case pendingTxValidRange of
         Interval (Just l)  (Just (Slot h)) -> (l, Slot (h - 1))
-        _ -> traceH "Tx valid slot must have lower bound and upper bounds" Builtins.error ()
+        _ -> traceErrorH "Tx valid slot must have lower bound and upper bounds"
 
     -- TxIn we're validating is obviously a Script TxIn.
     PendingTxIn _ (Just (inputValidatorHash, RedeemerHash redeemerHash)) scriptInValue =
@@ -709,9 +719,15 @@ mkValidator creator MarloweData{..} (inputs, sealedMarloweData) PendingTx{..} = 
 
     scriptInAdaValue = Ada.fromValue scriptInValue
 
-    -- env = Environment pendingTxValidRange
-    state = marloweState
-    in Builtins.error ()
+    slotInterval = (minSlot, maxSlot)
+    txInput = TransactionInput { txInterval = slotInterval, txInputs = inputs }
+    result = computeTransaction txInput marloweState marloweContract
+    in case result of
+        TransactionOutput {txOutPayments, txOutState, txOutContract} -> let
+            validPayments = validatePayments pendingTx txOutPayments
+            validDataScript = txOutState == expectedState && txOutContract == expectedContract
+            in validPayments && validDataScript
+        Error txError -> traceErrorH (show txError)
 
 
 validatorScript :: PubKey -> ValidatorScript
