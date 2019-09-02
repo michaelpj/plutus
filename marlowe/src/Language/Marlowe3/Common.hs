@@ -231,7 +231,7 @@ data ReduceStepResult = Reduced ReduceWarning ReduceEffect State Contract
 
 data ReduceResult = ContractQuiescent [ReduceWarning] [Payment] State Contract
                   | RRAmbiguousSlotIntervalError
-  deriving (Eq,Ord,Show)
+  deriving (Show)
 
 data ApplyResult = Applied State Contract
                  | ApplyNoMatchError
@@ -347,7 +347,7 @@ instance Eq Action where
     Choice cid1 bounds1 == Choice cid2 bounds2 =
         cid1 == cid2 && let
             bounds = zip bounds1 bounds2
-            checkBound ((low1, high1), (low2, high2)) = low1 == low2 && high2 == high2
+            checkBound ((low1, high1), (low2, high2)) = low1 == low2 && high1 == high2
             in all checkBound bounds
     Notify obs1 == Notify obs2 = obs1 == obs2
     _ == _ = False
@@ -356,7 +356,7 @@ instance Eq Contract where
     {-# INLINABLE (==) #-}
     Refund == Refund = True
     Pay acc1 payee1 value1 cont1 == Pay acc2 payee2 value2 cont2 =
-        acc1 == acc2 && payee1 == payee2 && cont1 == cont2
+        acc1 == acc2 && payee1 == payee2 && value1 == value2 && cont1 == cont2
     If obs1 cont1 cont2 == If obs2 cont3 cont4 =
         obs1 == obs2 && cont1 == cont3 && cont2 == cont4
     When cases1 timeout1 cont1 == When cases2 timeout2 cont2 =
@@ -703,6 +703,26 @@ contractLifespanUpperBound contract = case contract of
 validatePayments :: PendingTx -> [Payment] -> Bool
 validatePayments pendingTx txOutPayments = False
 
+
+{-# INLINABLE validateContinuation #-}
+validateContinuation :: PendingTx -> DataScriptHash -> Bool
+validateContinuation pendingTx dsHash = let
+    -- lookup for a validator script with the same hash (i.e. Marlowe continuation contract)
+    vsOutput = uniqueElement (findContinuingOutputs pendingTx)
+    dsOutputs = findDataScriptOutputs dsHash pendingTx
+    dataScriptOk = case vsOutput of
+        {-  It is *not* okay to have multiple outputs with the current validator script,
+            that allows "spliting" the Marlowe Contract. -}
+        Nothing -> traceH "There must be precisely one output with the same validator script" False
+        {- It's fine to have same data script.
+            Imaging having multiple same contracts with same parties.
+            You must use different creator PubKeys to get unique Validator Script hashes, though.
+        -}
+        Just i  -> traceIfFalseH "The data script must be attached to the ongoing output"
+            (i `elem` dsOutputs)
+    in dataScriptOk
+
+
 {-|
     Marlowe Interpreter ValidatorScript generator.
 -}
@@ -710,7 +730,7 @@ validatePayments pendingTx txOutPayments = False
 mkValidator
   :: PubKey -> MarloweData -> ([Input], Sealed (HashedDataScript MarloweData)) -> PendingTx -> Bool
 mkValidator creator MarloweData{..} (inputs, sealedMarloweData) pendingTx@PendingTx{..} = let
-    HashedDataScript (MarloweData expectedState expectedContract) _ = unseal sealedMarloweData
+    HashedDataScript (MarloweData expectedState expectedContract) dsHash = unseal sealedMarloweData
     {-  Embed contract creator public key. This makes validator script unique,
         which makes a particular contract to have a unique script address.
         That makes it easier to watch for contract actions inside a wallet. -}
@@ -733,11 +753,17 @@ mkValidator creator MarloweData{..} (inputs, sealedMarloweData) pendingTx@Pendin
     txInput = TransactionInput { txInterval = slotInterval, txInputs = inputs }
     result = computeTransaction txInput marloweState marloweContract
     in case result of
-        TransactionOutput {txOutPayments, txOutState, txOutContract} -> let
-            validPayments = validatePayments pendingTx txOutPayments
-            validDataScript = txOutState == expectedState && txOutContract == expectedContract
-            in validPayments && validDataScript
-        Error txError -> traceErrorH "Error" -- (show txError)
+        TransactionOutput {txOutPayments, txOutState, txOutContract} ->
+            if txOutContract == Refund
+            -- if it's a last transaction, don't expect any continuation, everything is payed out.
+            then validatePayments pendingTx txOutPayments
+            -- otherwise check the continuation
+            else let
+                validPayments = validatePayments pendingTx txOutPayments
+                validContOutput = validateContinuation pendingTx dsHash
+                validContract = txOutState == expectedState && txOutContract == expectedContract
+                in validPayments && validContOutput && validContract
+        Error _ -> traceErrorH "Error"
 
 
 validatorScript :: PubKey -> ValidatorScript
