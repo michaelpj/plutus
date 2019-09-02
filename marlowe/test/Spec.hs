@@ -34,11 +34,11 @@ key1 = walletPubKey w1
 key2 = walletPubKey w2
 key3 = walletPubKey w3
 
-zeroCouponBond = When [ Case (Deposit acc key1 (Constant 850))
-        (Pay acc (Party key2) (Constant 850)
+zeroCouponBond = When [ (Deposit acc key1 (Constant 850),
+        Pay acc (Party key2) (Constant 850)
             (When
-                [ Case (Deposit acc key2 (Constant 1000))
-                        (Pay acc (Party key1) (Constant 1000) Refund)
+                [ (Deposit acc key2 (Constant 1000),
+                    Pay acc (Party key1) (Constant 1000) Refund)
                 ]
                 1579305589
                 Refund
