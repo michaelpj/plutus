@@ -431,15 +431,15 @@ evalValue env state value = let
                 Just x  -> Ada.getLovelace x
                 Nothing -> 0
         Constant integer     -> integer
-        NegValue val         -> (-1) `multiply` eval val
-        AddValue lhs rhs     -> eval lhs `plus` eval rhs
-        SubValue lhs rhs     -> eval lhs `plus` eval rhs
+        NegValue val         -> (-1) * eval val
+        AddValue lhs rhs     -> eval lhs + eval rhs
+        SubValue lhs rhs     -> eval lhs - eval rhs
         ChoiceValue choiceId defVal ->
             case Map.lookup choiceId (choices state) of
                 Just x  -> x
                 Nothing -> eval defVal
-        -- SlotIntervalStart    -> (getSlot . ivFrom . slotInterval) env
-        -- SlotIntervalEnd      -> (getSlot . ivTo . slotInterval) env
+        SlotIntervalStart    -> getSlot (fst (slotInterval env))
+        SlotIntervalEnd      -> getSlot (snd (slotInterval env))
         UseValue valId       ->
             case Map.lookup valId (boundValues state) of
                 Just x  -> x
@@ -699,7 +699,7 @@ mkValidator creator MarloweData{..} (inputs, sealedMarloweData) PendingTx{..} = 
     {-  We require Marlowe Tx to have both lower bound and upper bounds in 'SlotRange'.
     -}
     (minSlot, maxSlot) = case pendingTxValidRange of
-        Interval (Just l)  (Just h) -> (l, h)
+        Interval (Just l)  (Just (Slot h)) -> (l, Slot (h - 1))
         _ -> traceH "Tx valid slot must have lower bound and upper bounds" Builtins.error ()
 
     -- TxIn we're validating is obviously a Script TxIn.
