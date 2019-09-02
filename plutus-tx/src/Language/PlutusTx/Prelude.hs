@@ -67,7 +67,7 @@ import           Language.PlutusTx.Semigroup as Semigroup
 import           Prelude                     as Prelude hiding (Eq (..), Functor (..), Monoid (..), Num (..), Ord (..),
                                                          Semigroup (..), all, any, const, elem, error, filter, foldMap,
                                                          foldl, foldr, fst, length, map, max, maybe, min, not, null,
-                                                         snd, (!!), (&&), (++), (<$>), (||))
+                                                         snd, reverse, zip, (!!), (&&), (++), (<$>), (||))
 
 -- this module does lots of weird stuff deliberately
 {-# ANN module ("HLint: ignore"::String) #-}

@@ -130,6 +130,10 @@ type ChosenNum = Integer
 type Bound = (Integer, Integer)
 type SlotInterval = (Slot, Slot)
 
+eqPubKey :: Party -> Party -> Bool
+eqPubKey (PubKey (LedgerBytes pk1)) (PubKey (LedgerBytes pk2)) =
+    Builtins.equalsByteString pk1 pk2
+
 data AccountId = AccountId Integer Party deriving (Show)
 
 data ChoiceId = ChoiceId Integer Party deriving (Show)
@@ -269,11 +273,11 @@ data MarloweData = MarloweData {
 
 instance Eq AccountId where
     {-# INLINABLE (==) #-}
-    (AccountId n1 p1) == (AccountId n2 p2) = n1 == n2 && p1 == p2
+    (AccountId n1 p1) == (AccountId n2 p2) = n1 == n2 && p1 `eqPubKey` p2
 
 instance Eq ChoiceId where
     {-# INLINABLE (==) #-}
-    (ChoiceId n1 p1) == (ChoiceId n2 p2) = n1 == n2 && p1 == p2
+    (ChoiceId n1 p1) == (ChoiceId n2 p2) = n1 == n2 && p1 `eqPubKey` p2
 
 instance Eq ValueId where
     {-# INLINABLE (==) #-}
@@ -282,19 +286,22 @@ instance Eq ValueId where
 instance Eq Payee where
     {-# INLINABLE (==) #-}
     Account acc1 == Account acc2 = acc1 == acc2
-    Party p1 == Party p2 = p1 == p2
+    Party p1 == Party p2 = p1 `eqPubKey` p2
     _ == _ = False
 
 instance Eq Payment where
     {-# INLINABLE (==) #-}
-    Payment p1 m1 == Payment p2 m2 = p1 == p2 && m1 == m2
+    Payment p1 m1 == Payment p2 m2 = p1 `eqPubKey` p2 && m1 == m2
 
 instance Eq ReduceWarning where
     {-# INLINABLE (==) #-}
     ReduceNoWarning == ReduceNoWarning = True
-    (ReduceNonPositivePay acc1 p1 a1) == (ReduceNonPositivePay acc2 p2 a2) = acc1 == acc2 && p1 == p2 && a1 == a2
-    (ReducePartialPay acc1 p1 a1 e1) == (ReducePartialPay acc2 p2 a2 e2) = acc1 == acc2 && p1 == p2 && a1 == a2 && e1 == e2
-    (ReduceShadowing v1 old1 new1) == (ReduceShadowing v2 old2 new2) = v1 == v2 && old1 == old2 && new1 == new2
+    (ReduceNonPositivePay acc1 p1 a1) == (ReduceNonPositivePay acc2 p2 a2) =
+        acc1 == acc2 && p1 == p2 && a1 == a2
+    (ReducePartialPay acc1 p1 a1 e1) == (ReducePartialPay acc2 p2 a2 e2) =
+        acc1 == acc2 && p1 == p2 && a1 == a2 && e1 == e2
+    (ReduceShadowing v1 old1 new1) == (ReduceShadowing v2 old2 new2) =
+        v1 == v2 && old1 == old2 && new1 == new2
     _ == _ = False
 
 instance Eq ReduceEffect where
@@ -336,7 +343,7 @@ instance Eq Observation where
 instance Eq Action where
     {-# INLINABLE (==) #-}
     Deposit acc1 party1 val1 == Deposit acc2 party2 val2 =
-        acc1 == acc2 && party1 == party2 && val1 == val2
+        acc1 == acc2 && party1 `eqPubKey` party2 && val1 == val2
     Choice cid1 bounds1 == Choice cid2 bounds2 =
         cid1 == cid2 && let
             bounds = zip bounds1 bounds2
@@ -488,7 +495,9 @@ refundOne accounts = case Map.toList accounts of
 -- Obtains the amount of money available an account
 {-# INLINABLE moneyInAccount #-}
 moneyInAccount :: AccountId -> Map AccountId Money -> Money
-moneyInAccount accId accounts = maybe 0 id $ Map.lookup accId accounts
+moneyInAccount accId accounts = case Map.lookup accId accounts of
+    Just x -> x
+    Nothing -> Ada.lovelaceOf 0
 
 
 -- Sets the amount of money available in an account
@@ -602,7 +611,7 @@ applyCases env state input cases = case (input, cases) of
     (IDeposit accId1 party1 money, (Deposit accId2 party2 val, cont) : rest) -> let
         amount = evalValue env state val
         newState = state { accounts = addMoneyToAccount accId1 money (accounts state) }
-        in if accId1 == accId2 && party1 == party2 && Ada.getLovelace money == amount
+        in if accId1 == accId2 && party1 `eqPubKey` party2 && Ada.getLovelace money == amount
         then Applied newState cont
         else applyCases env state input rest
     (IChoice choId1 choice, (Choice choId2 bounds, cont) : rest) -> let
@@ -690,8 +699,9 @@ contractLifespanUpperBound contract = case contract of
         in maximum (getSlot timeout : contractLifespanUpperBound subContract : contractsLifespans)
     Let _ _ cont -> contractLifespanUpperBound cont
 
-
-validatePayments a b = False
+{-# INLINABLE validatePayments #-}
+validatePayments :: PendingTx -> [Payment] -> Bool
+validatePayments pendingTx txOutPayments = False
 
 {-|
     Marlowe Interpreter ValidatorScript generator.
@@ -727,7 +737,7 @@ mkValidator creator MarloweData{..} (inputs, sealedMarloweData) pendingTx@Pendin
             validPayments = validatePayments pendingTx txOutPayments
             validDataScript = txOutState == expectedState && txOutContract == expectedContract
             in validPayments && validDataScript
-        Error txError -> traceErrorH (show txError)
+        Error txError -> traceErrorH "Error" -- (show txError)
 
 
 validatorScript :: PubKey -> ValidatorScript
