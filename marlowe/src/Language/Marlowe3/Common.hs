@@ -18,6 +18,7 @@
 
 {-# OPTIONS_GHC -fno-strictness #-}
 {-# OPTIONS_GHC -fno-ignore-interface-pragmas #-}
+{-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
 {-# OPTIONS_GHC -fno-omit-interface-pragmas #-}
 
 {-| = Marlowe: financial contracts on Cardano Computation Layer
@@ -107,6 +108,7 @@ import           Ledger.Ada                 (Ada)
 import qualified Ledger.Ada                 as Ada
 import           Ledger.Interval            (Interval (..))
 import           Ledger.Scripts             ( HashedDataScript(..)
+                                            , ValidatorHash(..)
                                             , ValidatorScript(..)
                                             , DataScriptHash(..)
                                             )
@@ -125,8 +127,7 @@ type Bound = (Integer, Integer)
 type SlotInterval = (Slot, Slot)
 
 eqPubKey :: Party -> Party -> Bool
-eqPubKey (PubKey (LedgerBytes pk1)) (PubKey (LedgerBytes pk2)) =
-    Builtins.equalsByteString pk1 pk2
+eqPubKey (PubKey (LedgerBytes pk1)) (PubKey (LedgerBytes pk2)) = pk1 == pk2
 
 data AccountId = AccountId Integer Party deriving (Show)
 
@@ -704,13 +705,22 @@ validatePayments pendingTx txOutPayments scriptOutput = let
 
 {-# INLINABLE validateContinuation #-}
 validateContinuation :: PendingTx -> DataScriptHash -> Maybe Integer
-validateContinuation pendingTx dsHash =
+validateContinuation pendingTx (DataScriptHash dsHash) = let
+    -- TODO FIXME use Validation.getContinuingOutputs
+    getContinuingOutputs :: PendingTx -> [PendingTxOut]
+    getContinuingOutputs PendingTx{pendingTxIn=PendingTxIn{pendingTxInWitness=Just(ValidatorHash inpHsh, _)}, pendingTxOutputs=outs} = filter f outs
+        where
+            f PendingTxOut{pendingTxOutHashes=(Just (ValidatorHash outHsh, _))} = outHsh == inpHsh
+            f _ = False
+    -- Not spending a script output
+    getContinuingOutputs _ = []
+
     -- lookup for a validator script with the same hash (i.e. Marlowe continuation contract)
-    case getContinuingOutputs pendingTx of
+    in case getContinuingOutputs pendingTx of
         {-  It is *not* okay to have multiple outputs with the current validator script,
             that allows "spliting" the Marlowe Contract. -}
-        [PendingTxOut outValue (Just (_, dsh)) DataTxOut]
-            | dsh == dsHash -> (Just . Ada.getLovelace . Ada.fromValue) outValue
+        [PendingTxOut outValue (Just (_, DataScriptHash dsh)) DataTxOut]
+            | Builtins.equalsByteString dsh dsHash -> (Just . Ada.getLovelace . Ada.fromValue) outValue
         _ -> Nothing
 
 
@@ -726,7 +736,7 @@ mkValidator creator MarloweData{..} (inputs, sealedMarloweData) pendingTx@Pendin
         which makes a particular contract to have a unique script address.
         That makes it easier to watch for contract actions inside a wallet. -}
     checkCreator =
-        if marloweCreator == creator then True
+        if marloweCreator `eqPubKey` creator then True
         else traceErrorH "Wrong contract creator"
 
     {-  We require Marlowe Tx to have both lower bound and upper bounds in 'SlotRange'.
