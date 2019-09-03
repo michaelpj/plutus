@@ -661,6 +661,13 @@ getSignatures = foldl addSig (Map.empty())
     addSig acc INotify                    = acc
 
 
+{-# INLINABLE checkSignatures #-}
+checkSignatures :: PendingTx -> Map Party Bool -> Bool
+checkSignatures pendingTx sigs = let
+    requiredSigs = Map.keys sigs
+    in all (txSignedBy pendingTx) requiredSigs
+
+
 -- | Try to compute outputs of a transaction give its input
 {-# INLINABLE computeTransaction #-}
 computeTransaction :: TransactionInput -> State -> Contract -> TransactionOutput
@@ -702,13 +709,37 @@ totalBalance accounts = foldl (+) 0 (fmap (Ada.getLovelace . snd) (Map.toList ac
 {-# INLINABLE validatePayments #-}
 validatePayments :: PendingTx -> [Payment] -> Integer -> Bool
 validatePayments pendingTx txOutPayments scriptOutput = let
-    -- TxIn we're validating is obviously a Script TxIn.
-    PendingTxIn _ _ scriptInValue = pendingTxIn pendingTx
 
-    scriptInAdaValue = Ada.fromValue scriptInValue
-    scriptInAmount = Ada.getLovelace scriptInAdaValue
+    collect outputs PendingTxOut{pendingTxOutValue,
+        pendingTxOutData=PubKeyTxOut (PubKey (LedgerBytes pubKey))} = let
+        txOutInAda = Ada.fromValue pendingTxOutValue
+        newValue = case Map.lookup pubKey outputs of
+            Just value -> value + txOutInAda
+            Nothing -> txOutInAda
+        in Map.insert pubKey newValue outputs
+    collect outputs _ = outputs
 
-    in False
+    collectPayments payments (Payment (PubKey (LedgerBytes party)) money) = let
+        newValue = case Map.lookup party payments of
+            Just value -> value + money
+            Nothing -> money
+        in Map.insert party newValue payments
+
+    outputs :: Map ByteString Money
+    outputs = foldl collect (Map.empty ()) (pendingTxOutputs pendingTx)
+
+    payments :: Map ByteString Money
+    payments = foldl collectPayments (Map.empty ()) txOutPayments
+
+    listOfPayments :: [(ByteString, Money)]
+    listOfPayments = Map.toList payments
+
+    checkValidPayment (party, expectedPayment) =
+        case Map.lookup party outputs of
+            Just value -> value >= expectedPayment
+            Nothing -> False
+
+    in all checkValidPayment listOfPayments
 
 
 {-# INLINABLE validateContinuation #-}
@@ -756,6 +787,9 @@ mkValidator creator MarloweData{..} (inputs, sealedMarloweData) pendingTx@Pendin
 
     slotInterval = (minSlot, maxSlot)
     txInput = TransactionInput { txInterval = slotInterval, txInputs = inputs }
+    validSignatures = let
+        requiredSignatures = getSignatures inputs
+        in checkSignatures pendingTx requiredSignatures
     result = computeTransaction txInput marloweState marloweContract
     in case result of
         TransactionOutput {txOutPayments, txOutState, txOutContract} -> let
@@ -771,7 +805,7 @@ mkValidator creator MarloweData{..} (inputs, sealedMarloweData) pendingTx@Pendin
 
             in if txOutContract == Refund
             -- if it's a last transaction, don't expect any continuation, everything is payed out.
-            then checkCreator && balanceOk && validatePayments pendingTx txOutPayments 0
+            then checkCreator && validSignatures && balanceOk && validatePayments pendingTx txOutPayments 0
             -- otherwise check the continuation
             else case validateContinuation pendingTx dsHash of
                 Just scriptOutput -> let
@@ -779,7 +813,7 @@ mkValidator creator MarloweData{..} (inputs, sealedMarloweData) pendingTx@Pendin
                     validContract = txOutState == expectedState && txOutContract == expectedContract
                     outputBalance = totalBalance (accounts txOutState)
                     outputBalanceOk = scriptOutput == (outputBalance + deposit)
-                    in checkCreator && outputBalanceOk && validPayments && validContract
+                    in checkCreator && validSignatures && outputBalanceOk && validPayments && validContract
                 Nothing -> False
         Error _ -> traceErrorH "Error"
 
