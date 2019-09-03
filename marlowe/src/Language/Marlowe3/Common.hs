@@ -91,10 +91,6 @@ Or, in case Bob didn't demand payment before timeout2, Alice can require a redee
 
 module Language.Marlowe3.Common where
 
-import qualified Prelude                    as Haskell
-
-import           GHC.Generics               (Generic)
-import           Language.Marlowe.Pretty    (Pretty, prettyFragment)
 import qualified Language.PlutusTx.Builtins as Builtins
 import           Language.PlutusTx.Lift     (makeLift)
 import qualified Language.PlutusTx.AssocMap as Map
@@ -110,11 +106,9 @@ import           Ledger                     ( PubKey(..)
 import           Ledger.Ada                 (Ada)
 import qualified Ledger.Ada                 as Ada
 import           Ledger.Interval            (Interval (..))
-import           Ledger.Slot                    (SlotRange)
 import           Ledger.Scripts             ( HashedDataScript(..)
                                             , ValidatorScript(..)
                                             , DataScriptHash(..)
-                                            , RedeemerHash(..)
                                             )
 import           Ledger.Validation
 import           LedgerBytes                (LedgerBytes (..))
@@ -267,6 +261,7 @@ data TransactionOutput =
     This data type is a content of a contract's /Data Script/
 -}
 data MarloweData = MarloweData {
+        marloweCreator  :: Party,
         marloweState    :: State,
         marloweContract :: Contract
     } deriving (Show)
@@ -429,8 +424,6 @@ fixInterval interval state =
             newState = state { minSlot = newLow }
             in if high < curMinSlot then IntervalError (IntervalInPastError curMinSlot interval)
             else IntervalTrimmed env newState
-
-        _ -> IntervalError (InvalidInterval interval)
 
 
 {-|
@@ -700,27 +693,25 @@ contractLifespanUpperBound contract = case contract of
     Let _ _ cont -> contractLifespanUpperBound cont
 
 {-# INLINABLE validatePayments #-}
-validatePayments :: PendingTx -> [Payment] -> Bool
-validatePayments pendingTx txOutPayments = False
+validatePayments :: PendingTx -> [Payment] -> Integer -> Bool
+validatePayments pendingTx txOutPayments scriptOutput = let
+    -- TxIn we're validating is obviously a Script TxIn.
+    PendingTxIn _ _ scriptInValue = pendingTxIn pendingTx
+
+    scriptInAdaValue = Ada.fromValue scriptInValue
+    in False
 
 
 {-# INLINABLE validateContinuation #-}
-validateContinuation :: PendingTx -> DataScriptHash -> Bool
-validateContinuation pendingTx dsHash = let
+validateContinuation :: PendingTx -> DataScriptHash -> Maybe Integer
+validateContinuation pendingTx dsHash =
     -- lookup for a validator script with the same hash (i.e. Marlowe continuation contract)
-    vsOutput = uniqueElement (findContinuingOutputs pendingTx)
-    dsOutputs = findDataScriptOutputs dsHash pendingTx
-    dataScriptOk = case vsOutput of
+    case getContinuingOutputs pendingTx of
         {-  It is *not* okay to have multiple outputs with the current validator script,
             that allows "spliting" the Marlowe Contract. -}
-        Nothing -> traceH "There must be precisely one output with the same validator script" False
-        {- It's fine to have same data script.
-            Imaging having multiple same contracts with same parties.
-            You must use different creator PubKeys to get unique Validator Script hashes, though.
-        -}
-        Just i  -> traceIfFalseH "The data script must be attached to the ongoing output"
-            (i `elem` dsOutputs)
-    in dataScriptOk
+        [PendingTxOut outValue (Just (_, dsh)) DataTxOut]
+            | dsh == dsHash -> (Just . Ada.getLovelace . Ada.fromValue) outValue
+        _ -> Nothing
 
 
 {-|
@@ -730,24 +721,19 @@ validateContinuation pendingTx dsHash = let
 mkValidator
   :: PubKey -> MarloweData -> ([Input], Sealed (HashedDataScript MarloweData)) -> PendingTx -> Bool
 mkValidator creator MarloweData{..} (inputs, sealedMarloweData) pendingTx@PendingTx{..} = let
-    HashedDataScript (MarloweData expectedState expectedContract) dsHash = unseal sealedMarloweData
+    HashedDataScript (MarloweData _ expectedState expectedContract) dsHash = unseal sealedMarloweData
     {-  Embed contract creator public key. This makes validator script unique,
         which makes a particular contract to have a unique script address.
         That makes it easier to watch for contract actions inside a wallet. -}
-    contractCreatorPK = creator
+    checkCreator =
+        if marloweCreator == creator then True
+        else traceErrorH "Wrong contract creator"
 
     {-  We require Marlowe Tx to have both lower bound and upper bounds in 'SlotRange'.
     -}
     (minSlot, maxSlot) = case pendingTxValidRange of
         Interval (Just l)  (Just (Slot h)) -> (l, Slot (h - 1))
         _ -> traceErrorH "Tx valid slot must have lower bound and upper bounds"
-
-    -- TxIn we're validating is obviously a Script TxIn.
-    PendingTxIn _ (Just (inputValidatorHash, RedeemerHash redeemerHash)) scriptInValue =
-        pendingTxIn
-
-
-    scriptInAdaValue = Ada.fromValue scriptInValue
 
     slotInterval = (minSlot, maxSlot)
     txInput = TransactionInput { txInterval = slotInterval, txInputs = inputs }
@@ -756,13 +742,14 @@ mkValidator creator MarloweData{..} (inputs, sealedMarloweData) pendingTx@Pendin
         TransactionOutput {txOutPayments, txOutState, txOutContract} ->
             if txOutContract == Refund
             -- if it's a last transaction, don't expect any continuation, everything is payed out.
-            then validatePayments pendingTx txOutPayments
+            then checkCreator && validatePayments pendingTx txOutPayments 0
             -- otherwise check the continuation
-            else let
-                validPayments = validatePayments pendingTx txOutPayments
-                validContOutput = validateContinuation pendingTx dsHash
-                validContract = txOutState == expectedState && txOutContract == expectedContract
-                in validPayments && validContOutput && validContract
+            else case validateContinuation pendingTx dsHash of
+                Just scriptOutput -> let
+                    validPayments = validatePayments pendingTx txOutPayments scriptOutput
+                    validContract = txOutState == expectedState && txOutContract == expectedContract
+                    in checkCreator && validPayments && validContract
+                Nothing -> False
         Error _ -> traceErrorH "Error"
 
 
