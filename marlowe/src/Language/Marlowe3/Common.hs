@@ -693,6 +693,12 @@ contractLifespanUpperBound contract = case contract of
         in maximum (getSlot timeout : contractLifespanUpperBound subContract : contractsLifespans)
     Let _ _ cont -> contractLifespanUpperBound cont
 
+
+{-# INLINABLE totalBalance #-}
+totalBalance :: Map AccountId Ada -> Integer
+totalBalance accounts = foldl (+) 0 (fmap (Ada.getLovelace . snd) (Map.toList accounts))
+
+
 {-# INLINABLE validatePayments #-}
 validatePayments :: PendingTx -> [Payment] -> Integer -> Bool
 validatePayments pendingTx txOutPayments scriptOutput = let
@@ -700,6 +706,8 @@ validatePayments pendingTx txOutPayments scriptOutput = let
     PendingTxIn _ _ scriptInValue = pendingTxIn pendingTx
 
     scriptInAdaValue = Ada.fromValue scriptInValue
+    scriptInAmount = Ada.getLovelace scriptInAdaValue
+
     in False
 
 
@@ -745,20 +753,33 @@ mkValidator creator MarloweData{..} (inputs, sealedMarloweData) pendingTx@Pendin
         Interval (Just l)  (Just (Slot h)) -> (l, Slot (h - 1))
         _ -> traceErrorH "Tx valid slot must have lower bound and upper bounds"
 
+
     slotInterval = (minSlot, maxSlot)
     txInput = TransactionInput { txInterval = slotInterval, txInputs = inputs }
     result = computeTransaction txInput marloweState marloweContract
     in case result of
-        TransactionOutput {txOutPayments, txOutState, txOutContract} ->
-            if txOutContract == Refund
+        TransactionOutput {txOutPayments, txOutState, txOutContract} -> let
+
+            scriptInAmount = let
+                PendingTxIn _ _ scriptInValue = pendingTxIn
+                scriptInAdaValue = Ada.fromValue scriptInValue
+                in Ada.getLovelace scriptInAdaValue
+
+            inputBalance = totalBalance (accounts marloweState)
+            balanceOk = inputBalance <= scriptInAmount
+            deposit = scriptInAmount - inputBalance
+
+            in if txOutContract == Refund
             -- if it's a last transaction, don't expect any continuation, everything is payed out.
-            then checkCreator && validatePayments pendingTx txOutPayments 0
+            then checkCreator && balanceOk && validatePayments pendingTx txOutPayments 0
             -- otherwise check the continuation
             else case validateContinuation pendingTx dsHash of
                 Just scriptOutput -> let
                     validPayments = validatePayments pendingTx txOutPayments scriptOutput
                     validContract = txOutState == expectedState && txOutContract == expectedContract
-                    in checkCreator && validPayments && validContract
+                    outputBalance = totalBalance (accounts txOutState)
+                    outputBalanceOk = scriptOutput == (outputBalance + deposit)
+                    in checkCreator && outputBalanceOk && validPayments && validContract
                 Nothing -> False
         Error _ -> traceErrorH "Error"
 
