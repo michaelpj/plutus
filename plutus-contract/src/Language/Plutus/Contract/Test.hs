@@ -147,6 +147,7 @@ endpointAvailable
        , AllUniqueLabels (Output s)
        , Forall (Output s) Monoid
        , Forall (Output s) Semigroup
+       , Forall (Output s) Show
        )
     => Wallet
     -> TracePredicate s e a
@@ -154,7 +155,7 @@ endpointAvailable w = PredF $ \(_, r) -> do
     if Endpoints.isActive @l @s (hooks w r)
     then pure True
     else do
-        tellSeq ["missing endpoint:" ++ symbolVal (Proxy :: Proxy l)]
+        tellSeq ["missing endpoint:" ++ symbolVal (Proxy :: Proxy l), show (hooks w r)]
         pure False
 
 interestingAddress

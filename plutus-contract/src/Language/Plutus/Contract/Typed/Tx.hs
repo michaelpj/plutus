@@ -33,3 +33,15 @@ collectFromScriptFilter flt am si red =
         untypedTx = case typed of
             (Typed.TypedTxSomeIns tx) -> Typed.toUntypedTx tx
     in Contract.fromLedgerTx untypedTx
+
+payToScript
+    :: forall a
+    . (PlutusTx.IsData (Scripts.DataType a))
+    => Scripts.ScriptInstance a
+    -> L.Value
+    -> Scripts.DataType a
+    -> Contract.UnbalancedTx
+payToScript si v ds =
+    let out = Typed.makeTypedScriptTxOut si ds v
+        tx = Typed.addTypedTxOut out Typed.baseTx
+    in Contract.fromLedgerTx $ Typed.toUntypedTx tx

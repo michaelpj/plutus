@@ -20,6 +20,7 @@ module Language.Plutus.Contract.Tx(
     -- * Constructing transactions
     , unbalancedTx
     , payToScript
+    , payToPubKey
     , collectFromScript
     , collectFromScriptFilter
     ) where
@@ -105,6 +106,11 @@ unbalancedTx ins outs = UnbalancedTx (Set.fromList ins) outs mempty mempty I.alw
 payToScript :: Value -> Address -> DataScript -> UnbalancedTx
 payToScript v a ds = unbalancedTx mempty [outp] where
     outp = Tx.scriptTxOut' v a ds
+
+-- | Create an `UnbalancedTx` that pays money to a pub key.
+payToPubKey :: Value -> PubKey -> UnbalancedTx
+payToPubKey v pk = unbalancedTx mempty [outp] where
+    outp = Tx.pubKeyTxOut v pk
 
 -- | Create an `UnbalancedTx` that collects script outputs from the
 --   address of the given validator script, using the same redeemer script

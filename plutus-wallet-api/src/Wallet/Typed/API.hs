@@ -77,13 +77,13 @@ payToScript_
 payToScript_ ct range v ds = void $ payToScript ct range v ds
 
 spendScriptOutputs
-    :: forall a m
-    . (Monad m, WalletAPI m, PlutusTx.IsData (Scripts.DataType a), PlutusTx.IsData (Scripts.RedeemerType a))
-    => Scripts.ScriptInstance a
+    :: forall a
+    . (PlutusTx.IsData (Scripts.DataType a), PlutusTx.IsData (Scripts.RedeemerType a))
+    => AddressMap
+    -> Scripts.ScriptInstance a
     -> Scripts.RedeemerType a
-    -> m [(Typed.TypedScriptTxIn a, Value)]
-spendScriptOutputs ct red = do
-    am <- WAPI.watchedAddresses
+    -> [(Typed.TypedScriptTxIn a, Value)]
+spendScriptOutputs am ct red =
     let
         addr = Scripts.scriptAddress ct
         utxo :: Map.Map TxOutRef TxOut
@@ -92,14 +92,13 @@ spendScriptOutputs ct red = do
         refs = Map.toList utxo
         typeRef :: (TxOutRef, TxOut) -> Either Typed.ConnectionError (Typed.TypedScriptTxOutRef a, Value)
         typeRef (ref, out) = do
-            tyRef <- Typed.typeScriptTxOutRef @a (\refq -> Map.lookup refq utxo) ct ref
+            tyRef <- Typed.typeScriptTxOutRef @a (\refq -> am ^? ix addr . ix refq) ct ref
             pure (tyRef, view outValue out)
         typedRefs :: [(Typed.TypedScriptTxOutRef a, Value)]
         typedRefs = rights $ typeRef <$> refs
         typedIns :: [(Typed.TypedScriptTxIn a, Value)]
         typedIns = (\(ref, v) -> (Typed.makeTypedScriptTxIn @a ct red ref, v)) <$> typedRefs
-
-    pure typedIns
+    in typedIns
 
 -- | Given the pay to script address of the 'ValidatorScript', collect from it
 --   all the outputs that match a predicate, using the 'RedeemerScript'.

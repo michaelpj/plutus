@@ -56,6 +56,7 @@ library
         Language.Plutus.Contract.Record
         Language.Plutus.Contract.IOTS
         Language.Plutus.Contract.Servant
+        Language.Plutus.Contract.StateMachine
         Language.Plutus.Contract.Resumable
         Language.Plutus.Contract.Tx
         Language.Plutus.Contract.Util

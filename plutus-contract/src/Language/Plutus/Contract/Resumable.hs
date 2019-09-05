@@ -28,6 +28,7 @@ module Language.Plutus.Contract.Resumable(
     ) where
 
 import           Control.Applicative
+import           Control.Monad.Base
 import           Control.Monad.Except
 import           Control.Monad.Morph
 import           Control.Monad.Reader
@@ -227,6 +228,9 @@ instance Applicative f => MonadError e (Resumable e f) where
         CError e -> f e
         _        -> m
 
+instance Applicative f => MonadBase (Resumable e f) (Resumable e f) where
+    liftBase = id
+
 -- | Interpret a 'Resumable' program in some other monad.
 lowerM
     :: (Monad m, Alternative m, MonadError e m)
@@ -264,9 +268,9 @@ runClosed con rc =
                         CStep con' -> do
                             let r = runStep con' evt
                             case r of
-                                Left _ -> 
+                                Left _ ->
                                     throwRecordmismatchError "ClosedLeaf, contract not finished"
-                                Right a  -> 
+                                Right a  ->
                                     pure a
                         _ -> throwRecordmismatchError "ClosedLeaf, expected CStep "
                 ClosedLeaf (FinalJSON vl) ->
@@ -393,17 +397,17 @@ updateRecord con rc =
             $ runWriterT
             $ runOpen con cl
 
-execResumable 
+execResumable
     :: Monoid o
     => [i]
     -> Resumable e (Step (Maybe i) o) a
     -> Either (ResumableError e) o
 execResumable es = fmap snd . runResumable es
 
-runResumable 
-    :: Monoid o 
-    => [i] 
-    -> Resumable e (Step (Maybe i) o) a 
+runResumable
+    :: Monoid o
+    => [i]
+    -> Resumable e (Step (Maybe i) o) a
     -> Either (ResumableError e) (Either (OpenRecord i) (ClosedRecord i, a), o)
 runResumable es con = do
     initial <- runExcept $ runWriterT (initialise con)
@@ -414,4 +418,3 @@ runResumable es con = do
                             Left open -> runExcept $ runWriterT $ runOpen con open
                             Right closed -> fmap (\(a, h) -> (Right (closed, a), h)) $ runExcept $ runWriterT $ runClosed con closed
             in result
-    

@@ -82,6 +82,10 @@ makeTypedScriptTxOut ct d value =
     let outTy = PayToScript (DataScript (toData d))
     in TypedScriptTxOut @out $ TxOutOf (scriptAddress ct) value outTy
 
+getData :: IsData (DataType a) => TypedScriptTxOut a -> Maybe (DataType a)
+getData (TypedScriptTxOut(TxOutOf{txOutType=PayToScript (DataScript (fromData -> Just d))})) = Just d
+getData _ = Nothing
+
 -- | A 'TxOutRef' tagged by a phantom type: and the connection type of the output.
 newtype TypedScriptTxOutRef a = TypedScriptTxOutRef { unTypedScriptTxOutRef :: TxOutRef }
 
@@ -303,6 +307,20 @@ typeScriptTxOut si TxOutOf{txOutAddress=AddressOf addrHash,txOutValue,txOutType}
     dsVal <- checkDataScript si ds
     pure $ makeTypedScriptTxOut si dsVal txOutValue
 
+resolveTxOutRef
+    :: forall out m
+    . ( IsData (DataType out)
+      , MonadError ConnectionError m)
+    => (TxOutRef -> Maybe TxOut)
+    -> ScriptInstance out
+    -> TxOutRef
+    -> m (TypedScriptTxOut out)
+resolveTxOutRef lookupRef ct ref = do
+    out <- case lookupRef ref of
+        Just out -> pure out
+        Nothing  -> throwError UnknownRef
+    typeScriptTxOut @out ct out
+
 -- | Create a 'TypedScriptTxOut' from an existing 'TxOut' by checking the types of its parts. To do this we
 -- need to cross-reference against the validator script and be able to look up the 'TxOut' to which this
 -- reference points.
@@ -315,11 +333,8 @@ typeScriptTxOutRef
     -> TxOutRef
     -> m (TypedScriptTxOutRef out)
 typeScriptTxOutRef lookupRef ct ref = do
-    out <- case lookupRef ref of
-        Just out -> pure out
-        Nothing  -> throwError UnknownRef
     -- If this succeeds, we're good
-    _ <- typeScriptTxOut @out ct out
+    _ <- resolveTxOutRef @out lookupRef ct ref
     pure $ TypedScriptTxOutRef ref
 
 -- | Create a 'PubKeyTxOUt' from an existing 'TxOut' by checking that it has the right payment type.

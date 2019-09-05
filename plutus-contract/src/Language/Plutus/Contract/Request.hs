@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE GADTs                #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedLabels     #-}
 {-# LANGUAGE PolyKinds            #-}
 {-# LANGUAGE RankNTypes           #-}
@@ -18,6 +19,7 @@ module Language.Plutus.Contract.Request where
 import           Control.Applicative
 import           Control.Lens
 import           Control.Monad                      (MonadPlus)
+import           Control.Monad.Base
 import           Control.Monad.Except               (MonadError)
 import qualified Data.Aeson                         as Aeson
 import           Data.Row
@@ -38,6 +40,9 @@ import           Wallet.Emulator.Types              (AsAssertionError (..), Asse
 --
 newtype Contract s e a = Contract { unContract :: Resumable e (Step (Maybe (Event s)) (Handlers s)) a }
   deriving newtype (Functor, Applicative, Monad, MonadError e, Alternative, MonadPlus)
+
+instance MonadBase (Contract s e) (Contract s e) where
+    liftBase = id
 
 instance PlutusTx.Functor (Contract s e) where
   fmap = Haskell.fmap
