@@ -112,7 +112,7 @@ the given type/term, which are things like "must be able to type the constructor
 These are then cashed out into constraints on the instance.
 -}
 
-data Dep = TypeableDep TH.Type | LiftDep TH.Type deriving (Show, Eq, Ord)
+data Dep = TypeableDep TH.Name | LiftDep TH.Name deriving (Show, Eq, Ord)
 type Deps = Set.Set Dep
 
 toConstraint :: Dep -> TH.Pred
@@ -126,16 +126,16 @@ getTyConDeps deps = Set.fromList $ mapMaybe typeableDep $ Set.toList deps
         typeableDep (TypeableDep (TH.ConT n)) = Just n
         typeableDep _                         = Nothing
 
-addTypeableDep :: (THCompiling m) => TH.Type -> m ()
-addTypeableDep ty = modify $ Set.insert $ TypeableDep $ normalizeType ty
+--addTypeableDep :: (THCompiling m) => TH.Type -> m ()
+--addTypeableDep ty = modify $ Set.insert $ TypeableDep $ normalizeType ty
 
-addLiftDep :: (THCompiling m) => TH.Type -> m ()
-addLiftDep ty = modify $ Set.insert $ LiftDep $ normalizeType ty
+--addLiftDep :: (THCompiling m) => TH.Type -> m ()
+--addLiftDep ty = modify $ Set.insert $ LiftDep $ normalizeType ty
 
 -- | The constraints when we are compiling at runtime. See note [Compiling at TH time and runtime].
 type RTCompiling m = (MonadDefs TH.Name () m, MonadQuote m)
 -- | The constraints when we are compiling at TH time. See note [Compiling at TH time and runtime].
-type THCompiling m = (MonadState Deps m)
+type THCompiling m = (TH.Quasi m)
 
 -- See Note [Ordering of constructors]
 sortedCons :: TH.DatatypeInfo -> [TH.ConstructorInfo]
@@ -198,7 +198,6 @@ compileType vars = \case
         t2' <- compileType vars t2
         pure [| TyApp () <$> $(t1') <*> $(t2') |]
     t@(TH.ConT name) -> compileTypeableType t name
-    TH.LitT (TH.NumTyLit i) -> pure [| pure $ TyInt () i |]
     -- See note [Type variables]
     t@(TH.VarT name) -> case vars of
         Typeable -> compileTypeableType t name
@@ -208,7 +207,7 @@ compileType vars = \case
 -- | Compile a type with the given name using 'typeRep' and incurring a corresponding 'Typeable' dependency.
 compileTypeableType :: (THCompiling m) => TH.Type -> TH.Name -> m (TH.Q TH.Exp)
 compileTypeableType ty name = do
-    addTypeableDep ty
+    --addTypeableDep ty
     pure [|
           do
               maybeType <- lookupType () name
@@ -229,7 +228,7 @@ class Typeable (a :: k) where
 
 -- TODO: there is an unpleasant amount of duplication between this and the main compiler, but
 -- I'm not sure how to unify them better
-compileTypeRep :: (THCompiling m) => TH.DatatypeInfo -> m (TH.Q TH.Exp)
+compileTypeRep :: (THCompiling m) => TH.DatatypeInfo -> m (TH.Q TH.Exp, Set.Set TH.Name)
 compileTypeRep dt@TH.DatatypeInfo{TH.datatypeName=tyName, TH.datatypeVars=tvs} = do
     tvNamesAndKinds <- traverse tvNameAndKind tvs
     -- annoyingly th-abstraction doesn't give us a kind we can compile here
@@ -240,10 +239,13 @@ compileTypeRep dt@TH.DatatypeInfo{TH.datatypeName=tyName, TH.datatypeVars=tvs} =
     if isNewtype dt
     then do
         -- Extract the unique field of the unique constructor
-        argTy <- case cons of
-            [ TH.ConstructorInfo {TH.constructorFields=[argTy]} ] -> compileType Local $ normalizeType argTy
+        (argTy, deps) <- case cons of
+            [ TH.ConstructorInfo {TH.constructorFields=[argTy]} ] -> do
+                let normalized = normalizeType argTy
+                compiled <- compileType Local normalized
+                deps <- usedTyCons <$> TH.resolveTypeSynonyms argTy
+                pure (compiled, deps)
             _ -> die "Newtypes must have a single constructor with a single argument"
-        deps <- gets getTyConDeps
         pure [|
             flip runReaderT mempty $ do
                 maybeDefined <- lookupType () tyName
@@ -260,7 +262,6 @@ compileTypeRep dt@TH.DatatypeInfo{TH.datatypeName=tyName, TH.datatypeVars=tvs} =
             |]
     else do
         constrExprs <- traverse compileConstructorDecl cons
-        deps <- gets getTyConDeps
         pure [|
           flip runReaderT mempty $ do
               maybeDefined <- lookupType () tyName
@@ -290,7 +291,7 @@ compileTypeRep dt@TH.DatatypeInfo{TH.datatypeName=tyName, TH.datatypeVars=tvs} =
                       pure $ mkTyVar () dtvd
           |]
 
-compileConstructorDecl :: THCompiling m => TH.ConstructorInfo -> m (TH.Q TH.Exp)
+compileConstructorDecl :: THCompiling m => TH.ConstructorInfo -> m (TH.Q TH.Exp, Set.Set TH.Name)
 compileConstructorDecl TH.ConstructorInfo{TH.constructorName=name, TH.constructorFields=argTys} = do
     tyExprs <- traverse (compileType Local . normalizeType) argTys
     -- see note [Compiling at TH time and runtime]
@@ -308,7 +309,7 @@ makeTypeable name = do
     requireExtension TH.ScopedTypeVariables
 
     info <- TH.reifyDatatype name
-    let (rhs, deps) = runState (compileTypeRep info) mempty
+    (rhs, deps) <- compileTypeRep info
 
     -- See Note [Closed constraints]
     let constraints = filter (not . isClosedConstraint) $ toConstraint <$> Set.toList deps
@@ -330,7 +331,7 @@ compileLift dt = traverse (uncurry (compileConstructorClause dt)) (zip [0..] (so
 compileConstructorClause :: (THCompiling m) => TH.DatatypeInfo -> Int -> TH.ConstructorInfo -> m (TH.Q TH.Clause)
 compileConstructorClause dt@TH.DatatypeInfo{TH.datatypeName=tyName, TH.datatypeVars=tvs} index TH.ConstructorInfo{TH.constructorName=name, TH.constructorFields=argTys} = do
     -- need to be able to lift the argument types
-    traverse_ addLiftDep argTys
+    --traverse_ addLiftDep argTys
 
     -- We need the actual type parameters for the non-newtype case, and we have to do
     -- it out here, but it will give us redundant constraints in the newtype case,
@@ -377,7 +378,7 @@ makeLift name = do
 
     let datatypeType = TH.datatypeType info
 
-    let (clauses, deps) = runState (compileLift info) mempty
+    (clauses, deps) <- compileLift info
 
     {-
     Here we *do* need to add some constraints, because we're going to generate things like

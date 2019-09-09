@@ -10,6 +10,7 @@ import           Language.PlutusCore.Quote
 import           Control.Monad
 
 import qualified Data.Text                        as T
+import qualified Data.Set                         as Set
 
 import qualified Language.Haskell.TH              as TH
 import qualified Language.Haskell.TH.Datatype     as TH
@@ -55,3 +56,16 @@ isNewtype :: TH.DatatypeInfo -> Bool
 isNewtype TH.DatatypeInfo{TH.datatypeVariant=variant} = case variant of
     TH.Newtype -> True
     _          -> False
+
+usedTyCons :: TH.Type -> Set.Set TH.Name
+usedTyCons t = \case
+    TH.ConT n -> Set.singleton n
+    TH.ForallT _ _ t' -> usedTyCons t'
+    TH.AppT f x      -> usedTyCons f `Set.union` usedTyCons x
+    TH.SigT t' k     -> usedTyCons t' `Set.union` usedTyCons k
+    TH.InfixT l _ r  -> usedTyCons l `Set.union` usedTyCons r
+    TH.UInfixT l _ r -> usedTyCons l `Set.union` usedTyCons r
+    TH.ParensT t'    -> usedTyCons t'
+    TH.AppKindT t k  -> usedTyCons t `Set.union` usedTyCons k
+    TH.ImplicitParamT _ t -> usedTyCons t
+    _             -> mempty
