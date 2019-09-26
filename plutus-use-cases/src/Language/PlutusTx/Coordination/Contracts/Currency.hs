@@ -13,6 +13,7 @@ module Language.PlutusTx.Coordination.Contracts.Currency(
     , forgedValue
     ) where
 
+import           Control.Applicative          (Applicative (..))
 import           Control.Lens               ((^.), at, to)
 import           Data.Bifunctor             (Bifunctor(first))
 import qualified Data.Set                   as Set
@@ -21,7 +22,7 @@ import           Data.Maybe                 (fromMaybe)
 import           Data.String                (IsString(fromString))
 import qualified Data.Text                  as Text
 
-import           Language.PlutusTx.Prelude
+import           Language.PlutusTx.Prelude  hiding (Applicative (..))
 import qualified Language.PlutusTx          as PlutusTx
 
 import qualified Ledger.Ada                 as Ada
