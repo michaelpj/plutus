@@ -201,7 +201,7 @@ them from the correct types in Haskell, and for comparing them (in
 {-# INLINABLE scriptCurrencySymbol #-}
 -- | The 'CurrencySymbol' of a 'MonetaryPolicy'
 scriptCurrencySymbol :: MonetaryPolicy -> CurrencySymbol
-scriptCurrencySymbol scrpt = let (MonetaryPolicyHash hsh) = monetaryPolicyHash scrpt in Value.currencySymbol hsh
+scriptCurrencySymbol scrpt = let (MonetaryPolicyHash (ScriptHash hsh)) = monetaryPolicyHash scrpt in Value.currencySymbol hsh
 
 {-# INLINABLE txSignedBy #-}
 -- | Check if a transaction was signed by the given public key.
@@ -221,10 +221,11 @@ ownHashes PendingTx{pendingTxItem=PendingTxIn{pendingTxInWitness=h}} = h
 ownHash :: PendingTx -> ValidatorHash
 ownHash p = let (vh, _, _) = ownHashes p in vh
 
+-- TODO: should be MPSHash
 {-# INLINABLE fromSymbol #-}
 -- | Convert a 'CurrencySymbol' to a 'ValidatorHash'
 fromSymbol :: CurrencySymbol -> ValidatorHash
-fromSymbol (CurrencySymbol s) = ValidatorHash s
+fromSymbol (CurrencySymbol s) = ValidatorHash (ScriptHash s)
 
 {-# INLINABLE scriptOutputsAt #-}
 -- | Get the list of 'PendingTxOut' outputs of the pending transaction at
@@ -280,7 +281,7 @@ valueSpent p =
 -- | The 'CurrencySymbol' of the current validator script.
 ownCurrencySymbol :: PendingTxMPS -> CurrencySymbol
 ownCurrencySymbol p =
-    let MonetaryPolicyHash h = pendingTxItem p
+    let MonetaryPolicyHash (ScriptHash h) = pendingTxItem p
     in  Value.currencySymbol h
 
 {-# INLINABLE spendsOutput #-}

@@ -8,7 +8,7 @@
 {-# OPTIONS_GHC -fno-omit-interface-pragmas #-}
 module Ledger.Typed.Scripts(
     ScriptType(..)
-    , Validator
+    , Scripts.Validator
     , ScriptInstance
     , validator
     , scriptAddress
@@ -24,7 +24,7 @@ import           Language.PlutusTx
 
 import           Language.PlutusTx.Prelude (check)
 import qualified Ledger.Address            as Addr
-import           Ledger.Scripts
+import qualified Ledger.Scripts            as Scripts
 import qualified Ledger.Validation         as Validation
 
 import           Data.Aeson                (FromJSON, ToJSON)
@@ -52,7 +52,7 @@ type WrappedMonetaryPolicyType = Data -> ()
 -- | A typed validator script with its 'ValidatorScript' and 'Address'.
 data ScriptInstance (a :: Type) =
     Validator
-        { instanceScript  :: Validator
+        { instanceScript  :: Scripts.Validator
         , instanceAddress :: Addr.Address
         }
     deriving (Generic, ToJSON, FromJSON)
@@ -65,7 +65,7 @@ validator ::
     -- ^ A wrapper for the compiled validator
     -> ScriptInstance a
 validator vc wrapper =
-    let val = mkValidatorScript $ wrapper `applyCode` vc
+    let val = Scripts.mkValidatorScript $ wrapper `applyCode` vc
     in Validator val (Addr.scriptAddress val)
 
 -- | Get the address for a script instance.
@@ -73,7 +73,7 @@ scriptAddress :: ScriptInstance a -> Addr.Address
 scriptAddress = instanceAddress
 
 -- | Get the validator script for a script instance.
-validatorScript :: ScriptInstance a -> Validator
+validatorScript :: ScriptInstance a -> Scripts.Validator
 validatorScript = instanceScript
 
 {- Note [Scripts returning Bool]

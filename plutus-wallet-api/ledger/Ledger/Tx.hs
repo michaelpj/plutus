@@ -19,10 +19,12 @@ module Ledger.Tx(
     updateUtxo,
     validValuesTx,
     forgeScripts,
+    scriptWitnesses,
     signatures,
     dataWitnesses,
     lookupSignature,
     lookupData,
+    lookupScript,
     addSignature,
     -- ** Hashing transactions
     txId,
@@ -51,10 +53,11 @@ module Ledger.Tx(
     TxIn(..),
     inRef,
     inType,
-    inScripts,
+    inRedeemer,
     validRange,
     pubKeyTxIn,
     scriptTxIn,
+    scriptTxInHash,
     -- * Addresses
     Address
     ) where
@@ -75,6 +78,7 @@ import           GHC.Generics              (Generic)
 import           IOTS                      (IotsType)
 
 import           Language.PlutusTx.Lattice
+import           Language.PlutusTx.Data
 
 import           Ledger.Address
 import           Ledger.Crypto
@@ -120,11 +124,13 @@ data Tx = Tx {
     -- ^ The fee for this transaction.
     txValidRange   :: !SlotRange,
     -- ^ The 'SlotRange' during which this transaction may be validated.
+    txScripts      :: Map ScriptHash Script,
+    -- ^ The scripts used by this transaction.
     txForgeScripts :: Set.Set MonetaryPolicy,
     -- ^ The scripts that must be run to check forging conditions.
     txSignatures   :: Map PubKey Signature,
     -- ^ Signatures of this transaction.
-    txData         :: Map DataValueHash DataValue
+    txData         :: Map DataHash Data
     -- ^ Data values recorded on this transaction.
     } deriving stock (Show, Eq, Generic)
       deriving anyclass (ToJSON, FromJSON, Serialise, IotsType)
@@ -136,7 +142,7 @@ instance Pretty Tx where
             renderInput TxIn{txInRef,txInType} =
                 let rest =
                         case txInType of
-                            ConsumeScriptAddress _ redeemer _ ->
+                            ConsumeScriptAddress redeemer ->
                                 [pretty redeemer]
                             ConsumePublicKeyAddress -> mempty
                 in hang 2 $ vsep $ "-" <+> pretty txInRef : rest
@@ -159,13 +165,14 @@ instance Semigroup Tx where
         txForge = txForge tx1 <> txForge tx2,
         txFee = txFee tx1 <> txFee tx2,
         txValidRange = txValidRange tx1 /\ txValidRange tx2,
+        txScripts = txScripts tx1 <> txScripts tx2,
         txForgeScripts = txForgeScripts tx1 <> txForgeScripts tx2,
         txSignatures = txSignatures tx1 <> txSignatures tx2,
         txData = txData tx1 <> txData tx2
         }
 
 instance Monoid Tx where
-    mempty = Tx mempty mempty mempty mempty top mempty mempty mempty
+    mempty = Tx mempty mempty mempty mempty top mempty mempty mempty mempty
 
 instance BA.ByteArrayAccess Tx where
     length        = BA.length . Write.toStrictByteString . encode
@@ -194,12 +201,17 @@ signatures = lens g s where
     g = txSignatures
     s tx sig = tx { txSignatures = sig }
 
+scriptWitnesses :: Lens' Tx (Map ScriptHash Script)
+scriptWitnesses = lens g s where
+    g = txScripts
+    s tx fs = tx { txScripts = fs }
+
 forgeScripts :: Lens' Tx (Set.Set MonetaryPolicy)
 forgeScripts = lens g s where
     g = txForgeScripts
     s tx fs = tx { txForgeScripts = fs }
 
-dataWitnesses :: Lens' Tx (Map DataValueHash DataValue)
+dataWitnesses :: Lens' Tx (Map DataHash Data)
 dataWitnesses = lens g s where
     g = txData
     s tx dat = tx { txData = dat }
@@ -207,8 +219,11 @@ dataWitnesses = lens g s where
 lookupSignature :: PubKey -> Tx -> Maybe Signature
 lookupSignature s Tx{txSignatures} = Map.lookup s txSignatures
 
-lookupData :: Tx -> DataValueHash -> Maybe DataValue
+lookupData :: Tx -> DataHash -> Maybe Data
 lookupData Tx{txData} h = Map.lookup h txData
+
+lookupScript :: Tx -> ScriptHash -> Maybe Script
+lookupScript Tx{txScripts} h = Map.lookup h txScripts
 
 -- | Check that all values in a transaction are non-negative.
 validValuesTx :: Tx -> Bool
@@ -263,8 +278,7 @@ txOutRefs t = mkOut <$> zip [0..] (txOutputs t) where
 
 -- | The type of a transaction input.
 data TxInType =
-      -- TODO: these should all be hashes, with the validators and data segregated to the side
-      ConsumeScriptAddress !Validator !RedeemerValue !DataValue -- ^ A transaction input that consumes a script address with the given validator, redeemer, and data.
+      ConsumeScriptAddress !RedeemerHash -- ^ A transaction input that consumes a script address with the given validator, redeemer, and data.
     | ConsumePublicKeyAddress -- ^ A transaction input that consumes a public key address.
     deriving stock (Show, Eq, Ord, Generic)
     deriving anyclass (Serialise, ToJSON, FromJSON, IotsType)
@@ -289,9 +303,9 @@ inType = lens txInType s where
 
 -- | Validator, redeemer, and data scripts of a transaction input that spends a
 --   "pay to script" output.
-inScripts :: TxIn -> Maybe (Validator, RedeemerValue, DataValue)
-inScripts TxIn{ txInType = t } = case t of
-    ConsumeScriptAddress v r d -> Just (v, r, d)
+inRedeemer :: TxIn -> Maybe RedeemerHash
+inRedeemer TxIn{ txInType = t } = case t of
+    ConsumeScriptAddress r -> Just r
     ConsumePublicKeyAddress    -> Nothing
 
 -- | A transaction input that spends a "pay to public key" output, given the witness.
@@ -299,8 +313,12 @@ pubKeyTxIn :: TxOutRef -> TxIn
 pubKeyTxIn r = TxIn r ConsumePublicKeyAddress
 
 -- | A transaction input that spends a "pay to script" output, given witnesses.
-scriptTxIn :: TxOutRef -> Validator -> RedeemerValue -> DataValue -> TxIn
-scriptTxIn ref v r d = TxIn ref $ ConsumeScriptAddress v r d
+scriptTxInHash :: TxOutRef -> RedeemerHash -> TxIn
+scriptTxInHash ref r = TxIn ref $ ConsumeScriptAddress r
+
+-- | A transaction input that spends a "pay to script" output, given witnesses.
+scriptTxIn :: TxOutRef -> RedeemerValue -> TxIn
+scriptTxIn ref r = scriptTxInHash ref (redeemerHash r)
 
 -- | The type of a transaction output.
 data TxOutType =
@@ -366,8 +384,8 @@ data TxOutTx = TxOutTx { txOutTxTx :: Tx, txOutTxOut :: TxOut }
     deriving stock (Show, Eq, Generic)
     deriving anyclass (Serialise, ToJSON, FromJSON, IotsType)
 
-txOutTxData :: TxOutTx -> Maybe DataValue
-txOutTxData (TxOutTx tx out) = txOutData out >>= lookupData tx
+txOutTxData :: TxOutTx -> Maybe Data
+txOutTxData (TxOutTx tx out) = txOutData out >>= (lookupData tx . getDataValueHash)
 
 -- | Create a transaction output locked by a validator script hash
 --   with the given data script attached.

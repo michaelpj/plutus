@@ -30,7 +30,7 @@ module Ledger.Scripts(
     applyScript,
     -- * Script wrappers
     mkValidatorScript,
-    Validator,
+    Validator (..),
     unValidatorScript,
     RedeemerValue(..),
     DataValue(..),
@@ -39,12 +39,16 @@ module Ledger.Scripts(
     unMonetaryPolicyScript,
     ValidationData(..),
     -- * Hashes
+    DataHash (..),
     DataValueHash(..),
     RedeemerHash(..),
+    ScriptHash (..),
     ValidatorHash(..),
     MonetaryPolicyHash (..),
+    dataHash,
     dataValueHash,
     redeemerHash,
+    scriptHash,
     validatorHash,
     monetaryPolicyHash,
     -- * Example scripts
@@ -66,6 +70,7 @@ import qualified Data.Aeson                               as JSON
 import qualified Data.Aeson.Extras                        as JSON
 import qualified Data.ByteArray                           as BA
 import qualified Data.ByteString.Lazy                     as BSL
+import           Data.Coerce
 import           Data.Functor                             (void)
 import           Data.Hashable                            (Hashable)
 import           Data.String
@@ -91,6 +96,9 @@ import           Ledger.Orphans                           ()
 newtype Script = Script { unScript :: PLC.Program PLC.TyName PLC.Name () }
   deriving stock Generic
   deriving newtype (Serialise)
+
+instance Show Script where
+    show _ = "<script>"
 
 instance IotsType Script where
   iotsDefinition = iotsDefinition @Haskell.String
@@ -226,6 +234,22 @@ instance BA.ByteArrayAccess Validator where
     withByteArray =
         BA.withByteArray . Write.toStrictByteString . encode
 
+-- | 'MonetaryPolicy' is a wrapper around 'Script's which are used as validators for forging constraints.
+newtype MonetaryPolicy = MonetaryPolicy { getMonetaryPolicy :: Script }
+  deriving stock (Generic)
+  deriving newtype (Haskell.Eq, Haskell.Ord, Eq, Ord, Serialise)
+  deriving anyclass (ToJSON, FromJSON, IotsType, NFData)
+  deriving Pretty via (PrettyShow MonetaryPolicy)
+
+instance Show MonetaryPolicy where
+    show = const "MonetaryPolicy { <script> }"
+
+instance BA.ByteArrayAccess MonetaryPolicy where
+    length =
+        BA.length . Write.toStrictByteString . encode
+    withByteArray =
+        BA.withByteArray . Write.toStrictByteString . encode
+
 -- | 'DataValue' is a wrapper around 'Data' values which are used as data in transaction outputs.
 newtype DataValue = DataValue { getDataScript :: Data  }
   deriving stock (Generic, Show)
@@ -254,25 +278,20 @@ instance BA.ByteArrayAccess RedeemerValue where
     withByteArray =
         BA.withByteArray . Write.toStrictByteString . encode
 
--- | 'MonetaryPolicy' is a wrapper around 'Script's which are used as validators for forging constraints.
-newtype MonetaryPolicy = MonetaryPolicy { getMonetaryPolicy :: Script }
-  deriving stock (Generic)
-  deriving newtype (Haskell.Eq, Haskell.Ord, Eq, Ord, Serialise)
-  deriving anyclass (ToJSON, FromJSON, IotsType, NFData)
-  deriving Pretty via (PrettyShow MonetaryPolicy)
+-- | Script runtime representation of a @Digest SHA256@.
+newtype ScriptHash =
+    ScriptHash { getScriptHash :: Builtins.ByteString }
+    deriving (IsString, Show, Serialise, Pretty) via LedgerBytes
+    deriving stock (Generic)
+    deriving newtype (Haskell.Eq, Haskell.Ord, Eq, Ord, Hashable, IsData)
+    deriving anyclass (FromJSON, ToJSON, ToJSONKey, FromJSONKey)
 
-instance Show MonetaryPolicy where
-    show = const "MonetaryPolicy { <script> }"
-
-instance BA.ByteArrayAccess MonetaryPolicy where
-    length =
-        BA.length . Write.toStrictByteString . encode
-    withByteArray =
-        BA.withByteArray . Write.toStrictByteString . encode
+instance IotsType ScriptHash where
+    iotsDefinition = iotsDefinition @LedgerBytes
 
 -- | Script runtime representation of a @Digest SHA256@.
 newtype ValidatorHash =
-    ValidatorHash Builtins.ByteString
+    ValidatorHash { getValidatorHash :: ScriptHash }
     deriving (IsString, Show, Serialise, Pretty) via LedgerBytes
     deriving stock (Generic)
     deriving newtype (Haskell.Eq, Haskell.Ord, Eq, Ord, Hashable, IsData)
@@ -282,8 +301,30 @@ instance IotsType ValidatorHash where
     iotsDefinition = iotsDefinition @LedgerBytes
 
 -- | Script runtime representation of a @Digest SHA256@.
+newtype MonetaryPolicyHash =
+    MonetaryPolicyHash { getMonetaryPolicyHash :: ScriptHash }
+    deriving (IsString, Show, Serialise, Pretty) via LedgerBytes
+    deriving stock (Generic)
+    deriving newtype (Haskell.Eq, Haskell.Ord, Eq, Ord, Hashable, IsData)
+    deriving anyclass (FromJSON, ToJSON, ToJSONKey, FromJSONKey)
+
+instance IotsType MonetaryPolicyHash where
+    iotsDefinition = iotsDefinition @LedgerBytes
+
+-- | Hash of a 'Data' value.
+newtype DataHash =
+    DataHash { getDataHash :: Builtins.ByteString }
+    deriving (IsString, Show, Serialise, Pretty) via LedgerBytes
+    deriving stock (Generic)
+    deriving newtype (Haskell.Eq, Haskell.Ord, Eq, Ord, Hashable, IsData)
+    deriving anyclass (FromJSON, ToJSON, ToJSONKey, FromJSONKey)
+
+instance IotsType DataHash where
+    iotsDefinition = iotsDefinition @LedgerBytes
+
+-- | Script runtime representation of a @Digest SHA256@.
 newtype DataValueHash =
-    DataValueHash Builtins.ByteString
+    DataValueHash { getDataValueHash :: DataHash }
     deriving (IsString, Show, Serialise, Pretty) via LedgerBytes
     deriving stock (Generic)
     deriving newtype (Haskell.Eq, Haskell.Ord, Eq, Ord, Hashable, IsData)
@@ -294,7 +335,7 @@ instance IotsType DataValueHash where
 
 -- | Script runtime representation of a @Digest SHA256@.
 newtype RedeemerHash =
-    RedeemerHash Builtins.ByteString
+    RedeemerHash { getRedeemerHash :: DataHash }
     deriving (IsString, Show, Serialise, Pretty) via LedgerBytes
     deriving stock (Generic)
     deriving newtype (Haskell.Eq, Haskell.Ord, Eq, Ord, Hashable, IsData)
@@ -303,34 +344,26 @@ newtype RedeemerHash =
 instance IotsType RedeemerHash where
     iotsDefinition = iotsDefinition @LedgerBytes
 
--- | Script runtime representation of a @Digest SHA256@.
-newtype MonetaryPolicyHash =
-    MonetaryPolicyHash Builtins.ByteString
-    deriving (IsString, Show, Serialise, Pretty) via LedgerBytes
-    deriving stock (Generic)
-    deriving newtype (Haskell.Eq, Haskell.Ord, Eq, Ord, Hashable, IsData)
-    deriving anyclass (FromJSON, ToJSON, ToJSONKey, FromJSONKey)
-
-instance IotsType MonetaryPolicyHash where
-    iotsDefinition = iotsDefinition @LedgerBytes
+dataHash :: Data -> DataHash
+dataHash = DataHash . Builtins.sha2_256 . serialise
 
 dataValueHash :: DataValue -> DataValueHash
-dataValueHash = DataValueHash . Builtins.sha2_256 . BSL.fromStrict . BA.convert
+dataValueHash = coerce . dataHash . coerce
 
 redeemerHash :: RedeemerValue -> RedeemerHash
-redeemerHash = RedeemerHash . Builtins.sha2_256 . BSL.fromStrict . BA.convert
+redeemerHash = coerce . dataHash . coerce
+
+scriptHash :: Script -> ScriptHash
+scriptHash vl = ScriptHash $ BSL.fromStrict $ BA.convert h' where
+    h :: Digest SHA256 = hash $ Write.toStrictByteString e
+    h' :: Digest SHA256 = hash h
+    e = encode vl
 
 validatorHash :: Validator -> ValidatorHash
-validatorHash vl = ValidatorHash $ BSL.fromStrict $ BA.convert h' where
-    h :: Digest SHA256 = hash $ Write.toStrictByteString e
-    h' :: Digest SHA256 = hash h
-    e = encode vl
+validatorHash = coerce . scriptHash . coerce
 
 monetaryPolicyHash :: MonetaryPolicy -> MonetaryPolicyHash
-monetaryPolicyHash vl = MonetaryPolicyHash $ BSL.fromStrict $ BA.convert h' where
-    h :: Digest SHA256 = hash $ Write.toStrictByteString e
-    h' :: Digest SHA256 = hash h
-    e = encode vl
+monetaryPolicyHash = coerce . scriptHash . coerce
 
 -- | Information about the state of the blockchain and about the transaction
 --   that is currently being validated, represented as a value in 'Data'.
@@ -370,12 +403,12 @@ unitData = DataValue $ toData ()
 unitRedeemer :: RedeemerValue
 unitRedeemer = RedeemerValue $ toData ()
 
+makeLift ''ScriptHash
 makeLift ''ValidatorHash
-
-makeLift ''DataValueHash
-
 makeLift ''MonetaryPolicyHash
 
+makeLift ''DataHash
+makeLift ''DataValueHash
 makeLift ''RedeemerHash
 
 makeLift ''DataValue

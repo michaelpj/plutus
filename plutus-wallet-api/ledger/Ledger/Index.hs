@@ -109,6 +109,10 @@ data ValidationError =
     -- ^ The current slot is not covered by the transaction's validity slot range.
     | SignatureMissing PubKeyHash
     -- ^ The transaction is missing a signature
+    | MissingData DataHash
+    -- ^ The transaction is missing a data value for the given hash
+    | MissingScript ScriptHash
+    -- ^ The transaction is missing a script for the given hash
     | ForgeWithoutScript Scripts.MonetaryPolicyHash
     -- ^ The transaction attempts to forge value of a currency without running
     --   the currency's monetary policy.
@@ -169,9 +173,7 @@ checkSlotRange sl tx =
 --   can be unlocked by the signatures or validator scripts of the inputs.
 checkValidInputs :: ValidationMonad m => Tx -> m ()
 checkValidInputs tx = do
-    let tid = txId tx
-        sigs = tx ^. signatures
-    matches <- lkpOutputs tx >>= traverse (uncurry (matchInputOutput tid sigs))
+    matches <- lkpOutputs tx >>= traverse (uncurry (matchInputOutput tx))
     vld     <- validationData tx
     traverse_ (checkMatch vld) matches
 
@@ -199,7 +201,7 @@ checkForgingAuthorised tx =
     let
         forgedCurrencies = V.symbols (txForge tx)
 
-        mpsScriptHashes = Scripts.MonetaryPolicyHash . V.unCurrencySymbol <$> forgedCurrencies
+        mpsScriptHashes = Scripts.MonetaryPolicyHash . Scripts.ScriptHash . V.unCurrencySymbol <$> forgedCurrencies
 
         lockingScripts = monetaryPolicyHash <$> Set.toList (txForgeScripts tx)
 
@@ -232,25 +234,35 @@ data InOutMatch =
 -- | Match a transaction input with the output that it consumes, ensuring that
 --   both are of the same type (pubkey or pay-to-script).
 matchInputOutput :: ValidationMonad m
-    => TxId
+    => Tx
     -- ^ Hash of the transaction that is being verified
-    -> Map.Map PubKey Signature
-    -- ^ Signatures provided with the transaction
     -> TxIn
     -- ^ Input that allegedly spends the output
     -> TxOut
     -- ^ The unspent transaction output we are trying to unlock
     -> m InOutMatch
-matchInputOutput txid mp i txo = case (txInType i, txOutType txo, txOutAddress txo) of
-    (ConsumeScriptAddress v r d, PayToScript dh, ScriptAddress vh) -> do
+matchInputOutput tx i txo = case (txInType i, txOutType txo, txOutAddress txo) of
+    (ConsumeScriptAddress rh, PayToScript dh, ScriptAddress vh) -> do
+        d <- let h = getDataValueHash dh in case lookupData tx h of
+            Just d -> pure $ DataValue d
+            Nothing -> throwError $ MissingData h
         unless (dataValueHash d == dh) $ throwError $ InvalidDataHash d dh
+
+        r <- let h = getRedeemerHash rh in case lookupData tx h of
+            Just r -> pure $ RedeemerValue r
+            Nothing -> throwError $ MissingData h
+
+        v <- let h = getValidatorHash vh in case lookupScript tx h of
+            Just v -> pure $ Validator v
+            Nothing -> throwError $ MissingScript h
+
         unless (validatorHash v == vh) $ throwError $ InvalidScriptHash v vh
 
         pure $ ScriptMatch i v r d
     (ConsumePublicKeyAddress, PayToPubKey, PubKeyAddress pkh) ->
-        let sigMatches = (flip fmap) (Map.toList mp) $ \(pk,sig) ->
+        let sigMatches = (flip fmap) (Map.toList (tx ^. signatures)) $ \(pk,sig) ->
                 if pubKeyHash pk == pkh
-                then Just (PubKeyMatch txid pk sig)
+                then Just (PubKeyMatch (txId tx) pk sig)
                 else Nothing
         in case asum sigMatches of
             Just m -> pure m
@@ -315,9 +327,8 @@ type PendingTxNoIn = Validation.PendingTx' ()
 -- | Create the data about the transaction which will be passed to a validator script.
 validationData :: ValidationMonad m => Tx -> m PendingTxNoIn
 validationData tx = do
-    txins <- traverse mkIn $ Set.toList $ txInputs tx
     let ptx = PendingTx
-            { pendingTxInputs = txins
+            { pendingTxInputs = undefined --txInputs tx
             , pendingTxOutputs = txOutputs tx
             , pendingTxForge = txForge tx
             , pendingTxFee = txFee tx
@@ -325,7 +336,7 @@ validationData tx = do
             , pendingTxValidRange = txValidRange tx
             , pendingTxForgeScripts = monetaryPolicyHash <$> Set.toList (tx ^. forgeScripts)
             , pendingTxSignatories = fmap pubKeyHash $ Map.keys (tx ^. signatures)
-            , pendingTxData = Map.toList (tx ^. dataWitnesses)
+            , pendingTxData = undefined -- Map.toList (tx ^. dataWitnesses)
             , pendingTxId = txId tx
             }
     pure ptx
@@ -353,10 +364,3 @@ pendingTxInPubkey
     => TxOutRef
     -> m Validation.PendingTxIn
 pendingTxInPubkey outRef = txInFromRef outRef Nothing
-
--- | Create the data about a transaction input which will be passed to a validator script.
-mkIn :: ValidationMonad m => TxIn -> m Validation.PendingTxIn
-mkIn TxIn{txInRef, txInType} = case txInType of
-    ConsumeScriptAddress v r d ->
-        Validation.toLedgerTxIn <$> pendingTxInScript txInRef v r d
-    ConsumePublicKeyAddress -> pendingTxInPubkey txInRef
