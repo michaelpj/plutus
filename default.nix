@@ -65,7 +65,7 @@ with pkgs.lib;
 
 let
   localLib = import ./lib.nix { inherit config system; } ;
-  src = localLib.iohkNix.cleanSourceHaskell ./.;
+  src = pkgs.haskell-nix.cleanSourceHaskell { src = ./.; };
   latex = pkgs.callPackage ./nix/latex.nix {};
   sources = import ./nix/sources.nix;
 
