@@ -176,13 +176,13 @@ let
     };
 
     plutus-playground = rec {
-      playground-exe = set-git-rev haskellPackages.plutus-playground-server.components.all;
+      playground-exe = set-git-rev haskellPackages.plutus-playground-server;
       server-invoker = let
         # the playground uses ghc at runtime so it needs one packaged up with the dependencies it needs in one place
         runtimeGhc = haskellPackages.ghcWithPackages (ps: [
           playground-exe
-          haskellPackages.plutus-playground-lib.components.all
-          haskellPackages.plutus-use-cases.components.all
+          haskellPackages.plutus-playground-lib
+          haskellPackages.plutus-use-cases
         ]);
       in pkgs.runCommand "plutus-server-invoker" { buildInputs = [pkgs.makeWrapper]; } ''
         # We need to provide the ghc interpreter with the location of the ghc lib dir and the package db
@@ -218,7 +218,7 @@ let
     };
 
     marlowe-playground = rec {
-      playground-exe = set-git-rev haskellPackages.marlowe-playground-server.components.all;
+      playground-exe = set-git-rev haskellPackages.marlowe-playground-server;
       server-invoker = let
         # the playground uses ghc at runtime so it needs one packaged up with the dependencies it needs in one place
         runtimeGhc = haskellPackages.ghcWithPackages (ps: [
@@ -335,7 +335,7 @@ let
     };
 
     agdaPackages = rec {
-      Agda = haskellPackages.Agda.components.all;
+      Agda = haskellPackages.Agda;
       # Override the agda builder code from nixpkgs to use our versions of Agda and Haskell.
       # The Agda version is from our package set, and is newer than the one in nixpkgs.
       agda = pkgs.agda.override { inherit Agda; };
@@ -371,7 +371,8 @@ let
     dev = rec {
       packages = localLib.getPackages {
         inherit (self) haskellPackages; filter = name: builtins.elem name [ "cabal-install" "stylish-haskell" "purty" "hlint" ];
-        f = k: v: v.components.all;
+        # Use this if you want to use haskell-packages-new
+        # f = k: v: v.components.all;
       };
 
       scripts = {
