@@ -31,7 +31,6 @@
 
 , sourcesOverride ? {}
 # Use a pinned version nixpkgs.
-# , pkgs ? (import ./lib.nix { inherit config system; }).pkgs
 , pkgs ? import ./nix { inherit system crossSystem config sourcesOverride; }
 
 # Disable running of tests for all local packages.
@@ -97,57 +96,37 @@ let
 
     # This is the stackage LTS plus overrides, plus the plutus
     # packages.
-    haskellPackages = pkgs.plutusHaskellPackages;
-    # haskellPackages = let
-    #   errorOverlay = import ./nix/overlays/force-error.nix {
-    #     inherit pkgs;
-    #     filter = localLib.isPlutus;
-    #   };
-    #   customOverlays = optional forceError errorOverlay;
-    #   # We can pass an evaluated version of our packages into
-    #   # iohk-nix, and then we can also get out the compiler
-    #   # so we make sure it uses the same one.
-    #   pkgsGenerated = import ./pkgs { inherit pkgs; };
-    # in self.callPackage localLib.iohkNix.haskellPackages {
-    #   inherit forceDontCheck enableProfiling
-    #   enableHaddockHydra enableBenchmarks fasterBuild enableDebugging
-    #   customOverlays pkgsGenerated;
-    #   # Broken on vanilla 19.09, require the IOHK fork. Will be abandoned when
-    #   # we go to haskell.nix anyway.
-    #   enablePhaseMetrics = false;
-    #   enableSplitCheck = false;
+    haskellPackages = let
+      errorOverlay = import ./nix/overlays/force-error.nix {
+        inherit pkgs;
+        filter = localLib.isPlutus;
+      };
+      customOverlays = optional forceError errorOverlay;
+      # We can pass an evaluated version of our packages into
+      # iohk-nix, and then we can also get out the compiler
+      # so we make sure it uses the same one.
+      pkgsGenerated = import ./pkgs { inherit pkgs; };
+    in self.callPackage localLib.iohkNix.haskellPackages {
+      inherit forceDontCheck enableProfiling
+      enableHaddockHydra enableBenchmarks fasterBuild enableDebugging
+      customOverlays pkgsGenerated;
+      # Broken on vanilla 19.09, require the IOHK fork. Will be abandoned when
+      # we go to haskell.nix anyway.
+      enablePhaseMetrics = false;
+      enableSplitCheck = false;
 
-    #   filter = localLib.isPlutus;
-    #   requiredOverlay = ./nix/overlays/haskell-overrides.nix;
-    # };
-
-    # # FIXME: currently only an approximation of the existing infra
-    # localPackages = {
-    #   deployment-server        = haskellPackages.deployment-server.components.all;
-    #   iots-export              = haskellPackages.iots-export.components.all;
-    #   language-plutus-core     = haskellPackages.language-plutus-core.components.all;
-    #   marlow-hspec             = haskellPackages.marlow-hspec.components.all;
-    #   marlow-playground-server = haskellPackages.marlow-playground-server.components.all;
-    #   marlow-symbolic          = haskellPackages.marlow-symbolic.components.all;
-    #   marlow                   = haskellPackages.marlow.components.all;
-    #   playground-common        = haskellPackages.playground-common.components.all;
-    #   plutus-book              = haskellPackages.plutus-book.components.all;
-    #   plutus-contract-tasty    = haskellPackages.plutus-contract-tasty.components.all;
-    #   plutus-contract          = haskellPackages.plutus-contract.components.all;
-    #   plutus-emulator          = haskellPackages.plutus-emulator.components.all;
-    #   plutus-exe               = haskellPackages.plutus-exe.components.all;
-    #   plutus-ir                = haskellPackages.plutus-ir.components.all;
-    #   plutus-playground-lib    = haskellPackages.plutus-playground-lib.components.all;
-    #   plutus-playground-server = haskellPackages.plutus-playground-server.components.all;
-    #   plutus-scb               = haskellPackages.plutus-scb.components.all;
-    #   plutus-tutorial          = haskellPackages.plutus-tutorial.components.all;
-    #   plutus-tx-plugin         = haskellPackages.plutus-tx-plugin.components.all;
-    #   plutus-tx                = haskellPackages.plutus-tx.components.all;
-    #   plutus-use-cases         = haskellPackages.plutus-use-cases.components.all;
-    #   plutus-wallet-api        = haskellPackages.plutus-wallet-api.components.all;
-    # };
+      filter = localLib.isPlutus;
+      requiredOverlay = ./nix/overlays/haskell-overrides.nix;
+    };
     localPackages = localLib.getPackages {
       inherit (self) haskellPackages; filter = localLib.isPlutus;
+    };
+
+    # # FIXME: currently only an approximation of the existing infra
+     haskell-packages-new = pkgs.plutusHaskellPackages;
+
+    local-packages-new = localLib.getPackages {
+      inherit (self) haskell-packages-new; filter = localLib.isPlutus;
       f = k: v: v.components.all;
     };
 

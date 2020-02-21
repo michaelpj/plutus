@@ -11,6 +11,9 @@ let
   nixpkgs = iohkNix.nixpkgs;
   pkgs = iohkNix.getPkgs { extraOverlays = [ (import ./nix/overlays/musl.nix) (import ./nix/overlays/nixpkgs-overrides.nix) ]; };
   lib = pkgs.lib;
+  getPackages = { haskellPackages, filter , f ? null }:
+    let filtered = lib.filterAttrs (name: drv: filter name) haskellPackages;
+    in if f == null then filtered else lib.mapAttrs f filtered;
 
   # List of all public (i.e. published Haddock, will go on Hackage) Plutus pkgs
   plutusPublicPkgList = [
@@ -47,18 +50,16 @@ let
   isPlutus = name: builtins.elem name plutusPkgList;
 
   unfreePredicate = pkg:
-      if pkg ? name then builtins.elem (builtins.parseDrvName pkg.name).name ["kindlegen" "Xcode.app"]
-      else if pkg ? pname then builtins.elem pkg.pname ["kindlegen" "Xcode.app"]
+      let unfreePkgs = [ "kindlegen" ]; in
+      if pkg ? name then builtins.elem (builtins.parseDrvName pkg.name).name unfreePkgs
+      else if pkg ? pname then builtins.elem pkg.pname unfreePkgs
       else false;
 
   comp = f: g: (v: f(g v));
 
-  getPackages = { haskellPackages, filter , f ? null }:
-    let filtered = lib.filterAttrs (name: drv: filter name) haskellPackages;
-    in if f == null then filtered else lib.mapAttrs f filtered;
-
 in lib // {
   inherit
+  getPackages
   iohkNix
   isPlutus
   isPublicPlutus
@@ -67,6 +68,5 @@ in lib // {
   unfreePredicate
   nixpkgs
   pkgs
-  comp
-  getPackages;
+  comp;
 }
