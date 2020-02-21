@@ -121,8 +121,31 @@ let
     #   requiredOverlay = ./nix/overlays/haskell-overrides.nix;
     # };
 
-    # XXX FIXME
-    localPackages = haskellPackages;
+    # FIXME: currently only an approximation of the existing infra
+    localPackages = {
+      deployment-server        = haskellPackages.deployment-server.components.all;
+      iots-export              = haskellPackages.iots-export.components.all;
+      language-plutus-core     = haskellPackages.language-plutus-core.components.all;
+      marlow-hspec             = haskellPackages.marlow-hspec.components.all;
+      marlow-playground-server = haskellPackages.marlow-playground-server.components.all;
+      marlow-symbolic          = haskellPackages.marlow-symbolic.components.all;
+      marlow                   = haskellPackages.marlow.components.all;
+      playground-common        = haskellPackages.playground-common.components.all;
+      plutus-book              = haskellPackages.plutus-book.components.all;
+      plutus-contract-tasty    = haskellPackages.plutus-contract-tasty.components.all;
+      plutus-contract          = haskellPackages.plutus-contract.components.all;
+      plutus-emulator          = haskellPackages.plutus-emulator.components.all;
+      plutus-exe               = haskellPackages.plutus-exe.components.all;
+      plutus-ir                = haskellPackages.plutus-ir.components.all;
+      plutus-playground-lib    = haskellPackages.plutus-playground-lib.components.all;
+      plutus-playground-server = haskellPackages.plutus-playground-server.components.all;
+      plutus-scb               = haskellPackages.plutus-scb.components.all;
+      plutus-tutorial          = haskellPackages.plutus-tutorial.components.all;
+      plutus-tx-plugin         = haskellPackages.plutus-tx-plugin.components.all;
+      plutus-tx                = haskellPackages.plutus-tx.components.all;
+      plutus-use-cases         = haskellPackages.plutus-use-cases.components.all;
+      plutus-wallet-api        = haskellPackages.plutus-wallet-api.components.all;
+    };
     # localPackages = localLib.getPackages {
     #   inherit (self) haskellPackages; filter = localLib.isPlutus;
     # };
