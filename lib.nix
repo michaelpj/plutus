@@ -53,6 +53,10 @@ let
 
   comp = f: g: (v: f(g v));
 
+  getPackages = { haskellPackages, filter , f ? null }:
+    let filtered = lib.filterAttrs (name: drv: filter name) haskellPackages;
+    in if f == null then filtered else lib.mapAttrs f filtered;
+
 in lib // {
   inherit
   iohkNix
@@ -63,5 +67,6 @@ in lib // {
   unfreePredicate
   nixpkgs
   pkgs
-  comp;
+  comp
+  getPackages;
 }
