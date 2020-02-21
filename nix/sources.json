@@ -35,16 +35,28 @@
         "url": "https://github.com/justinwoo/easy-purescript-nix/archive/cc7196bff3fdb5957aabfe22c3fa88267047fe88.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "haskell.nix": {
+        "branch": "master",
+        "description": "Alternative Haskell Infrastructure for Nixpkgs",
+        "homepage": "https://input-output-hk.github.io/haskell.nix",
+        "owner": "input-output-hk",
+        "repo": "haskell.nix",
+        "rev": "fee0922de5e43bd1dc0e8f769e765894242c00a0",
+        "sha256": "1y2jmw4vlwc0qgmpi9m5awr1knwnrsgmxh8923h26bc0pf5jldmx",
+        "type": "tarball",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/fee0922de5e43bd1dc0e8f769e765894242c00a0.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "iohk-nix": {
         "branch": "master",
         "description": "nix scripts shared across projects",
         "homepage": null,
         "owner": "input-output-hk",
         "repo": "iohk-nix",
-        "rev": "29bbc658a3dcae5c17065b572c442dd7a9379c6e",
-        "sha256": "1baqj866ms1q0iwp9lvpipb0jn9d570mapy1jj4npql6zd5015hc",
+        "rev": "b34f11f205afbd11a69cab45d57cd8ebb2746713",
+        "sha256": "14cnfw479gha7ljifai9zchmpsq4652f3q2vvsibslfd6sgnl4js",
         "type": "builtin-tarball",
-        "url": "https://github.com/input-output-hk/iohk-nix/archive/29bbc658a3dcae5c17065b572c442dd7a9379c6e.tar.gz",
+        "url": "https://github.com/input-output-hk/iohk-nix/archive/b34f11f205afbd11a69cab45d57cd8ebb2746713.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nix-gitignore": {

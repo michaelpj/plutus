@@ -25,12 +25,14 @@
 ########################################################################
 
 { system ? builtins.currentSystem
-, crossSystem ? builtins.currentSystem
+, crossSystem ? null
  # The nixpkgs configuration file
 , config ? { allowUnfreePredicate = (import ./lib.nix {}).unfreePredicate; }
 
+, sourcesOverride ? {}
 # Use a pinned version nixpkgs.
-, pkgs ? (import ./lib.nix { inherit config system; }).pkgs
+# , pkgs ? (import ./lib.nix { inherit config system; }).pkgs
+, pkgs ? import ./nix { inherit system crossSystem config sourcesOverride; }
 
 # Disable running of tests for all local packages.
 , forceDontCheck ? false
@@ -95,32 +97,35 @@ let
 
     # This is the stackage LTS plus overrides, plus the plutus
     # packages.
-    haskellPackages = let
-      errorOverlay = import ./nix/overlays/force-error.nix {
-        inherit pkgs;
-        filter = localLib.isPlutus;
-      };
-      customOverlays = optional forceError errorOverlay;
-      # We can pass an evaluated version of our packages into
-      # iohk-nix, and then we can also get out the compiler
-      # so we make sure it uses the same one.
-      pkgsGenerated = import ./pkgs { inherit pkgs; };
-    in self.callPackage localLib.iohkNix.haskellPackages {
-      inherit forceDontCheck enableProfiling
-      enableHaddockHydra enableBenchmarks fasterBuild enableDebugging
-      customOverlays pkgsGenerated;
-      # Broken on vanilla 19.09, require the IOHK fork. Will be abandoned when
-      # we go to haskell.nix anyway.
-      enablePhaseMetrics = false;
-      enableSplitCheck = false;
+    haskellPackages = pkgs.plutusHaskellPackages;
+    # haskellPackages = let
+    #   errorOverlay = import ./nix/overlays/force-error.nix {
+    #     inherit pkgs;
+    #     filter = localLib.isPlutus;
+    #   };
+    #   customOverlays = optional forceError errorOverlay;
+    #   # We can pass an evaluated version of our packages into
+    #   # iohk-nix, and then we can also get out the compiler
+    #   # so we make sure it uses the same one.
+    #   pkgsGenerated = import ./pkgs { inherit pkgs; };
+    # in self.callPackage localLib.iohkNix.haskellPackages {
+    #   inherit forceDontCheck enableProfiling
+    #   enableHaddockHydra enableBenchmarks fasterBuild enableDebugging
+    #   customOverlays pkgsGenerated;
+    #   # Broken on vanilla 19.09, require the IOHK fork. Will be abandoned when
+    #   # we go to haskell.nix anyway.
+    #   enablePhaseMetrics = false;
+    #   enableSplitCheck = false;
 
-      filter = localLib.isPlutus;
-      requiredOverlay = ./nix/overlays/haskell-overrides.nix;
-    };
+    #   filter = localLib.isPlutus;
+    #   requiredOverlay = ./nix/overlays/haskell-overrides.nix;
+    # };
 
-    localPackages = localLib.getPackages {
-      inherit (self) haskellPackages; filter = localLib.isPlutus;
-    };
+    # XXX FIXME
+    localPackages = haskellPackages;
+    # localPackages = localLib.getPackages {
+    #   inherit (self) haskellPackages; filter = localLib.isPlutus;
+    # };
 
     tests = {
       shellcheck = pkgs.callPackage localLib.iohkNix.tests.shellcheck { inherit src; };
