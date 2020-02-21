@@ -197,13 +197,13 @@ let
     };
 
     plutus-playground = rec {
-      playground-exe = set-git-rev haskellPackages.plutus-playground-server;
+      playground-exe = set-git-rev haskellPackages.plutus-playground-server.components.all;
       server-invoker = let
         # the playground uses ghc at runtime so it needs one packaged up with the dependencies it needs in one place
         runtimeGhc = haskellPackages.ghcWithPackages (ps: [
           playground-exe
-          haskellPackages.plutus-playground-lib
-          haskellPackages.plutus-use-cases
+          haskellPackages.plutus-playground-lib.components.all
+          haskellPackages.plutus-use-cases.components.all
         ]);
       in pkgs.runCommand "plutus-server-invoker" { buildInputs = [pkgs.makeWrapper]; } ''
         # We need to provide the ghc interpreter with the location of the ghc lib dir and the package db
@@ -239,7 +239,7 @@ let
     };
 
     marlowe-playground = rec {
-      playground-exe = set-git-rev haskellPackages.marlowe-playground-server;
+      playground-exe = set-git-rev haskellPackages.marlowe-playground-server.components.all;
       server-invoker = let
         # the playground uses ghc at runtime so it needs one packaged up with the dependencies it needs in one place
         runtimeGhc = haskellPackages.ghcWithPackages (ps: [
@@ -356,7 +356,7 @@ let
     };
 
     agdaPackages = rec {
-      Agda = haskellPackages.Agda;
+      Agda = haskellPackages.Agda.components.all;
       # Override the agda builder code from nixpkgs to use our versions of Agda and Haskell.
       # The Agda version is from our package set, and is newer than the one in nixpkgs.
       agda = pkgs.agda.override { inherit Agda; };
@@ -385,7 +385,7 @@ let
 
     metatheory = import ./metatheory {
       inherit (agdaPackages) agda AgdaStdlib;
-      inherit (localLib.iohkNix) cleanSourceHaskell;
+      inherit (pkgs.haskell-nix) cleanSourceHaskell;
       inherit pkgs haskellPackages;
     };
 
@@ -396,7 +396,6 @@ let
       };
 
       scripts = {
-        inherit (localLib) regeneratePackages;
 
         fixStylishHaskell = pkgs.writeScript "fix-stylish-haskell" ''
           #!${pkgs.runtimeShell}

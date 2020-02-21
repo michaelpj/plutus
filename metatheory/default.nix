@@ -1,10 +1,10 @@
 { pkgs, cleanSourceHaskell, haskellPackages, agda, AgdaStdlib }:
-let 
+let
   # The agda builder doesn't work properly with library files, we need to use direct include flags
   libFilter = name: type: let basename = baseNameOf (toString name); in !(pkgs.lib.hasSuffix ".agda-lib" basename);
   # Most of the filters for Haskell source are good for us too
-  cleanSourceAgda = src: pkgs.lib.cleanSourceWith { filter = libFilter; src = (cleanSourceHaskell src); };
-in rec { 
+  cleanSourceAgda = src: pkgs.lib.cleanSourceWith { filter = libFilter; src = (cleanSourceHaskell { inherit src; }); };
+in rec {
   plutus-metatheory = agda.mkDerivation (self: rec {
     name = "plutus-metatheory";
 
