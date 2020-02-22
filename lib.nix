@@ -7,7 +7,7 @@ let
     # FIXME: should be 'nixpkgsOverride = sources.nixpkgs', but see https://github.com/input-output-hk/iohk-nix/pull/215
     nixpkgsJsonOverride = ./nixpkgs.json;
   };
-  legacyIohkNix = import source.iohk-nix-old {
+  legacyIohkNix = import sources.iohk-nix-old {
     inherit system config;
     # FIXME: should be 'nixpkgsOverride = sources.nixpkgs', but see https://github.com/input-output-hk/iohk-nix/pull/215
     nixpkgsJsonOverride = ./nixpkgs.json;
