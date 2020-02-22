@@ -106,7 +106,7 @@ let
       # iohk-nix, and then we can also get out the compiler
       # so we make sure it uses the same one.
       pkgsGenerated = import ./pkgs { inherit pkgs; };
-    in self.callPackage localLib.iohkNix.haskellPackages {
+    in self.callPackage localLib.legacyIohkNix.haskellPackages {
       inherit forceDontCheck enableProfiling
       enableHaddockHydra enableBenchmarks fasterBuild enableDebugging
       customOverlays pkgsGenerated;

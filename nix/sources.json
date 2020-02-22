@@ -61,6 +61,18 @@
         "url": "https://github.com/input-output-hk/iohk-nix/archive/b34f11f205afbd11a69cab45d57cd8ebb2746713.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "iohk-nix-old": {
+        "branch": "321008a5b36ca8d11400d099c852b2ba293473f6",
+        "description": "nix scripts shared across projects",
+        "homepage": null,
+        "owner": "input-output-hk",
+        "repo": "iohk-nix",
+        "rev": "321008a5b36ca8d11400d099c852b2ba293473f6",
+        "sha256": "1vq98vnl5la9ak6cdf2mfh9nrmwql8kmghx1l79xrzg7syffprbl",
+        "type": "tarball",
+        "url": "https://github.com/input-output-hk/iohk-nix/archive/321008a5b36ca8d11400d099c852b2ba293473f6.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "nix-gitignore": {
         "branch": "master",
         "description": "A nix expression that filters source based on a .gitignore file.",

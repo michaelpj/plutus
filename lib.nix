@@ -7,6 +7,11 @@ let
     # FIXME: should be 'nixpkgsOverride = sources.nixpkgs', but see https://github.com/input-output-hk/iohk-nix/pull/215
     nixpkgsJsonOverride = ./nixpkgs.json;
   };
+  legacyIohkNix = import source.iohk-nix-old {
+    inherit system config;
+    # FIXME: should be 'nixpkgsOverride = sources.nixpkgs', but see https://github.com/input-output-hk/iohk-nix/pull/215
+    nixpkgsJsonOverride = ./nixpkgs.json;
+  };
 
   nixpkgs = iohkNix.nixpkgs;
   pkgs = iohkNix.getPkgs { extraOverlays = [ (import ./nix/overlays/musl.nix) (import ./nix/overlays/nixpkgs-overrides.nix) ]; };
@@ -61,6 +66,8 @@ in lib // {
   inherit
   getPackages
   iohkNix
+  # FIXME: legacy iohk nix is needed to support the old haskell infrastructure.
+  legacyIohkNix
   isPlutus
   isPublicPlutus
   plutusPublicPkgList
