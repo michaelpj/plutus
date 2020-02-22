@@ -8,6 +8,7 @@
         "rev": "v1.2",
         "sha256": "01v4dy0ckir9skrn118ca4mzjnwdas70q9a9lncawjblwzikg4hq",
         "type": "tarball",
+        "builtin": false,
         "url": "https://github.com/agda/agda-stdlib/archive/v1.2.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
