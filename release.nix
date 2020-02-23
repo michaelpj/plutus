@@ -73,6 +73,7 @@ in lib.fix (jobsets: testJobsets // {
     name = "plutus-required-checks";
 
     constituents = (allJobs jobsets.localPackages)
+      ++ (allJobs jobsets.local-packages-new)
       ++ (allJobs jobsets.metatheory)
       ++ (allJobs jobsets.tests)
       ++ (allJobs jobsets.docs)
