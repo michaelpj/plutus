@@ -12,10 +12,10 @@ in
   , skipPackages ? []
   , nixpkgsArgs ? {
       # we need unfree for kindlegen
-      config = { allowUnfree = false; 
-                 allowUnfreePredicate = localLib.unfreePredicate; 
+      config = { allowUnfree = false;
+                 allowUnfreePredicate = localLib.unfreePredicate;
                  overlays = [ (import ./nix/overlays/musl.nix) ];
-                 inHydra = true; 
+                 inHydra = true;
                  };
       inherit fasterBuild;
     }
@@ -38,15 +38,16 @@ let
   # This is a mapping from attribute paths to systems. So it needs to mirror the structure of the
   # attributes in default.nix exactly
   systemMapping = {
-    localPackages = 
+    localPackages =
       # Due to the magical split test machinery, packages that have a 'testdata' attribute should
       # have their tests run via the 'testrun' derivation. I don't know how to *also* have a mapping
-      # for the package itself, since it would collide with the attrset containing 'testrun', but 
+      # for the package itself, since it would collide with the attrset containing 'testrun', but
       # the tests will depend on the main package so that's okay.
       lib.mapAttrs (n: p: if p ? testdata then { testrun = supportedSystems; } else supportedSystems)
          packageSet.localPackages;
+    local-packages-new = lib.mapAttrs (_: _: supportedSystems) packageSet.local-packages-new;
     # Some of the Agda dependencies only build on linux
-    metatheory = lib.mapAttrs (_: _: linux) packageSet.metatheory;  
+    metatheory = lib.mapAttrs (_: _: linux) packageSet.metatheory;
     # At least the client is broken on darwin for some yarn reason
     plutus-playground = lib.mapAttrs (_: _: linux) packageSet.plutus-playground;
     # At least the client is broken on darwin for some yarn reason
@@ -61,21 +62,21 @@ let
     # See note on 'easyPS' in 'default.nix'
     dev.scripts = lib.mapAttrs (n: _: if n == "updateClientDeps" then linux else supportedSystems) packageSet.dev.scripts;
   };
-  
+
   testJobsets = mapTestOn systemMapping;
 
-  # Recursively collect all jobs (derivations) in a jobset 
+  # Recursively collect all jobs (derivations) in a jobset
   allJobs = jobset: lib.collect lib.isDerivation jobset;
 
 in lib.fix (jobsets: testJobsets // {
   required = lib.hydraJob (nixpkgs.releaseTools.aggregate {
     name = "plutus-required-checks";
-    
+
     constituents = (allJobs jobsets.localPackages)
       ++ (allJobs jobsets.metatheory)
       ++ (allJobs jobsets.tests)
-      ++ (allJobs jobsets.docs) 
-      ++ (allJobs jobsets.papers) 
+      ++ (allJobs jobsets.docs)
+      ++ (allJobs jobsets.papers)
       ++ (allJobs jobsets.plutus-playground)
       ++ (allJobs jobsets.marlowe-playground)
       ++ (allJobs jobsets.marlowe-symbolic-lambda)

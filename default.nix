@@ -127,6 +127,7 @@ let
 
     local-packages-new = localLib.getPackages {
       inherit (self) haskell-packages-new; filter = localLib.isPlutus;
+      # let's pretend we don't care about components. all it is.
       f = k: v: v.components.all;
     };
 
