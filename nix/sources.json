@@ -1,6 +1,7 @@
 {
     "agda-stdlib": {
         "branch": "master",
+        "builtin": false,
         "description": "The Agda standard library",
         "homepage": "http://wiki.portal.chalmers.se/agda/pmwiki.php",
         "owner": "agda",
@@ -8,7 +9,6 @@
         "rev": "v1.2",
         "sha256": "01v4dy0ckir9skrn118ca4mzjnwdas70q9a9lncawjblwzikg4hq",
         "type": "tarball",
-        "builtin": false,
         "url": "https://github.com/agda/agda-stdlib/archive/v1.2.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
@@ -76,6 +76,7 @@
     },
     "nix-gitignore": {
         "branch": "master",
+        "builtin": false,
         "description": "A nix expression that filters source based on a .gitignore file.",
         "homepage": "",
         "owner": "siers",
@@ -100,11 +101,11 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nodejs-headers": {
+        "builtin": false,
         "rev": "v10.9.0",
         "sha256": "0x2qwghai17klz8drwmx4bfyr32sl0g76kwgv8vva9z40h57h65a",
         "type": "file",
         "url": "https://nodejs.org/download/release/v10.9.0/node-v10.9.0-headers.tar.gz",
-        "url_template": "https://nodejs.org/download/release/<rev>/node-<rev>-headers.tar.gz",
-        "builtin": false
+        "url_template": "https://nodejs.org/download/release/<rev>/node-<rev>-headers.tar.gz"
     }
 }
