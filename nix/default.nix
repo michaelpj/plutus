@@ -36,6 +36,8 @@ let
       })
       # And, of course, our haskell-nix-ified cabal project:
       (import ./pkgs.nix)
+      (import ./overlays/musl.nix)
+      (import ./overlays/nixpkgs-overrides.nix)
     ];
 
   pkgs = import nixpkgs {

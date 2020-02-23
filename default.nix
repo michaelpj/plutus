@@ -132,7 +132,7 @@ let
 
     tests = {
       shellcheck = pkgs.callPackage localLib.iohkNix.tests.shellcheck { inherit src; };
-      stylishHaskell = pkgs.callPackage localLib.iohkNix.tests.stylishHaskell {
+      stylishHaskell = pkgs.callPackage localLib.legacyIohkNix.tests.stylishHaskell {
         inherit (self.haskellPackages) stylish-haskell;
         inherit src;
       };
