@@ -54,6 +54,8 @@ let
 
   isPlutus = name: builtins.elem name plutusPkgList;
 
+  regeneratePackages = legacyIohkNix.stack2nix.regeneratePackages { hackageSnapshot = "2020-01-13T00:00:00Z"; };
+
   unfreePredicate = pkg:
       let unfreePkgs = [ "kindlegen" ]; in
       if pkg ? name then builtins.elem (builtins.parseDrvName pkg.name).name unfreePkgs
@@ -72,6 +74,7 @@ in lib // {
   isPublicPlutus
   plutusPublicPkgList
   plutusPkgList
+  regeneratePackages
   unfreePredicate
   nixpkgs
   pkgs
