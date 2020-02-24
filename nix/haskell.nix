@@ -30,6 +30,11 @@ let
               "unix" "xhtml"
               "stm" "terminfo"
             ];
+          packages.marlowe.doHaddock = false;
+          # HACK to get z3 on the path for these tests
+          packages.marlowe-hspec.components.tests.marlowe-hspec-test.preCheck = ''
+            PATH=${lib.makeBinPath [ pkgs.z3 ]}:$PATH
+          '';
         }
      ];
     pkg-def-extras = [
