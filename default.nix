@@ -122,8 +122,8 @@ let
       inherit (self) haskellPackages; filter = localLib.isPlutus;
     };
 
-    # # FIXME: currently only an approximation of the existing infra
-     haskell-packages-new = pkgs.plutusHaskellPackages;
+    ## FIXME: currently only an approximation of the existing infra
+    haskell-packages-new = pkgs.plutusHaskellPackages;
 
     local-packages-new = localLib.getPackages {
       haskellPackages = haskell-packages-new; filter = localLib.isPlutus;
@@ -377,6 +377,7 @@ let
       };
 
       scripts = {
+        inherit (localLib) regeneratePackages;
 
         fixStylishHaskell = pkgs.writeScript "fix-stylish-haskell" ''
           #!${pkgs.runtimeShell}

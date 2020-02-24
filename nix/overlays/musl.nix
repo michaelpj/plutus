@@ -16,11 +16,13 @@ self: super: {
       pyopenssl = super.pyopenssl.overridePythonAttrs (old: { doCheck = false; });
     };
   };
+  # FIXME: Note this will *not* apply to the haskell.nix compilers.  Those live in
+  # the pkgs.haskell-nix. namespace.
   haskell = super.haskell // {
     compiler = super.haskell.compiler // {
       ghc865 = super.haskell.compiler.ghc865.overrideAttrs (old: {
         # Using ld.gold seems to break mysteriously. This is the neatest way I could think of to
-        # revert that: it trims the '.gold' back off the end of the LD variable, changing it 
+        # revert that: it trims the '.gold' back off the end of the LD variable, changing it
         # back to using ld from binutils.
         preConfigure = old.preConfigure + ''
           export LD=''${LD%.gold}

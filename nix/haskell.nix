@@ -6,11 +6,6 @@
 , pkgs
 , haskell-nix
 , buildPackages
-, config ? {}
-# GHC attribute name
-, compiler ? config.haskellNix.compiler or "ghc865"
-# Enable profiling
-, profiling ? config.haskellNix.profiling or false
 }:
 
 let
@@ -48,4 +43,4 @@ let
   };
 
 in
-  pkgSet #.config.hsPkgs #// { _config = pkgSet.config; }
+  pkgSet
