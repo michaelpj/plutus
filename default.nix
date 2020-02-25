@@ -134,11 +134,11 @@ let
     tests = {
       shellcheck = pkgs.callPackage localLib.iohkNix.tests.shellcheck { inherit src; };
       stylishHaskell = pkgs.callPackage localLib.legacyIohkNix.tests.stylishHaskell {
-        inherit (self.haskellPackages) stylish-haskell;
+        stylish-haskell = self.haskell-packages-new.stylish-haskell.components.exes.stylish-haskell;
         inherit src;
       };
       purty = pkgs.callPackage ./nix/tests/purty.nix {
-        inherit (self.haskellPackages) purty;
+        purty = self.haskell-packages-new.purty.components.exes.purty;
         inherit src;
       };
     };
@@ -370,10 +370,11 @@ let
     };
 
     dev = rec {
-      packages = localLib.getPackages {
-        inherit (self) haskellPackages; filter = name: builtins.elem name [ "cabal-install" "stylish-haskell" "purty" "hlint" ];
-        # Use this if you want to use haskell-packages-new
-        # f = k: v: v.components.all;
+      packages = {
+        cabal-install = haskell-packages-new.cabal-install.components.exes.cabal;
+        stylish-haskell = haskell-packages-new.stylish-haskell.components.exes.stylish-haskell;
+        purty = haskell-packages-new.purty.components.exes.purty;
+        hlint = haskell-packages-new.hlint.components.exes.hlint;
       };
 
       scripts = {
