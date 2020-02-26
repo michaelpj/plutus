@@ -6,7 +6,7 @@ let
   linux = ["x86_64-linux"];
   darwin = ["x86_64-darwin"];
 in
-  { supportedSystems ? linux ++ darwin
+  { supportedSystems ? linux #++ darwin
   , scrubJobs ? true
   , fasterBuild ? false
   , skipPackages ? []
@@ -59,6 +59,7 @@ let
     papers = lib.mapAttrs (_: _: linux) packageSet.papers;
     tests = lib.mapAttrs (_: _: supportedSystems) packageSet.tests;
     dev.packages = lib.mapAttrs (_: _: supportedSystems) packageSet.dev.packages;
+    dev.haskellNixRoots = supportedSystems;
     # See note on 'easyPS' in 'default.nix'
     dev.scripts = lib.mapAttrs (n: _: if n == "updateClientDeps" then linux else supportedSystems) packageSet.dev.scripts;
   };

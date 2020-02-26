@@ -377,6 +377,8 @@ let
         hlint = haskell-packages-new.hlint.components.exes.hlint;
       };
 
+      haskellNixRoots = pkgs.haskell-nix.haskellNixRoots;
+
       scripts = {
         inherit (localLib) regeneratePackages;
 
