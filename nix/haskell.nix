@@ -11,6 +11,9 @@
 let
   pkgSet = haskell-nix.stackProject {
     src = ../.;
+    # This turns the output into a fixed-output derivation, which speeds things
+    # up, but means we need to invalidate this hash when we change things.
+    stack-sha256 = "0356fsjnb5lgzn7xw2wqphy97c2yxr3bdfd55a6kd84z9p475vcx";
     modules = [
         {
           nonReinstallablePkgs =
