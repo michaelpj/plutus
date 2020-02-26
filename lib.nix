@@ -20,6 +20,13 @@ let
     let filtered = lib.filterAttrs (name: drv: filter name) haskellPackages;
     in if f == null then filtered else lib.mapAttrs f filtered;
 
+  # Haskell.nix versions of these are broken in some cases, see https://github.com/input-output-hk/haskell.nix/issues/457
+  collectComponents = group: packageSel: haskellPackages:
+    (lib.mapAttrs (_: package: (package.components.${group} or {}) // { recurseForDerivations = true; })
+     (lib.filterAttrs (name: package: (package.isHaskell or false) && packageSel package) haskellPackages))
+    // { recurseForDerivations = true; };
+  collectComponents' = group: collectComponents group (_: true);
+
   # List of all public (i.e. published Haddock, will go on Hackage) Plutus pkgs
   plutusPublicPkgList = [
     "language-plutus-core"
@@ -67,6 +74,8 @@ let
 in lib // {
   inherit
   getPackages
+  collectComponents
+  collectComponents'
   iohkNix
   # FIXME: legacy iohk nix is needed to support the old haskell infrastructure.
   legacyIohkNix
