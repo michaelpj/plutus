@@ -44,7 +44,7 @@ encodeTyName = \case
     "integer"    -> Just $ encodeUni DefaultUniInteger
     "string"     -> Just $ encodeUni DefaultUniString
     "unit"       -> Just $ encodeUni DefaultUniUnit
-    _ -> Nothing
+    _            -> Nothing
 
 -- | Given a type name, return a type in the (default) universe.
 -- This can fail in two ways: there's no type with that name, or decodeUni fails because
