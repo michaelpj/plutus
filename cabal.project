@@ -35,7 +35,7 @@ benchmarks: true
 source-repository-package
   type: git
   location: https://github.com/shmish111/purescript-bridge.git
-  tag: 28c37771ef30b0d751960c061ef95627f05d290e
+  tag: 6a92d7853ea514be8b70bab5e72077bf5a510596
 
 source-repository-package
   type: git
@@ -74,7 +74,7 @@ allow-newer: Win32-network:base
            , network-mux:base
            , ouroboros-network:base
            -- restricts to ghc<8.10
-           , prometheus:base
+           -- , prometheus:base
            -- restricts to ghc<8.10
            , monoidal-containers:base
            , monoidal-containers:aeson
