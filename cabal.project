@@ -74,8 +74,6 @@ allow-newer: Win32-network:base
            , network-mux:base
            , ouroboros-network:base
            -- restricts to ghc<8.10
-           -- , prometheus:base
-           -- restricts to ghc<8.10
            , monoidal-containers:base
            , monoidal-containers:aeson
 
