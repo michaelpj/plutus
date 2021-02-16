@@ -52,7 +52,7 @@ let
       # given a system ("x86_64-linux") return an attrset of derivations to build
       select = _: system:
         let
-          packages = import ./default.nix { inherit system rev; checkMaterialization = true; };
+          packages = import ./default.nix { inherit system rev; checkMaterialization = false; };
           pkgs = packages.pkgs;
           plutus = packages.plutus;
           isBuildable = platformFilterGeneric pkgs system;
@@ -74,15 +74,15 @@ let
           # FIXME: this should simply be set on the main shell derivation, but this breaks 
           # lorri: https://github.com/target/lorri/issues/489. In the mean time, we set it
           # only on the CI version, so that we still catch it, but lorri doesn't see it.
-          shell = (import ./shell.nix { inherit packages; }).overrideAttrs (attrs: attrs // {
-            disallowedRequisites = [ plutus.haskell.packages.plutus-core.components.library ];
-          });
+          #shell = (import ./shell.nix { inherit packages; }).overrideAttrs (attrs: attrs // {
+          #disallowedRequisites = [ plutus.haskell.packages.plutus-core.components.library ];
+          #});
 
           # build deployment tools
           inherit (plutus) thorp;
 
           # build all haskell packages and tests
-          haskell = pkgs.recurseIntoAttrs (mkHaskellDimension pkgs plutus.haskell.projectPackages);
+          #haskell = pkgs.recurseIntoAttrs (mkHaskellDimension pkgs plutus.haskell.projectPackages);
         };
     in
     dimension "System" systems select;
