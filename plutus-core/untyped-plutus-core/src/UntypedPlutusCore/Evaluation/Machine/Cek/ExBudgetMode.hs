@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
 {-# LANGUAGE StrictData            #-}
@@ -101,7 +102,7 @@ instance Pretty RestrictingSt where
     pretty (RestrictingSt budget) = parens $ "final budget:" <+> pretty budget <> line
 
 -- | For execution, to avoid overruns.
-restricting :: ExRestrictingBudget -> ExBudgetMode RestrictingSt uni fun
+restricting :: forall uni fun . (PrettyUni uni fun) => ExRestrictingBudget -> ExBudgetMode RestrictingSt uni fun
 restricting = ExBudgetMode (CekBudgetSpender spend) . RestrictingSt where
     spend _ budgetToSpend = do
         RestrictingSt budgetLeft <- get
@@ -110,7 +111,7 @@ restricting = ExBudgetMode (CekBudgetSpender spend) . RestrictingSt where
         -- what the final state was.
         put $! RestrictingSt budgetLeft'
         when (isNegativeBudget budgetLeft') $
-            throwingWithCause _EvaluationError
+            throwingWithCauseEx @(CekEvaluationException uni fun) _EvaluationError
                 (UserEvaluationError $ CekOutOfExError budgetLeft')
                 Nothing
 
@@ -121,5 +122,5 @@ enormousBudget = ExRestrictingBudget $ ExBudget (ExCPU maxInt) (ExMemory maxInt)
                  where maxInt = fromIntegral (maxBound::Int)
 
 -- | 'restricting' instantiated at 'enormousBudget'.
-restrictingEnormous :: ExBudgetMode RestrictingSt uni fun
+restrictingEnormous :: (PrettyUni uni fun) => ExBudgetMode RestrictingSt uni fun
 restrictingEnormous = restricting enormousBudget
