@@ -17,7 +17,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
---{-# OPTIONS_GHC -ddump-simpl -ddump-to-file -dsuppress-uniques -dsuppress-coercions -dsuppress-type-applications -dsuppress-unfoldings -dsuppress-idinfo -dumpdir /tmp/dumps #-}
+{-# OPTIONS_GHC -ddump-simpl -ddump-to-file -dsuppress-uniques -dsuppress-coercions -dsuppress-type-applications -dsuppress-unfoldings -dsuppress-idinfo -dumpdir /tmp/dumps #-}
 
 module UntypedPlutusCore.Evaluation.Machine.Cek.Internal
     -- See Note [Compilation peculiarities].
@@ -43,6 +43,7 @@ import           PlutusPrelude
 import           UntypedPlutusCore.Core
 import           UntypedPlutusCore.Subst
 
+import           PlutusCore.Builtins
 import           PlutusCore.Constant
 import           PlutusCore.Evaluation.Machine.ExBudget
 import           PlutusCore.Evaluation.Machine.ExMemory
@@ -379,6 +380,14 @@ data Frame uni fun
 
 type Context uni fun = [Frame uni fun]
 
+{-# SPECIALIZE runCekM
+    :: forall a cost
+    . BuiltinsRuntime DefaultFun (CekValue DefaultUni DefaultFun)
+    -> ExBudgetMode cost DefaultUni DefaultFun
+    -> Bool
+    -> (forall s. CekM cost DefaultUni DefaultFun s a)
+    -> (Either (CekEvaluationException DefaultUni DefaultFun) a, cost, [String])
+ #-}
 runCekM
     :: forall a cost uni fun.
     (PrettyUni uni fun)
@@ -421,14 +430,18 @@ lookupVarName varName varEnv = do
 astNodeCost :: ExBudget
 astNodeCost = ExBudget 1 0
 
--- | The computing part of the CEK machine.
--- Either
--- 1. adds a frame to the context and calls 'computeCek' ('Force', 'Apply')
--- 2. calls 'returnCek' on values ('Delay', 'LamAbs', 'Constant', 'Builtin')
--- 3. returns 'EvaluationFailure' ('Error')
--- 4. looks up a variable in the environment and calls 'returnCek' ('Var')
-
--- See Note [Compilation peculiarities].
+{-# SPECIALIZE computeCek
+    :: forall cost s
+    . Context DefaultUni DefaultFun -> CekValEnv DefaultUni DefaultFun -> TermWithMem DefaultUni DefaultFun -> CekM cost DefaultUni DefaultFun s (Term Name DefaultUni DefaultFun ())
+ #-}
+{- | The computing part of the CEK machine.
+Either
+1. adds a frame to the context and calls 'computeCek' ('Force', 'Apply')
+2. calls 'returnCek' on values ('Delay', 'LamAbs', 'Constant', 'Builtin')
+3. returns 'EvaluationFailure' ('Error')
+4. looks up a variable in the environment and calls 'returnCek' ('Var')
+See Note [Compilation peculiarities].
+-}
 computeCek
     :: forall uni fun cost s
     . (Ix fun, PrettyUni uni fun)
@@ -469,6 +482,10 @@ computeCek _ _ (Error _) = do
     throwingCek _EvaluationFailure ()
 -- s ; ρ ▻ x  ↦  s ◅ ρ[ x ]
 
+{-# SPECIALIZE returnCek
+    :: forall cost s
+    . Context DefaultUni DefaultFun -> CekValue DefaultUni DefaultFun -> CekM cost DefaultUni DefaultFun s (Term Name DefaultUni DefaultFun ())
+ #-}
 {- | The returning phase of the CEK machine.
 Returns 'EvaluationSuccess' in case the context is empty, otherwise pops up one frame
 from the context and uses it to decide how to proceed with the current value v.
@@ -588,6 +605,13 @@ applyBuiltin ctx bn args = do
       Left e       -> throwCek $ mapCauseInMachineException (void . dischargeCekValue) e
       Right result -> returnCek ctx result
 
+{-# SPECIALIZE runCek
+    :: BuiltinsRuntime DefaultFun (CekValue DefaultUni DefaultFun)
+    -> ExBudgetMode cost DefaultUni DefaultFun
+    -> Bool
+    -> Term Name DefaultUni DefaultFun ()
+    -> (Either (CekEvaluationException DefaultUni DefaultFun) (Term Name DefaultUni DefaultFun ()), cost, [String])
+ #-}
 -- See Note [Compilation peculiarities].
 -- | Evaluate a term using the CEK machine and keep track of costing, logging is optional.
 runCek
