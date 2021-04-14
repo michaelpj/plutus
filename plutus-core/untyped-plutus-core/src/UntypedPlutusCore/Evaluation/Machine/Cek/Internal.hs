@@ -187,9 +187,10 @@ instance HasErrorCode CekUserError where
     errorCode CekEvaluationFailure {} = ErrorCode 37
     errorCode CekOutOfExError {}      = ErrorCode 36
 
-{- Note [Being generic over @term@ in 'CekM']
-We have a @term@-generic version of 'CekM' called 'CekM', which itself requires a
-@term@-generic version of 'CekEvaluationException' called 'CekEvaluationExceptionCarrying'.
+{- Note [Being generic over 'term' in errors]
+Our error for the CEK machine carries a term with it as a possible 'cause'. This is defined in
+terms of an underlying type that is generic over this 'term' type.
+
 The point is that in many different cases we can annotate an evaluation failure with a 'Term' that
 caused it. Originally we were using 'CekValue' instead of 'Term', however that meant that we had to
 ignore some important cases where we just can't produce a 'CekValue', for example if we encounter
@@ -203,14 +204,9 @@ arguments, so we have no option but to call the constant application machinery w
 being the cause of a potential failure. But as mentioned, turning a 'CekValue' into a 'Term' is
 no problem and we need that elsewhere anyway, so we don't need any extra machinery for calling the
 constant application machinery over a list of 'CekValue's and turning the cause of a possible
-failure into a 'Term', apart from the straightforward generalization of 'CekM'.
+failure into a 'Term', apart from the straightforward generalization of the error type.
 -}
 
--- | The CEK machine-specific 'EvaluationException', parameterized over @term@.
-type CekEvaluationExceptionCarrying term fun =
-    EvaluationException CekUserError (MachineError fun term) term
-
--- See Note [Being generic over @term@ in 'CekM'].
 -- | The monad the CEK machine runs in.
 -- The 'cost' parameter is for keeping track of costing in the 'StateT' monad.
 type CekM cost uni fun s =
@@ -219,7 +215,7 @@ type CekM cost uni fun s =
                 (ST s))
 
 -- | The CEK machine-specific 'EvaluationException'.
-type CekEvaluationException uni fun = CekEvaluationExceptionCarrying (Term Name uni fun ()) fun
+type CekEvaluationException uni fun = EvaluationException CekUserError (MachineError fun (Term Name uni fun ())) (Term Name uni fun ())
 
 -- | The set of constraints we need to be able to print things in universes, which we need in order to throw exceptions.
 type PrettyUni uni fun = (GShow uni, Closed uni, Pretty fun, Typeable uni, Typeable fun, Everywhere uni PrettyConst)
@@ -233,6 +229,24 @@ The evil is that the 'MonadThrow' instance for 'ST' uses 'unsafeIOToST . throwIO
 "Trustworthy"", no less. However, I believe this to be safe for basically the same reasons as our trick to catch
 exceptions is safe, see Note [Catching exceptions in ST]
 -}
+
+{- Note [Catching exceptions in ST]
+This note represents MPJ's best understanding right now, might be wrong.
+
+We use a moderately evil trick to catch exceptions in ST. This uses the unsafe ST <-> IO conversion functions to go into IO,
+catch the exception, and then go back into ST.
+
+Why is this okay? Recall that IO ~= ST RealWorld, i.e. it is just ST with a special thread token. The unsafe conversion functions
+just coerce from one to the other. So the thread token remains the same, it's just that we'll potentially leak it from ST, and we don't
+get ordering guarantees with other IO actions.
+
+But in our case this is okay, because:
+
+1. We do not leak the original ST thread token, since we only pass it into IO and then immediately back again.
+2. We don't have ordering guarantees with other IO actions, but we don't care because we don't do any side effects, we only catch a single kind of exception.
+3. We *do* have ordering guarantees between the throws inside the ST action and the catch, since they are ultimately using the same thread token.
+-}
+
 
 -- | Less-polymorphic synonym for 'throwM', useful in this module
 throwCek :: (PrettyUni uni fun) => CekEvaluationException uni fun -> CekM cost uni fun s x
@@ -248,7 +262,7 @@ throwingCek l = reviews l throwM
 throwingDischarged
     :: (PrettyUni uni fun)
     => AReview (EvaluationError CekUserError (MachineError fun (Term Name uni fun ()))) t -> t -> CekValue uni fun -> CekM cost uni fun s x
-throwingDischarged l t = throwingWithCauseEx l t . Just . void . dischargeCekValue
+throwingDischarged l t = throwingWithCauseExc l t . Just . void . dischargeCekValue
 
 -- | A budgeting mode to execute an evaluator in.
 data ExBudgetMode cost uni fun = ExBudgetMode
@@ -365,23 +379,6 @@ data Frame uni fun
 
 type Context uni fun = [Frame uni fun]
 
-{- Note [Catching exceptions in ST]
-This note represents MPJ's best understanding right now, might be wrong.
-
-We use a moderately evil trick to catch exceptions in ST. This uses the unsafe ST <-> IO conversion functions to go into IO,
-catch the exception, and then go back into ST.
-
-Why is this okay? Recall that IO ~= ST RealWorld, i.e. it is just ST with a special thread token. The unsafe conversion functions
-just coerve from one to the other. So the thread token remains the same, it's just that we'll potentially leak it from ST, and we don't
-get ordering guarantees with other IO actions.
-
-But in our case this is okay, because:
-
-1. We do not leak the original ST thread token, since we only pass it into IO and then immediately back again.
-2. We don't have ordering guarantees with other IO actions, but we don't care because we don't do any side effects, we only catch a single kind of exception.
-3. We *do* have ordering guarantees between the throws inside the ST action and the catch, since they are ultimately using the same thread token.
--}
-
 runCekM
     :: forall a cost uni fun.
     (PrettyUni uni fun)
@@ -412,7 +409,7 @@ extendEnv = insertByName
 lookupVarName :: forall uni fun cost s . (PrettyUni uni fun) => Name -> CekValEnv uni fun -> CekM cost uni fun s (CekValue uni fun)
 lookupVarName varName varEnv = do
     case lookupName varName varEnv of
-        Nothing  -> throwingWithCauseEx @(CekEvaluationException uni fun) _MachineError OpenTermEvaluatedMachineError $ Just var where
+        Nothing  -> throwingWithCauseExc @(CekEvaluationException uni fun) _MachineError OpenTermEvaluatedMachineError $ Just var where
             var = Var () varName
         Just val -> pure val
 
@@ -464,7 +461,7 @@ computeCek ctx env (Apply _ fun arg) = do
 computeCek ctx _ (Builtin ex bn) = do
     spendBudget BBuiltin astNodeCost
     rt <- asks cekEnvRuntime
-    BuiltinRuntime _ arity _ _ <- lookupBuiltinEx (Proxy @(CekEvaluationException uni fun)) bn rt
+    BuiltinRuntime _ arity _ _ <- lookupBuiltinExc (Proxy @(CekEvaluationException uni fun)) bn rt
     returnCek ctx (VBuiltin ex bn arity arity 0 [])
 -- s ; ρ ▻ error A  ↦  <> A
 computeCek _ _ (Error _) = do
@@ -580,7 +577,7 @@ applyBuiltin
 applyBuiltin ctx bn args = do
 
   rt <- asks cekEnvRuntime
-  BuiltinRuntime sch _ f exF <- lookupBuiltinEx (Proxy @(CekEvaluationException uni fun)) bn rt
+  BuiltinRuntime sch _ f exF <- lookupBuiltinExc (Proxy @(CekEvaluationException uni fun)) bn rt
 
   -- ''applyTypeSchemed' doesn't throw exceptions so that we can easily catch them here and
   -- post-process them.
@@ -588,7 +585,6 @@ applyBuiltin ctx bn args = do
   resultOrErr <- runExceptT $ applyTypeSchemed bn sch f exF args
   case resultOrErr of
       -- Turn the cause of a possible failure, being a 'CekValue', into a 'Term'.
-      -- See Note [Being generic over @term@ in 'CekM'].
       Left e       -> throwCek $ mapCauseInMachineException (void . dischargeCekValue) e
       Right result -> returnCek ctx result
 

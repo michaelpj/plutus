@@ -34,7 +34,6 @@ import           Common
 import           Data.String
 import           Data.Text.Prettyprint.Doc
 import           Data.Text.Prettyprint.Doc.Render.Text
-import           Data.Typeable
 import           GHC.Ix
 import           Hedgehog                                 hiding (Size, Var, eval)
 import           Test.Tasty
@@ -74,7 +73,7 @@ test_memory =
         <> examples
 
 testBudget
-    :: (Ix fun, Show fun, Pretty fun, Hashable fun, ExMemoryUsage fun, Typeable fun)
+    :: (Ix fun, Show fun, Hashable fun, ExMemoryUsage fun, PrettyUni DefaultUni fun)
     => BuiltinsRuntime fun (CekValue DefaultUni fun)
     -> TestName
     -> Term Name DefaultUni fun ()

@@ -28,7 +28,7 @@ module PlutusCore.Evaluation.Machine.Exception
     , mapCauseInMachineException
     , throwing_
     , throwingWithCause
-    , throwingWithCauseEx
+    , throwingWithCauseExc
     , extractEvaluationResult
     , unsafeExtractEvaluationResult
     ) where
@@ -151,12 +151,12 @@ throwingWithCause
     => AReview e t -> t -> Maybe term -> m x
 throwingWithCause l t cause = reviews l (\e -> throwError $ ErrorWithCause e cause) t
 
--- | "Prismatically" throw an error and its (optional) cause.
-throwingWithCauseEx
+-- | "Prismatically" throw an exception and its (optional) cause.
+throwingWithCauseExc
     :: forall ex e t term m x
     . (ex ~ ErrorWithCause e term, MonadThrow m, Exception ex)
     => AReview e t -> t -> Maybe term -> m x
-throwingWithCauseEx l t cause = reviews l (\e -> throwM $ ErrorWithCause e cause) t
+throwingWithCauseExc l t cause = reviews l (\e -> throwM $ ErrorWithCause e cause) t
 
 {- Note [Ignoring context in UserEvaluationError]
 The UserEvaluationError error has a term argument, but

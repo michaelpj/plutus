@@ -18,6 +18,7 @@ module UntypedPlutusCore.Evaluation.Machine.Cek
     , TallyingSt (..)
     , RestrictingSt (..)
     , Hashable
+    , PrettyUni
     , counting
     , tallying
     , restricting

@@ -111,7 +111,7 @@ restricting = ExBudgetMode (CekBudgetSpender spend) . RestrictingSt where
         -- what the final state was.
         put $! RestrictingSt budgetLeft'
         when (isNegativeBudget budgetLeft') $
-            throwingWithCauseEx @(CekEvaluationException uni fun) _EvaluationError
+            throwingWithCauseExc @(CekEvaluationException uni fun) _EvaluationError
                 (UserEvaluationError $ CekOutOfExError budgetLeft')
                 Nothing
 
