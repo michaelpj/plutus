@@ -6,6 +6,8 @@ run to completion. -}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE TypeApplications      #-}
+{-# OPTIONS_GHC -ddump-simpl #-}
+{-# OPTIONS_GHC -Wmissed-specialisations #-}
 
 module Main where
 
