@@ -140,7 +140,6 @@ module PlutusCore.Evaluation.Machine.ExBudget
     , ToExMemory(..)
     , ExBudgetBuiltin(..)
     , ExRestrictingBudget(..)
-    , scaleBudget
     )
 where
 
@@ -184,17 +183,10 @@ data ExBudget = ExBudget { _exBudgetCPU :: ExCPU, _exBudgetMemory :: ExMemory }
 
 instance Semigroup ExBudget where
     (ExBudget cpu1 mem1) <> (ExBudget cpu2 mem2) = ExBudget (cpu1 <> cpu2) (mem1 <> mem2)
-    stimes = scaleBudget
+    stimes b (ExBudget cpu mem) = ExBudget (stimes b cpu) (stimes b mem)
 
 instance Monoid ExBudget where
     mempty = ExBudget mempty mempty
-
--- TODO: Is there some proper numeric typeclass way of doing this?
--- This is marked 'INLINE' and not generalized over because this one is actually used in performance-critical places
-{-# INLINE scaleBudget #-}
--- | Scale a budget by an 'Integral'.
-scaleBudget :: Integral b => b -> ExBudget -> ExBudget
-scaleBudget r (ExBudget (ExCPU cpu) (ExMemory mem)) = ExBudget (ExCPU (fromIntegral r * cpu)) (ExMemory (fromIntegral r * mem))
 
 instance Pretty ExBudget where
     pretty (ExBudget cpu memory) = parens $ fold
