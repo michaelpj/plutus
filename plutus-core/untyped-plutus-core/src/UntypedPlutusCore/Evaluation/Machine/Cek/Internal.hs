@@ -738,7 +738,7 @@ iforWordArray !w f =
       !w5 = rotateR w4 8
       !w6 = rotateR w5 8
       !w7 = rotateR w6 8
-    in f 0 (fromIntegral w0) *> f 1 (fromIntegral w1) *> f 2 (fromIntegral w2) *> f 3 (fromIntegral w3) *> f 4 (fromIntegral w4) *> f 5 (fromIntegral w5) *> f 6 (fromIntegral w6) *> f 6 (fromIntegral w7)
+    in f 0 (fromIntegral w0) *> f 1 (fromIntegral w1) *> f 2 (fromIntegral w2) *> f 3 (fromIntegral w3) *> f 4 (fromIntegral w4) *> f 5 (fromIntegral w5) *> f 6 (fromIntegral w6) *> f 7 (fromIntegral w7)
 
 -- See Note [Compilation peculiarities].
 -- | Evaluate a term using the CEK machine and keep track of costing, logging is optional.
