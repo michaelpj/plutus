@@ -698,11 +698,10 @@ enterComputeCek = computeCek 0 where
 
     -- | Spend the budget that has been accumulated for a number of machine steps.
     spendAccumulatedBudget :: Word64 -> CekM s ()
-    spendAccumulatedBudget unbudgetedSteps = do
-        for_ [minBound..maxBound] $ \(k :: StepKind) ->
-            do
-              let unbudgetedStepsK = readWordArray (fromEnum k + 1) unbudgetedSteps
-              spendBudgetCek (BStep k) (stimes unbudgetedStepsK (cekStepCost ?cekCosts k))
+    spendAccumulatedBudget unbudgetedSteps =
+        iforWordArray unbudgetedSteps $ \i w -> unless (i == 0) $ do
+            let kind :: StepKind = toEnum (i-1)
+            spendBudgetCek (BStep kind) (stimes w (cekStepCost ?cekCosts kind))
 
     {-# INLINE stepAndMaybeSpend #-}
     stepAndMaybeSpend :: StepKind -> Word64 -> CekM s Word64
@@ -723,6 +722,19 @@ incWordArray i w = w + shiftL (1 :: Word64) (i*8)
 
 readWordArray :: Int -> Word64 -> Word8
 readWordArray i w = fromIntegral (rotateR w (i*8))
+
+iforWordArray :: Applicative f => Word64 -> (Int -> Word8 -> f ()) -> f ()
+iforWordArray w f =
+    let
+      w0 = w
+      w1 = rotateR w0 8
+      w2 = rotateR w1 8
+      w3 = rotateR w2 8
+      w4 = rotateR w3 8
+      w5 = rotateR w4 8
+      w6 = rotateR w5 8
+      w7 = rotateR w6 8
+    in f 0 (fromIntegral w0) *> f 1 (fromIntegral w1) *> f 2 (fromIntegral w2) *> f 3 (fromIntegral w3) *> f 4 (fromIntegral w4) *> f 5 (fromIntegral w5) *> f 6 (fromIntegral w6) *> f 6 (fromIntegral w7)
 
 -- See Note [Compilation peculiarities].
 -- | Evaluate a term using the CEK machine and keep track of costing, logging is optional.
