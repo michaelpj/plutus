@@ -6,6 +6,7 @@
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
+{-# LANGUAGE PartialTypeSignatures #-}
 module UntypedPlutusCore.Evaluation.Machine.Cek.ExBudgetMode
     ( ExBudgetMode (..)
     , CountingSt (..)
@@ -32,6 +33,7 @@ import           PlutusCore.Evaluation.Machine.Exception
 
 import           Control.Lens                                      (ifoldMap)
 import           Control.Monad.Except
+import           Data.Foldable                                     (traverse_)
 import           Data.HashMap.Monoidal                             as HashMap
 import           Data.Hashable                                     (Hashable)
 import           Data.List                                         (intersperse)
@@ -46,11 +48,12 @@ import           Text.PrettyBy                                     (IgnorePretty
 -- | Construct an 'ExBudgetMode' out of a function returning a value of the budgeting state type.
 -- The value then gets added to the current state via @(<>)@.
 monoidalBudgeting
-    :: Monoid cost => (ExBudgetCategory fun -> ExBudget -> cost) -> ExBudgetMode cost uni fun
+    :: forall cost uni fun . Monoid cost => (ExBudgetCategory fun -> ExBudget -> cost) -> ExBudgetMode cost uni fun
 monoidalBudgeting toCost = ExBudgetMode $ do
     costRef <- newSTRef mempty
-    let spend key budgetToSpend = modifySTRef' costRef (<> toCost key budgetToSpend)
-    pure $ ExBudgetInfo (CekBudgetSpender spend) (readSTRef costRef)
+    let
+        spend (key, budgetToSpend) = modifySTRef' costRef (<> toCost key budgetToSpend)
+    pure $ ExBudgetInfo (CekBudgetSpender (traverse_ spend)) (readSTRef costRef)
 
 -- | For calculating the cost of execution by counting up using the 'Monoid' instance of 'ExBudget'.
 newtype CountingSt = CountingSt ExBudget
@@ -128,9 +131,10 @@ restricting (ExRestrictingBudget (ExBudget cpuInit memInit)) = ExBudgetMode $ do
     writeCpu cpuInit
     writeMem memInit
     let
-        spend _ (ExBudget cpuToSpend memToSpend) = do
+        spendAll toSpend = do
             cpuLeft <- readCpu
             memLeft <- readMem
+            let ExBudget cpuToSpend memToSpend = foldMap snd toSpend
             let cpuLeft' = cpuLeft - cpuToSpend
             let memLeft' = memLeft - memToSpend
             -- Note that even if we throw an out-of-budget error, we still need to record
@@ -141,7 +145,7 @@ restricting (ExRestrictingBudget (ExBudget cpuInit memInit)) = ExBudgetMode $ do
                 throwingWithCauseExc @(CekEvaluationException uni fun) _EvaluationError
                     (UserEvaluationError $ CekOutOfExError $ ExRestrictingBudget $ ExBudget cpuLeft' memLeft')
                     Nothing
-    pure $ ExBudgetInfo (CekBudgetSpender spend) $ do
+    pure $ ExBudgetInfo (CekBudgetSpender spendAll) $ do
         finalExBudget <- ExBudget <$> readCpu <*> readMem
         pure . RestrictingSt $ ExRestrictingBudget finalExBudget
 

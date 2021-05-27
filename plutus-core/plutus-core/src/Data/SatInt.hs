@@ -45,8 +45,11 @@ instance Ord SatInt where
 -- | In the `Num' instance, we plug in our own addition, multiplication
 -- and subtraction function that perform overflow-checking.
 instance Num SatInt where
+  {-# INLINE (+) #-}
   (+)               = plusSI
+  {-# INLINE (*) #-}
   (*)               = timesSI
+  {-# INLINE (-) #-}
   (-)               = minusSI
   negate (SI y)
     | y == minBound = maxBound

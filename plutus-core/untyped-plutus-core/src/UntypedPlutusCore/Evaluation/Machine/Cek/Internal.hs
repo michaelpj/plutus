@@ -202,7 +202,7 @@ type CekValEnv uni fun = UniqueMap TermUnique (CekValue uni fun)
 -- and allows us to separate budgeting logic from evaluation logic and avoid branching on the union
 -- of all possible budgeting state types during evaluation.
 newtype CekBudgetSpender fun s = CekBudgetSpender
-    { unCekBudgetSpender :: ExBudgetCategory fun -> ExBudget -> CekM s ()
+    { unCekBudgetSpender :: [(ExBudgetCategory fun, ExBudget)] -> CekM s ()
     }
 
 -- General enough to be able to handle a spender having one, two or any number of 'STRef's
@@ -383,7 +383,7 @@ instance Pretty CekUserError where
         group $ "The budget was overspent. Final negative state:" <+> pretty res
     pretty CekEvaluationFailure = "The provided Plutus code called 'error'."
 
-spendBudgetCek :: GivenCekSpender fun s => ExBudgetCategory fun -> ExBudget -> CekM s ()
+spendBudgetCek :: GivenCekSpender fun s => [(ExBudgetCategory fun, ExBudget)] -> CekM s ()
 spendBudgetCek = let (CekBudgetSpender spend) = ?cekBudgetSpender in spend
 
 emitCek :: GivenCekEmitter s => String -> CekM s ()
@@ -681,7 +681,7 @@ enterComputeCek = computeCek (toWordArray 0) where
       let
           -- A spending function that works in the slightly different monad stack of 'applyTypeSchemed'
           spender :: fun -> ExBudget -> ExceptT e (WithEmitterT (CekM s)) ()
-          spender key b = lift $ lift $ spendBudgetCek (exBudgetBuiltin key) b
+          spender key b = lift $ lift $ spendBudgetCek [((exBudgetBuiltin key), b)]
 
       -- ''applyTypeSchemed' doesn't throw exceptions so that we can easily catch them here and
       -- post-process them.
@@ -696,12 +696,12 @@ enterComputeCek = computeCek (toWordArray 0) where
     -- | Spend the budget that has been accumulated for a number of machine steps.
     spendAccumulatedBudget :: WordArray -> CekM s ()
     spendAccumulatedBudget !unbudgetedSteps =
-        iforWordArray unbudgetedSteps spend
+        spendBudgetCek $ ifoldWordArray accToSpend [] unbudgetedSteps
 
-    {-# INLINE spend #-}
-    spend !i !w = unless (i == 0) $ do
+    accToSpend i w acc =
+        if i == 0 then acc else
         let kind :: StepKind = toEnum (i-1)
-        spendBudgetCek (BStep kind) (stimes w (cekStepCost ?cekCosts kind))
+        in (BStep kind, stimes w (cekStepCost ?cekCosts kind)):acc
 
     {-# INLINE stepAndMaybeSpend #-}
     stepAndMaybeSpend :: StepKind -> WordArray -> CekM s WordArray
@@ -727,5 +727,5 @@ runCek
     -> (Either (CekEvaluationException uni fun) (Term Name uni fun ()), cost, [String])
 runCek params mode emitting term =
     runCekM params mode emitting $ do
-        spendBudgetCek BStartup (cekStartupCost ?cekCosts)
+        spendBudgetCek [(BStartup, (cekStartupCost ?cekCosts))]
         enterComputeCek [] mempty term
