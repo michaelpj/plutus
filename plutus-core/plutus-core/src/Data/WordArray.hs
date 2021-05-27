@@ -64,14 +64,14 @@ displayWordArray wa = displayWordArrayS wa ""
 toTuple :: WordArray -> (# Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray #)
 toTuple (WordArray !w) =
   let
-    !w7 = w
-    !w6 = unsafeShiftR w7 8
-    !w5 = unsafeShiftR w6 8
-    !w4 = unsafeShiftR w5 8
-    !w3 = unsafeShiftR w4 8
-    !w2 = unsafeShiftR w3 8
-    !w1 = unsafeShiftR w2 8
-    !w0 = unsafeShiftR w1 8
+    !w0 = w
+    !w1 = unsafeShiftR w0 8
+    !w2 = unsafeShiftR w1 8
+    !w3 = unsafeShiftR w2 8
+    !w4 = unsafeShiftR w3 8
+    !w5 = unsafeShiftR w4 8
+    !w6 = unsafeShiftR w5 8
+    !w7 = unsafeShiftR w6 8
   in
   (# fromIntegral w0
   ,  fromIntegral w1
@@ -106,13 +106,13 @@ toList !w =
 {-# INLINE readArray #-}
 readArray :: WordArray -> Index -> Element WordArray
 readArray (WordArray !w) (Index !i) =
-  let offset = (-8 * i) + 56
+  let offset = 8*i
   in fromIntegral $ unsafeShiftR w offset
 
 {-# INLINE writeArray #-}
 writeArray :: WordArray -> Index -> Element WordArray -> WordArray
 writeArray (WordArray !w) (Index !i) !w8 =
-  let offset = (-8 * i) + 56
+  let offset = 8*i
       w64 :: Word64
       w64 = unsafeShiftL (fromIntegral w8) offset
   in WordArray ((w .&. mask i) + w64)
@@ -124,21 +124,21 @@ overIndex !i f !w = writeArray w i $ f $ readArray w i
 {-# INLINE unsafeIncr #-}
 unsafeIncr :: Index -> WordArray -> WordArray
 unsafeIncr (Index !i) (WordArray !w) =
-  let offset = (-8 * i) + 56
+  let offset = 8*i
       w64 :: Word64
       w64 = unsafeShiftL 1 offset
   in WordArray (w + w64)
 
 {-# INLINE mask #-}
 mask :: Int -> Word64
-mask 0 = 0x00ffffffffffffff
-mask 1 = 0xff00ffffffffffff
-mask 2 = 0xffff00ffffffffff
-mask 3 = 0xffffff00ffffffff
-mask 4 = 0xffffffff00ffffff
-mask 5 = 0xffffffffff00ffff
-mask 6 = 0xffffffffffff00ff
-mask 7 = 0xffffffffffffff00
+mask 7 = 0x00ffffffffffffff
+mask 6 = 0xff00ffffffffffff
+mask 5 = 0xffff00ffffffffff
+mask 4 = 0xffffff00ffffffff
+mask 3 = 0xffffffff00ffffff
+mask 2 = 0xffffffffff00ffff
+mask 1 = 0xffffffffffff00ff
+mask 0 = 0xffffffffffffff00
 mask _ = error "mask"
 
 {-# INLINE iforWordArray #-}
