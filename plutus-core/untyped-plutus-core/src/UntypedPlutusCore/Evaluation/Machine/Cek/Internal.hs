@@ -65,18 +65,15 @@ import           Control.Monad.Except
 import           Control.Monad.ST
 import           Control.Monad.ST.Unsafe
 import           Data.Array
-import           Data.Bits
 import           Data.DList                                               (DList)
 import qualified Data.DList                                               as DList
-import           Data.Foldable                                            (for_)
 import           Data.Hashable                                            (Hashable)
 import qualified Data.Kind                                                as GHC
-import           Data.Primitive.PrimArray
 import           Data.Proxy
 import           Data.STRef
 import           Data.Semigroup                                           (stimes)
 import           Data.Text.Prettyprint.Doc
-import           Data.Word                                                (Word64)
+import           Data.WordArray
 
 {- Note [Compilation peculiarities]
 READ THIS BEFORE TOUCHING ANYTHING IN THIS FILE
@@ -529,7 +526,7 @@ enterComputeCek
     -> CekValEnv uni fun
     -> Term Name uni fun ()
     -> CekM s (Term Name uni fun ())
-enterComputeCek = computeCek 0 where
+enterComputeCek = computeCek (toWordArray 0) where
     -- | The computing part of the CEK machine.
     -- Either
     -- 1. adds a frame to the context and calls 'computeCek' ('Force', 'Apply')
@@ -537,7 +534,7 @@ enterComputeCek = computeCek 0 where
     -- 3. returns 'EvaluationFailure' ('Error')
     -- 4. looks up a variable in the environment and calls 'returnCek' ('Var')
     computeCek
-        :: Word64
+        :: WordArray
         -> Context uni fun
         -> CekValEnv uni fun
         -> Term Name uni fun ()
@@ -589,7 +586,7 @@ enterComputeCek = computeCek 0 where
           return the result, or extend the value with the new argument and call
           returnCek.  If v is anything else, fail.
     -}
-    returnCek :: Word64 -> Context uni fun -> CekValue uni fun -> CekM s (Term Name uni fun ())
+    returnCek :: WordArray -> Context uni fun -> CekValue uni fun -> CekM s (Term Name uni fun ())
     --- Instantiate all the free variable of the resulting term in case there are any.
     -- . ◅ V           ↦  [] V
     returnCek !unbudgetedSteps [] val = do
@@ -625,7 +622,7 @@ enterComputeCek = computeCek 0 where
     -- or extend the value with @force@ and call returnCek;
     -- if v is anything else, fail.
     forceEvaluate
-        :: Word64 -> Context uni fun -> CekValue uni fun -> CekM s (Term Name uni fun ())
+        :: WordArray -> Context uni fun -> CekValue uni fun -> CekM s (Term Name uni fun ())
     forceEvaluate !unbudgetedSteps ctx (VDelay body env) = computeCek unbudgetedSteps ctx env body
     forceEvaluate !unbudgetedSteps ctx val@(VBuiltin bn arity0 arity forces args) =
         case arity of
@@ -651,7 +648,7 @@ enterComputeCek = computeCek 0 where
     -- it's the final argument then apply the builtin to its arguments, return the result, or extend
     -- the value with the new argument and call 'returnCek'. If v is anything else, fail.
     applyEvaluate
-        :: Word64
+        :: WordArray
         -> Context uni fun
         -> CekValue uni fun   -- lhs of application
         -> CekValue uni fun   -- rhs of application
@@ -673,7 +670,7 @@ enterComputeCek = computeCek 0 where
 
     -- | Apply a builtin to a list of CekValue arguments
     applyBuiltin
-        :: Word64
+        :: WordArray
         -> Context uni fun
         -> fun
         -> [CekValue uni fun]
@@ -697,7 +694,7 @@ enterComputeCek = computeCek 0 where
           Right result -> returnCek unbudgetedSteps ctx result
 
     -- | Spend the budget that has been accumulated for a number of machine steps.
-    spendAccumulatedBudget :: Word64 -> CekM s ()
+    spendAccumulatedBudget :: WordArray -> CekM s ()
     spendAccumulatedBudget !unbudgetedSteps =
         iforWordArray unbudgetedSteps spend
 
@@ -707,38 +704,17 @@ enterComputeCek = computeCek 0 where
         spendBudgetCek (BStep kind) (stimes w (cekStepCost ?cekCosts kind))
 
     {-# INLINE stepAndMaybeSpend #-}
-    stepAndMaybeSpend :: StepKind -> Word64 -> CekM s Word64
-    stepAndMaybeSpend kind = stepAndMaybeSpend' (fromEnum kind +1)
+    stepAndMaybeSpend :: StepKind -> WordArray -> CekM s WordArray
+    stepAndMaybeSpend kind = stepAndMaybeSpend' (fromIntegral $ fromEnum kind +1)
 
     -- | Accumulate a step, and maybe spend the budget that has accumulated for a number of machine steps, but only if we've exceeded our slippage.
-    stepAndMaybeSpend' :: Int -> Word64 -> CekM s Word64
+    stepAndMaybeSpend' :: Index -> WordArray -> CekM s WordArray
     stepAndMaybeSpend' ix unbudgetedSteps = do
-        let unbudgetedSteps' = incWordArray 0 $ incWordArray ix unbudgetedSteps
-            unbudgetedStepsTotal = readWordArray 0 unbudgetedSteps'
+        let unbudgetedSteps' = unsafeIncr 0 $ unsafeIncr ix unbudgetedSteps
+            unbudgetedStepsTotal = readArray unbudgetedSteps' 0
         if unbudgetedStepsTotal >= ?cekSlippage
-        then spendAccumulatedBudget unbudgetedSteps' >> pure 0
+        then spendAccumulatedBudget unbudgetedSteps' >> pure (toWordArray 0)
         else pure unbudgetedSteps'
-
-
-incWordArray :: Int -> Word64 -> Word64
-incWordArray !i !w = w + shiftL (1 :: Word64) (i*8)
-
-readWordArray :: Int -> Word64 -> Word8
-readWordArray !i !w = fromIntegral (rotateR w (i*8))
-
-{-# INLINE iforWordArray #-}
-iforWordArray :: Applicative f => Word64 -> (Int -> Word8 -> f ()) -> f ()
-iforWordArray !w f =
-    let
-      !w0 = w
-      !w1 = rotateR w0 8
-      !w2 = rotateR w1 8
-      !w3 = rotateR w2 8
-      !w4 = rotateR w3 8
-      !w5 = rotateR w4 8
-      !w6 = rotateR w5 8
-      !w7 = rotateR w6 8
-    in f 0 (fromIntegral w0) *> f 1 (fromIntegral w1) *> f 2 (fromIntegral w2) *> f 3 (fromIntegral w3) *> f 4 (fromIntegral w4) *> f 5 (fromIntegral w5) *> f 6 (fromIntegral w6) *> f 7 (fromIntegral w7)
 
 -- See Note [Compilation peculiarities].
 -- | Evaluate a term using the CEK machine and keep track of costing, logging is optional.

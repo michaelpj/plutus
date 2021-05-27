@@ -20,6 +20,7 @@ module Data.WordArray
   , readArray
   , writeArray
   , overIndex
+  , unsafeIncr
   , iforWordArray
   , toList
   , toTuple
@@ -35,7 +36,10 @@ import           Numeric              (showHex)
 import           Text.Show            (showListWith)
 
 newtype WordArray = WordArray { fromWordArray :: Word64 }
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
+
+instance Show WordArray where
+    show = displayWordArray
 
 type instance Element WordArray = Word8
 
@@ -79,6 +83,20 @@ toTuple (WordArray !w) =
   ,  fromIntegral w7
   #)
 
+{-# INLINE fromTuple #-}
+fromTuple :: (# Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray #) -> WordArray
+fromTuple (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) =
+    WordArray
+      (                (fromIntegral w0)
+      .|. unsafeShiftL (fromIntegral w1) 8
+      .|. unsafeShiftL (fromIntegral w2) 16
+      .|. unsafeShiftL (fromIntegral w3) 24
+      .|. unsafeShiftL (fromIntegral w4) 32
+      .|. unsafeShiftL (fromIntegral w5) 40
+      .|. unsafeShiftL (fromIntegral w6) 48
+      .|. unsafeShiftL (fromIntegral w7) 56
+      )
+
 {-# INLINE toList #-}
 toList :: WordArray -> [Element WordArray]
 toList !w =
@@ -103,6 +121,14 @@ writeArray (WordArray !w) (Index !i) !w8 =
 overIndex :: Index -> (Element WordArray -> Element WordArray) -> WordArray -> WordArray
 overIndex !i f !w = writeArray w i $ f $ readArray w i
 
+{-# INLINE unsafeIncr #-}
+unsafeIncr :: Index -> WordArray -> WordArray
+unsafeIncr (Index !i) (WordArray !w) =
+  let offset = (-8 * i) + 56
+      w64 :: Word64
+      w64 = unsafeShiftL 1 offset
+  in WordArray (w + w64)
+
 {-# INLINE mask #-}
 mask :: Int -> Word64
 mask 0 = 0x00ffffffffffffff
@@ -124,18 +150,10 @@ iforWordArray !w f =
 instance MonoFunctor WordArray where
   omap f w =
     let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
-    in WordArray
-      (                (fromIntegral (f w0))
-      .|. unsafeShiftL (fromIntegral (f w1)) 8
-      .|. unsafeShiftL (fromIntegral (f w2)) 16
-      .|. unsafeShiftL (fromIntegral (f w3)) 24
-      .|. unsafeShiftL (fromIntegral (f w4)) 32
-      .|. unsafeShiftL (fromIntegral (f w5)) 40
-      .|. unsafeShiftL (fromIntegral (f w6)) 48
-      .|. unsafeShiftL (fromIntegral (f w7)) 56
-      )
+    in fromTuple (# f w0, f w1, f w2, f w3, f w4, f w5, f w6, f w7 #)
 
 instance MonoFoldable WordArray where
+  otoList = toList
   ofoldr f !b !w =
     let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
     in  f w0 $ f w1 $ f w2 $ f w3 $ f w4 $ f w5 $ f w6 $ f w7 b
