@@ -36,9 +36,9 @@ type WrappedMonetaryPolicyType = Data -> Data -> ()
 {-# INLINABLE wrapMonetaryPolicy #-}
 wrapMonetaryPolicy
     :: IsData r
-    => (Validation.ScriptContext -> r -> Bool)
+    => (r -> Validation.ScriptContext -> Bool)
     -> WrappedMonetaryPolicyType
-wrapMonetaryPolicy f (fromData -> Just p) (fromData -> Just r) = check $ f p r
+wrapMonetaryPolicy f (fromData -> Just r) (fromData -> Just p) = check $ f r p
 wrapMonetaryPolicy _ _                    _                    = check False
 
 -- | A monetary policy that checks whether the validator script was run
@@ -50,8 +50,8 @@ mkForwardingMonetaryPolicy vshsh =
        `PlutusTx.applyCode` PlutusTx.liftCode vshsh
 
 {-# INLINABLE forwardToValidator #-}
-forwardToValidator :: ValidatorHash -> ScriptContext -> () -> Bool
-forwardToValidator h ScriptContext{scriptContextTxInfo=TxInfo{txInfoInputs}, scriptContextPurpose=Minting _} _ =
+forwardToValidator :: ValidatorHash -> () -> ScriptContext -> Bool
+forwardToValidator h _ ScriptContext{scriptContextTxInfo=TxInfo{txInfoInputs}, scriptContextPurpose=Minting _} =
     let checkHash TxOut{txOutAddress=Address{addressCredential=ScriptCredential vh}} = vh == h
         checkHash _                                                                  = False
     in any (checkHash . Validation.txInInfoResolved) txInfoInputs
