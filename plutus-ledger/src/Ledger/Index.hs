@@ -113,6 +113,10 @@ data ValidationError =
     -- ^ For pay-to-script outputs: the validator script provided in the transaction input does not match the hash specified in the transaction output.
     | InvalidDatumHash Datum DatumHash
     -- ^ For pay-to-script outputs: the datum provided in the transaction input does not match the hash specified in the transaction output.
+    | MissingInput TxIn
+    -- ^ For pay-to-script outputs: we couldn't find the tx input in the transaction (bug)
+    | MissingRedeemer RedeemerPtr
+    -- ^ For scripts that take redeemers: no redeemer was provided for this script.
     | InvalidSignature PubKey Signature
     -- ^ For pay-to-pubkey outputs: the signature of the transaction input does not match the public key of the transaction output.
     | ValueNotPreserved V.Value V.Value
@@ -218,7 +222,7 @@ checkValidInputs getInputs tx = do
     let tid = txId tx
         sigs = tx ^. signatures
     outs <- lkpOutputs (getInputs tx)
-    matches <- traverse (uncurry (matchInputOutput tid sigs)) outs
+    matches <- traverse (uncurry (matchInputOutput tx tid sigs)) outs
     vld     <- mkTxInfo tx
     traverse_ (checkMatch vld) matches
 
@@ -284,8 +288,10 @@ data InOutMatch =
 
 -- | Match a transaction input with the output that it consumes, ensuring that
 --   both are of the same type (pubkey or pay-to-script).
-matchInputOutput :: ValidationMonad m
-    => TxId
+matchInputOutput
+    :: ValidationMonad m
+    => Tx
+    -> TxId
     -- ^ Hash of the transaction that is being verified
     -> Map.Map PubKey Signature
     -- ^ Signatures provided with the transaction
@@ -294,10 +300,16 @@ matchInputOutput :: ValidationMonad m
     -> TxOut
     -- ^ The unspent transaction output we are trying to unlock
     -> m InOutMatch
-matchInputOutput txid mp txin txo = case (txInType txin, txOutDatumHash txo, txOutAddress txo) of
-    (Just (ConsumeScriptAddress v r d), Just dh, Address{addressCredential=ScriptCredential vh}) -> do
+matchInputOutput tx txid mp txin txo = case (txInType txin, txOutDatumHash txo, txOutAddress txo) of
+    (Just (ConsumeScriptAddress v d), Just dh, Address{addressCredential=ScriptCredential vh}) -> do
         unless (datumHash d == dh) $ throwError $ InvalidDatumHash d dh
         unless (validatorHash v == vh) $ throwError $ InvalidScriptHash v vh
+        p <- case inRedeemerPtr tx txin of
+            Just r  -> pure r
+            Nothing -> throwError $ MissingInput txin
+        r <- case Map.lookup p (txRedeemers tx) of
+            Just r  -> pure r
+            Nothing -> throwError $ MissingRedeemer p
 
         pure $ ScriptMatch (txInRef txin) v r d
     (Just ConsumePublicKeyAddress, Nothing, Address{addressCredential=PubKeyCredential pkh}) ->
