@@ -41,6 +41,7 @@ import           Prelude                          hiding (lookup)
 import           Codec.Serialise                  (Serialise)
 import           Control.DeepSeq                  (NFData)
 import           Control.Lens                     (toListOf, view, (^.))
+import           Control.Lens.Indexed
 import           Control.Monad
 import           Control.Monad.Except             (ExceptT, MonadError (..), runExcept, runExceptT)
 import           Control.Monad.Reader             (MonadReader (..), ReaderT (..), ask)
@@ -261,20 +262,22 @@ checkForgingAuthorised tx =
 checkForgingScripts :: forall m . ValidationMonad m => Tx -> m ()
 checkForgingScripts tx = do
     txinfo <- mkTxInfo tx
-    let mpss = Set.toList (txForgeScripts tx)
-        mkVd :: Integer -> ScriptContext
-        mkVd i =
-            let cs :: V.CurrencySymbol
-                cs = V.mpsSymbol $ monetaryPolicyHash $ mpss !! fromIntegral i
-            in ScriptContext { scriptContextPurpose = Minting cs, scriptContextTxInfo = txinfo }
-    forM_ (mpss `zip` (mkVd <$> [0..])) $ \(vl, ptx') ->
-        let vd = Context $ toData ptx'
-            red = Redeemer undefined
-        in case runExcept $ runMonetaryPolicyScript vd vl red of
+    iforM_ (Set.toList (txForgeScripts tx)) $ \i vl -> do
+        let cs :: V.CurrencySymbol
+            cs = V.mpsSymbol $ monetaryPolicyHash vl
+            ctx :: Context
+            ctx = Context $ toData $ ScriptContext { scriptContextPurpose = Minting cs, scriptContextTxInfo = txinfo }
+            ptr :: RedeemerPtr
+            ptr = RedeemerPtr Mint (fromIntegral i)
+        red <- case lookupRedeemer tx ptr of
+            Just r  -> pure r
+            Nothing -> throwError $ MissingRedeemer ptr
+
+        case runExcept $ runMonetaryPolicyScript ctx vl red of
             Left e  -> do
-                tell [mpsValidationEvent vd vl red (Left e)]
+                tell [mpsValidationEvent ctx vl red (Left e)]
                 throwError $ ScriptFailure e
-            res -> tell [mpsValidationEvent vd vl red res]
+            res -> tell [mpsValidationEvent ctx vl red res]
 
 -- | A matching pair of transaction input and transaction output, ensuring that they are of matching types also.
 data InOutMatch =
@@ -307,7 +310,7 @@ matchInputOutput tx txid mp txin txo = case (txInType txin, txOutDatumHash txo, 
         p <- case inRedeemerPtr tx txin of
             Just r  -> pure r
             Nothing -> throwError $ MissingInput txin
-        r <- case Map.lookup p (txRedeemers tx) of
+        r <- case lookupRedeemer tx p of
             Just r  -> pure r
             Nothing -> throwError $ MissingRedeemer p
 

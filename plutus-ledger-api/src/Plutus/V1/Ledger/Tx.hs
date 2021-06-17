@@ -34,6 +34,7 @@ module Plutus.V1.Ledger.Tx(
     addSignature,
     forge,
     fee,
+    ScriptTag (..),
     RedeemerPtr (..),
     Redeemers,
     -- ** Hashing transactions
