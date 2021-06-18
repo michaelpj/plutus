@@ -45,6 +45,7 @@ import           Control.Monad.State
 
 import           Data.Aeson                       (FromJSON, ToJSON)
 import           Data.Foldable                    (traverse_)
+import           Data.List                        (elemIndex)
 import           Data.Map                         (Map)
 import qualified Data.Map                         as Map
 import           Data.Semigroup                   (First (..))
@@ -297,6 +298,7 @@ processLookupsAndConstraints lookups TxConstraints{txConstraints, txOwnInputs, t
             traverse_ addOwnInput txOwnInputs
             traverse_ addOwnOutput txOwnOutputs
             addTxInRedeemers
+            addMintingRedeemers
             addMissingValueSpent
             updateUtxoIndex
 
@@ -342,8 +344,21 @@ addTxInRedeemers = do
     let ins = Tx.txInputs txSoFar
     iforM_ reds $ \txin red -> do
         -- TODO: errors
-        let i = Set.findIndex txin ins
+        let Just i = Set.lookupIndex txin ins
             ptr = RedeemerPtr Spend (fromIntegral i)
+        unbalancedTx . tx . Tx.redeemers . at ptr .= Just red
+
+addMintingRedeemers
+    :: ( MonadState ConstraintProcessingState m )
+    => m ()
+addMintingRedeemers = do
+    reds <- use mintRedeemers
+    txSoFar <- use (unbalancedTx . tx)
+    let mpss = monetaryPolicyHash <$> Set.toList (Tx.txForgeScripts txSoFar)
+    iforM_ reds $ \mpsHash red -> do
+        -- TODO: errors
+        let Just i = elemIndex mpsHash mpss
+            ptr = RedeemerPtr Mint (fromIntegral i)
         unbalancedTx . tx . Tx.redeemers . at ptr .= Just red
 
 updateUtxoIndex
@@ -521,7 +536,7 @@ processConstraint = \case
 
         unbalancedTx . tx . Tx.forgeScripts %= Set.insert monetaryPolicyScript
         unbalancedTx . tx . Tx.forge <>= value i
-        unbalancedTx . mintRedeemers . at mpsHash <>= value i
+        mintRedeemers . at mpsHash .= Just red
     MustPayToPubKey pk vl -> do
         unbalancedTx . tx . Tx.outputs %= (Tx.TxOut{txOutAddress=pubKeyHashAddress pk,txOutValue=vl,txOutDatumHash=Nothing} :)
         valueSpentOutputs <>= provided vl
