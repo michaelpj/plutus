@@ -342,10 +342,12 @@ addTxInRedeemers = do
     reds <- use inRedeemers
     txSoFar <- use (unbalancedTx . tx)
     let ins = Tx.txInputs txSoFar
-    iforM_ reds $ \txin red -> do
+    iforM_ ins $ \i txin -> do
         -- TODO: errors
-        let Just i = Set.lookupIndex txin ins
-            ptr = RedeemerPtr Spend (fromIntegral i)
+        let ptr = RedeemerPtr Spend (fromIntegral i)
+        red <- case Map.lookup txin reds of
+            Just red -> pure red
+            Nothing  -> RedeemerNotFound ptr
         unbalancedTx . tx . Tx.redeemers . at ptr .= Just red
 
 addMintingRedeemers
@@ -422,6 +424,7 @@ data MkTxError =
     | DatumNotFound DatumHash
     | MonetaryPolicyNotFound MonetaryPolicyHash
     | ValidatorHashNotFound Address
+    | RedeemerNotFound RedeemerPtr
     | OwnPubKeyMissing
     | TypedValidatorMissing
     | DatumWrongHash DatumHash Datum
