@@ -66,8 +66,8 @@ import qualified Ledger.Typed.Tx                  as Typed
 import           Plutus.V1.Ledger.Address         (Address (..), pubKeyHashAddress)
 import qualified Plutus.V1.Ledger.Address         as Address
 import           Plutus.V1.Ledger.Crypto          (PubKeyHash)
-import           Plutus.V1.Ledger.Scripts         (Datum (..), DatumHash, MonetaryPolicy, MonetaryPolicyHash, Validator,
-                                                   datumHash, monetaryPolicyHash)
+import           Plutus.V1.Ledger.Scripts         (Datum (..), DatumHash, MonetaryPolicy, MonetaryPolicyHash,
+                                                   Redeemer (..), Validator, datumHash, monetaryPolicyHash)
 import           Plutus.V1.Ledger.Tx              (Tx, TxOut (..), TxOutRef, TxOutTx (..))
 import qualified Plutus.V1.Ledger.Tx              as Tx
 import           Plutus.V1.Ledger.Value           (Value)
@@ -214,6 +214,7 @@ instance Semigroup ValueSpentBalances where
 data ConstraintProcessingState =
     ConstraintProcessingState
         { cpsUnbalancedTx              :: UnbalancedTx
+        , cpsInRedeemers               :: Map.Map Tx.TxIn Redeemer
         -- ^ The unbalanced transaction that we're building
         , cpsValueSpentBalancesInputs  :: ValueSpentBalances
         -- ^ Balance of the values given and required for the transaction's
@@ -237,6 +238,7 @@ totalMissingValue ConstraintProcessingState{cpsValueSpentBalancesInputs, cpsValu
 
 makeLensesFor
     [ ("cpsUnbalancedTx", "unbalancedTx")
+    , ("cpsInRedeemers", "inRedeemers")
     , ("cpsValueSpentBalancesInputs", "valueSpentInputs")
     , ("cpsValueSpentBalancesOutputs", "valueSpentOutputs")
     ] ''ConstraintProcessingState
@@ -244,6 +246,7 @@ makeLensesFor
 initialState :: ConstraintProcessingState
 initialState = ConstraintProcessingState
     { cpsUnbalancedTx = emptyUnbalancedTx
+    , cpsInRedeemers = mempty
     , cpsValueSpentBalancesInputs = ValueSpentBalances mempty mempty
     , cpsValueSpentBalancesOutputs = ValueSpentBalances mempty mempty
     }
@@ -323,6 +326,19 @@ addMissingValueSpent = do
             pk <- asks slOwnPubkey >>= maybe (throwError OwnPubKeyMissing) pure
             unbalancedTx . tx . Tx.outputs %= (Tx.TxOut{txOutAddress=pubKeyHashAddress pk,txOutValue=missing,txOutDatumHash=Nothing} :)
 
+addTxInRedeemers
+    :: ( MonadState ConstraintProcessingState m )
+    => m ()
+addTxInRedeemers = do
+    reds <- use inRedeemers
+    txSoFar <- use (unbalancedTx . tx)
+    let ins = txInputs txSoFar
+    iforM_ reds $ \(txin, red) -> do
+        -- TODO: errors
+        let ix = Set.findIndex txin ins
+            ptr = RedeemerPtr Spend ix
+        unbalancedTx . tx . Tx.redeemers . at ptr .= red
+
 updateUtxoIndex
     :: ( MonadReader (ScriptLookups a) m
        , MonadState ConstraintProcessingState m
@@ -350,9 +366,13 @@ addOwnInput InputConstraint{icRedeemer, icTxOutRef} = do
         either (throwError . TypeCheckFailed) pure
         $ runExcept @ConnectionError
         $ Typed.typeScriptTxOutRef (`Map.lookup` slTxOutputs) inst icTxOutRef
-    let txIn = Typed.makeTypedScriptTxIn inst icRedeemer typedOutRef
+
+    let tyTxIn = Typed.makeTypedScriptTxIn inst typedOutRef
+        txIn = Typed.tyTxInTxIn tyTxIn
         vl   = Tx.txOutValue $ Typed.tyTxOutTxOut $ Typed.tyTxOutRefOut typedOutRef
-    unbalancedTx . tx . Tx.inputs %= Set.insert (Typed.tyTxInTxIn txIn)
+
+    unbalancedTx . tx . Tx.inputs %= Set.insert txIn
+    inRedeemers . at txIn .= Just (Redeemer $ toData icRedeemer)
     valueSpentInputs <>= provided vl
 
 -- | Add a typed output and return its value.
@@ -446,7 +466,7 @@ processConstraint
 processConstraint = \case
     MustIncludeDatum dv ->
         let theHash = datumHash dv in
-        unbalancedTx . tx . Tx.datumWitnesses %= set (at theHash) (Just dv)
+        unbalancedTx . tx . Tx.datumWitnesses . at theHash .= Just dv
     MustValidateIn slotRange ->
         unbalancedTx . tx . Tx.validRange %= (slotRange /\)
     MustBeSignedBy pk ->
@@ -474,9 +494,10 @@ processConstraint = \case
                 -- TODO: When witnesses are properly segregated we can
                 --       probably get rid of the 'slOtherData' map and of
                 --       'lookupDatum'
-                let input = Tx.scriptTxIn txo validator red dataValue
+                let input = Tx.scriptTxIn txo validator dataValue
                 unbalancedTx . tx . Tx.inputs %= Set.insert input
-                unbalancedTx . tx . Tx.datumWitnesses %= set (at dvh) (Just dataValue)
+                unbalancedTx . tx . Tx.datumWitnesses . at dvh .= Just dataValue
+                inRedeemers . at input .= Just red
                 valueSpentInputs <>= provided (Tx.txOutValue (txOutTxOut txOutTx))
             _                 -> throwError (TxOutRefWrongType txo)
 
@@ -499,10 +520,10 @@ processConstraint = \case
     MustPayToOtherScript vlh dv vl -> do
         let addr = Address.scriptHashAddress vlh
             theHash = datumHash dv
-        unbalancedTx . tx . Tx.datumWitnesses %= set (at theHash) (Just dv)
+        unbalancedTx . tx . Tx.datumWitnesses . at theHash .= Just dv
         unbalancedTx . tx . Tx.outputs %= (Tx.scriptTxOut' vl addr dv :)
         valueSpentOutputs <>= provided vl
     MustHashDatum dvh dv -> do
         unless (datumHash dv == dvh)
             (throwError $ DatumWrongHash dvh dv)
-        unbalancedTx . tx . Tx.datumWitnesses %= set (at dvh) (Just dv)
+        unbalancedTx . tx . Tx.datumWitnesses . at dvh .= Just dv

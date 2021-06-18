@@ -41,7 +41,7 @@ import           Prelude                          hiding (lookup)
 import           Codec.Serialise                  (Serialise)
 import           Control.DeepSeq                  (NFData)
 import           Control.Lens                     (toListOf, view, (^.))
-import           Control.Lens.Indexed
+import           Control.Lens.Indexed             (iforM_)
 import           Control.Monad
 import           Control.Monad.Except             (ExceptT, MonadError (..), runExcept, runExceptT)
 import           Control.Monad.Reader             (MonadReader (..), ReaderT (..), ask)
