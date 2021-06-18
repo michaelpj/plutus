@@ -68,7 +68,8 @@ import qualified Plutus.V1.Ledger.Address         as Address
 import           Plutus.V1.Ledger.Crypto          (PubKeyHash)
 import           Plutus.V1.Ledger.Scripts         (Datum (..), DatumHash, MonetaryPolicy, MonetaryPolicyHash,
                                                    Redeemer (..), Validator, datumHash, monetaryPolicyHash)
-import           Plutus.V1.Ledger.Tx              (Tx, TxOut (..), TxOutRef, TxOutTx (..))
+import           Plutus.V1.Ledger.Tx              (RedeemerPtr (..), ScriptTag (..), Tx, TxOut (..), TxOutRef,
+                                                   TxOutTx (..))
 import qualified Plutus.V1.Ledger.Tx              as Tx
 import           Plutus.V1.Ledger.Value           (Value)
 import qualified Plutus.V1.Ledger.Value           as Value
@@ -214,8 +215,11 @@ instance Semigroup ValueSpentBalances where
 data ConstraintProcessingState =
     ConstraintProcessingState
         { cpsUnbalancedTx              :: UnbalancedTx
-        , cpsInRedeemers               :: Map.Map Tx.TxIn Redeemer
         -- ^ The unbalanced transaction that we're building
+        , cpsInRedeemers               :: Map.Map Tx.TxIn Redeemer
+        -- ^ Redeemers for inputs. These must be added to the transaction at the end
+        --   since the way they are represented depends on the order of the set of inputs.
+        , cpsMintRedeemers             :: Map.Map MonetaryPolicyHash Redeemer
         , cpsValueSpentBalancesInputs  :: ValueSpentBalances
         -- ^ Balance of the values given and required for the transaction's
         --   inputs
@@ -239,6 +243,7 @@ totalMissingValue ConstraintProcessingState{cpsValueSpentBalancesInputs, cpsValu
 makeLensesFor
     [ ("cpsUnbalancedTx", "unbalancedTx")
     , ("cpsInRedeemers", "inRedeemers")
+    , ("cpsMintRedeemers", "mintRedeemers")
     , ("cpsValueSpentBalancesInputs", "valueSpentInputs")
     , ("cpsValueSpentBalancesOutputs", "valueSpentOutputs")
     ] ''ConstraintProcessingState
@@ -247,6 +252,7 @@ initialState :: ConstraintProcessingState
 initialState = ConstraintProcessingState
     { cpsUnbalancedTx = emptyUnbalancedTx
     , cpsInRedeemers = mempty
+    , cpsMintRedeemers = mempty
     , cpsValueSpentBalancesInputs = ValueSpentBalances mempty mempty
     , cpsValueSpentBalancesOutputs = ValueSpentBalances mempty mempty
     }
@@ -290,6 +296,7 @@ processLookupsAndConstraints lookups TxConstraints{txConstraints, txOwnInputs, t
             traverse_ processConstraint txConstraints
             traverse_ addOwnInput txOwnInputs
             traverse_ addOwnOutput txOwnOutputs
+            addTxInRedeemers
             addMissingValueSpent
             updateUtxoIndex
 
@@ -332,12 +339,12 @@ addTxInRedeemers
 addTxInRedeemers = do
     reds <- use inRedeemers
     txSoFar <- use (unbalancedTx . tx)
-    let ins = txInputs txSoFar
-    iforM_ reds $ \(txin, red) -> do
+    let ins = Tx.txInputs txSoFar
+    iforM_ reds $ \txin red -> do
         -- TODO: errors
-        let ix = Set.findIndex txin ins
-            ptr = RedeemerPtr Spend ix
-        unbalancedTx . tx . Tx.redeemers . at ptr .= red
+        let i = Set.findIndex txin ins
+            ptr = RedeemerPtr Spend (fromIntegral i)
+        unbalancedTx . tx . Tx.redeemers . at ptr .= Just red
 
 updateUtxoIndex
     :: ( MonadReader (ScriptLookups a) m
@@ -501,7 +508,7 @@ processConstraint = \case
                 valueSpentInputs <>= provided (Tx.txOutValue (txOutTxOut txOutTx))
             _                 -> throwError (TxOutRefWrongType txo)
 
-    MustForgeValue mpsHash tn i -> do
+    MustForgeValue mpsHash red tn i -> do
         monetaryPolicyScript <- lookupMonetaryPolicy mpsHash
         let value = Value.singleton (Value.mpsSymbol mpsHash) tn
         -- If i is negative we are burning tokens. The tokens burned must
@@ -514,6 +521,7 @@ processConstraint = \case
 
         unbalancedTx . tx . Tx.forgeScripts %= Set.insert monetaryPolicyScript
         unbalancedTx . tx . Tx.forge <>= value i
+        unbalancedTx . mintRedeemers . at mpsHash <>= value i
     MustPayToPubKey pk vl -> do
         unbalancedTx . tx . Tx.outputs %= (Tx.TxOut{txOutAddress=pubKeyHashAddress pk,txOutValue=vl,txOutDatumHash=Nothing} :)
         valueSpentOutputs <>= provided vl

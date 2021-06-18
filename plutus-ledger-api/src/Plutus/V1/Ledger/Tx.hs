@@ -28,6 +28,7 @@ module Plutus.V1.Ledger.Tx(
     forgeScripts,
     signatures,
     datumWitnesses,
+    redeemers,
     lookupSignature,
     lookupDatum,
     lookupRedeemer,
@@ -229,6 +230,11 @@ forgeScripts :: Lens' Tx (Set.Set MonetaryPolicy)
 forgeScripts = lens g s where
     g = txForgeScripts
     s tx fs = tx { txForgeScripts = fs }
+
+redeemers :: Lens' Tx Redeemers
+redeemers = lens g s where
+    g = txRedeemers
+    s tx reds = tx { txRedeemers = reds }
 
 datumWitnesses :: Lens' Tx (Map DatumHash Datum)
 datumWitnesses = lens g s where
