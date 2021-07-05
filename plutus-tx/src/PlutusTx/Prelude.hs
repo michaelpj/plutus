@@ -80,16 +80,15 @@ module PlutusTx.Prelude (
     quotRem,
     -- * Data
     BuiltinData,
-    Data
     ) where
 
 import           Data.String          (IsString (..))
 import           PlutusTx.Applicative as Applicative
 import           PlutusTx.Bool        as Bool
-import           PlutusTx.Builtins    (BuiltinData, BuiltinString, ByteString, Data, appendString, charToString,
-                                       concatenate, dropByteString, emptyByteString, emptyString, encodeUtf8,
-                                       equalsByteString, equalsString, error, greaterThanByteString, lessThanByteString,
-                                       sha2_256, sha3_256, takeByteString, trace, verifySignature)
+import           PlutusTx.Builtins    (BuiltinData, BuiltinString, ByteString, appendString, charToString, concatenate,
+                                       dropByteString, emptyByteString, emptyString, encodeUtf8, equalsByteString,
+                                       equalsString, error, greaterThanByteString, lessThanByteString, sha2_256,
+                                       sha3_256, takeByteString, trace, verifySignature)
 import qualified PlutusTx.Builtins    as Builtins
 import           PlutusTx.Either      as Either
 import           PlutusTx.Eq          as Eq

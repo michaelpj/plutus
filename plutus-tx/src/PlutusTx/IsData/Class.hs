@@ -69,8 +69,7 @@ instance IsData Void where
     fromBuiltinData _ = Nothing
 
 toData :: (IsData a) => a -> PLC.Data
-toData a = case toBuiltinData a of
-    (BuiltinData d) -> d
+toData a = builtinDataToData (toBuiltinData a)
 
 fromData :: (IsData a) => PLC.Data -> Maybe a
 fromData d = fromBuiltinData (BuiltinData d)

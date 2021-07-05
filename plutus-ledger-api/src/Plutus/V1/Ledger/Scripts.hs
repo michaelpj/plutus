@@ -207,13 +207,13 @@ instance ToJSON PLC.Data where
 instance FromJSON PLC.Data where
     parseJSON = JSON.decodeSerialise
 
-mkValidatorScript :: CompiledCode (Data -> Data -> Data -> ()) -> Validator
+mkValidatorScript :: CompiledCode (BuiltinData -> BuiltinData -> BuiltinData -> ()) -> Validator
 mkValidatorScript = Validator . fromCompiledCode
 
 unValidatorScript :: Validator -> Script
 unValidatorScript = getValidator
 
-mkMintingPolicyScript :: CompiledCode (Data -> Data -> ()) -> MintingPolicy
+mkMintingPolicyScript :: CompiledCode (BuiltinData -> BuiltinData -> ()) -> MintingPolicy
 mkMintingPolicyScript = MintingPolicy . fromCompiledCode
 
 unMintingPolicyScript :: MintingPolicy -> Script
@@ -236,7 +236,7 @@ instance BA.ByteArrayAccess Validator where
         BA.withByteArray . BSL.toStrict . serialise
 
 -- | 'Datum' is a wrapper around 'Data' values which are used as data in transaction outputs.
-newtype Datum = Datum { getDatum :: Data  }
+newtype Datum = Datum { getDatum :: BuiltinData  }
   deriving stock (Generic, Haskell.Show)
   deriving newtype (Haskell.Eq, Haskell.Ord, Eq, IsData)
   deriving (ToJSON, FromJSON, Serialise, NFData) via PLC.Data
@@ -249,7 +249,7 @@ instance BA.ByteArrayAccess Datum where
         BA.withByteArray . BSL.toStrict . serialise
 
 -- | 'Redeemer' is a wrapper around 'Data' values that are used as redeemers in transaction inputs.
-newtype Redeemer = Redeemer { getRedeemer :: Data }
+newtype Redeemer = Redeemer { getRedeemer :: BuiltinData }
   deriving stock (Generic, Haskell.Show)
   deriving newtype (Haskell.Eq, Haskell.Ord, Eq)
   deriving (ToJSON, FromJSON, Serialise, NFData, Pretty) via PLC.Data
@@ -328,7 +328,7 @@ mintingPolicyHash vl = MintingPolicyHash $ BA.convert h' where
 
 -- | Information about the state of the blockchain and about the transaction
 --   that is currently being validated, represented as a value in 'Data'.
-newtype Context = Context Data
+newtype Context = Context BuiltinData
     deriving (ToJSON, FromJSON) via PLC.Data
 
 -- | Apply a 'Validator' to its 'Context', 'Datum', and 'Redeemer'.

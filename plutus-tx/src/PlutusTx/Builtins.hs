@@ -31,7 +31,6 @@ module PlutusTx.Builtins (
                                 -- * Error
                                 , error
                                 -- * Data
-                                , Data
                                 , BuiltinData
                                 , chooseData
                                 , matchData
@@ -46,6 +45,8 @@ module PlutusTx.Builtins (
                                 , unsafeDataAsList
                                 , unsafeDataAsI
                                 , unsafeDataAsB
+                                , BI.builtinDataToData
+                                , BI.dataToBuiltinData
                                 -- * Strings
                                 , BuiltinString
                                 , appendString
@@ -212,8 +213,6 @@ trace s = BI.chooseUnit (BI.trace s)
 -- | Convert a String into a ByteString.
 encodeUtf8 :: BuiltinString -> ByteString
 encodeUtf8 s = fromBuiltin (BI.encodeUtf8 s)
-
-type Data = BuiltinData
 
 {-# INLINABLE chooseData #-}
 chooseData :: forall a . a -> a -> a -> a -> a -> BuiltinData -> a

@@ -36,7 +36,7 @@ fromDataClause (TH.ConstructorInfo{TH.constructorName=name, TH.constructorFields
     let body =
             [|
                 let reconstruct i $(lpat) | i PlutusTx.== index = $(app)
-                    reconstruct _ _ = Prelude.error "wrong constructor"
+                    reconstruct _ _ = Nothing
                 in matchData $(TH.varE dName) reconstruct (const Nothing) (const Nothing) (const Nothing) (const Nothing)
              |]
     TH.clause [TH.varP dName] (TH.normalB body) []

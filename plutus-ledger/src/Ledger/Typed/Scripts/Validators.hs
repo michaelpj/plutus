@@ -65,7 +65,7 @@ to the previous problem: apply a function which does a pattern match and returns
 otherwise. Then, as before, we just check for error in the overall evaluation.
 -}
 
-type WrappedValidatorType = Data -> Data -> Data -> ()
+type WrappedValidatorType = BuiltinData -> BuiltinData -> BuiltinData -> ()
 
 {-# INLINABLE wrapValidator #-}
 wrapValidator
@@ -73,8 +73,8 @@ wrapValidator
     . (IsData d, IsData r)
     => (d -> r -> Validation.ScriptContext -> Bool)
     -> WrappedValidatorType
-wrapValidator f (fromData -> Just d) (fromData -> Just r) (fromData -> Just p) = check $ f d r p
-wrapValidator _ _ _ _                                                          = check False
+wrapValidator f (fromBuiltinData -> Just d) (fromBuiltinData -> Just r) (fromBuiltinData -> Just p) = check $ f d r p
+wrapValidator _ _ _ _                                                                               = check False
 
 -- | A typed validator script with its 'ValidatorScript' and 'Address'.
 data TypedValidator (a :: Type) =

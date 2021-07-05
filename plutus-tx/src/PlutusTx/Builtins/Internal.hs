@@ -276,8 +276,18 @@ mkConsPairData d (BuiltinList ds) = BuiltinList (d:ds)
 DATA
 -}
 
-newtype BuiltinData = BuiltinData { unsafeGetData :: PLC.Data }
+newtype BuiltinData = BuiltinData PLC.Data
     deriving newtype (Show, Eq, Ord)
+
+-- NOT a builtin, only safe off-chain, hence the NOINLINE
+{-# NOINLINE builtinDataToData #-}
+builtinDataToData :: BuiltinData -> PLC.Data
+builtinDataToData (BuiltinData d) = d
+
+-- NOT a builtin, only safe off-chain, hence the NOINLINE
+{-# NOINLINE dataToBuiltinData #-}
+dataToBuiltinData :: PLC.Data -> BuiltinData
+dataToBuiltinData = BuiltinData
 
 {-# NOINLINE chooseData #-}
 chooseData :: forall a . a -> a -> a -> a -> a -> BuiltinData -> a
