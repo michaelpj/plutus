@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-omit-interface-pragmas #-}
+{-# OPTIONS_GHC -fno-specialise #-}
 
 -- | Primitive names and functions for working with Plutus Core builtins.
 module PlutusTx.Builtins (

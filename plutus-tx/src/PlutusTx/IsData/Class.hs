@@ -6,6 +6,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-strictness #-}
 {-# OPTIONS_GHC -fno-specialise #-}
+{-# OPTIONS_GHC -fno-omit-interface-pragmas #-}
 module PlutusTx.IsData.Class where
 
 import           Data.ByteString            as BS
